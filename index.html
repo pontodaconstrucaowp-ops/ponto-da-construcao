@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#073b8c">
+  <title>Ponto da Construção</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-mark">PC</div>
+      <h1>Ponto da Construção</h1>
+      <p>Gestão de vendas, estoque e entregas</p>
+      <label>Usuário</label>
+      <input id="loginUser" placeholder="Digite seu usuário" autocomplete="username">
+      <label>Senha</label>
+      <input id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password">
+      <button class="primary full" onclick="login()">Entrar</button>
+      <small>Versão inicial de demonstração — dados locais.</small>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PONTO DA CONSTRUÇÃO</div>
+        <h1 id="pageTitle">Início</h1>
+      </div>
+      <button class="icon-btn" onclick="toggleUserMenu()" aria-label="Menu do usuário">⋮</button>
+      <div id="userMenu" class="user-menu hidden">
+        <strong id="loggedUser">Administrador</strong>
+        <button onclick="logout()">Sair</button>
+      </div>
+    </header>
+
+    <main id="content" class="content"></main>
+
+    <nav class="bottom-nav">
+      <button data-page="home" onclick="navigate('home')"><span>⌂</span>Início</button>
+      <button data-page="sales" onclick="navigate('sales')"><span>＋</span>Vendas</button>
+      <button data-page="products" onclick="navigate('products')"><span>▦</span>Estoque</button>
+      <button data-page="deliveries" onclick="navigate('deliveries')"><span>⇢</span>Entregas</button>
+      <button data-page="more" onclick="navigate('more')"><span>☰</span>Mais</button>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
