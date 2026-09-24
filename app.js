@@ -75,7 +75,6 @@ async function login(){
     navigate('home');
   }
 }
-}
 function logout(){
   state.user=null;
   document.getElementById('app').classList.add('hidden');
