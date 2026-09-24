@@ -26,15 +26,55 @@ const state={
   ]
 };
 
-function login(){
+async function login(){
   const user=document.getElementById('loginUser').value.trim();
   const pass=document.getElementById('loginPass').value.trim();
-  if(!user||!pass){alert('Informe usuário e senha.');return}
-  state.user=user;
+
+  if(!user||!pass){
+    alert('Informe e-mail e senha.');
+    return;
+  }
+
+  const {data,error}=await supabaseClient.auth.signInWithPassword({
+    email:user,
+    password:pass
+  });
+
+  if(error){
+    alert('E-mail ou senha incorretos.');
+    return;
+  }
+
+  const {data:usuario,error:usuarioError}=await supabaseClient
+    .from('usuarios')
+    .select('*')
+    .eq('id',data.user.id)
+    .single();
+
+  if(usuarioError||!usuario){
+    await supabaseClient.auth.signOut();
+    alert('Usuário não cadastrado no sistema.');
+    return;
+  }
+
+  if(!usuario.ativo){
+    await supabaseClient.auth.signOut();
+    alert('Este usuário está inativo.');
+    return;
+  }
+
+  state.user=usuario;
+
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  document.getElementById('loggedUser').textContent=user;
-  navigate('home');
+  document.getElementById('loggedUser').textContent=usuario.nome;
+
+  if(usuario.tipo==='entregador'){
+    navigate('deliveries');
+  }else{
+    navigate('home');
+  }
+}
 }
 function logout(){
   state.user=null;
