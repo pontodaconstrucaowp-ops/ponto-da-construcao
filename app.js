@@ -1,6 +1,11 @@
 const SUPABASE_URL = 'https://ifcdfydbkrpdcbtiqysc.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_InDtslnIkU5kvL0-OtzH7g_51jxEKwh';
 
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
 const state={
   page:'home',
   user:null,
