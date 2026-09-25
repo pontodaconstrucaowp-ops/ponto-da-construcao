@@ -221,11 +221,121 @@ async function renderSales(el){
   `;
 }
 function addToCart(id){
-  const p=state.products.find(x=>x.id===id);
-  const found=state.cart.find(x=>x.id===id);
-  if(found) found.qty++;
-  else state.cart.push({...p,qty:1});
-  renderSales(document.getElementById('content'));
+ async function searchSaleClients(){
+  const input = document.getElementById('saleClient');
+  const results = document.getElementById('saleClientResults');
+
+  if(!input || !results) return;
+
+  const busca = input.value.trim();
+
+  if(busca.length < 2){
+    results.innerHTML = `
+      <p class="muted">Digite pelo menos 2 caracteres.</p>
+    `;
+    return;
+  }
+
+  results.innerHTML = `
+    <div class="card muted">Buscando clientes...</div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from('clientes')
+    .select('id,nome,telefone,endereço')
+    .or(`nome.ilike.%${busca}%,telefone.ilike.%${busca}%`)
+    .order('nome', { ascending: true })
+    .limit(10);
+
+  if(error){
+    results.innerHTML = `
+      <div class="card">
+        <strong>Erro ao buscar cliente</strong>
+        <p class="muted">${error.message}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if(!data || data.length === 0){
+    results.innerHTML = `
+      <div class="card">
+        <p class="muted">Nenhum cliente encontrado.</p>
+
+        <button class="primary" onclick="openSaleNewClientForm()">
+          + Novo cliente
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  results.innerHTML = data.map(c => `
+    <div class="card">
+      <div class="product-name">${c.nome || 'Sem nome'}</div>
+
+      <div class="muted">
+        ${c.telefone || 'Sem telefone'}
+      </div>
+
+      <div class="muted">
+        ${c.endereço || 'Sem endereço'}
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="selectSaleClient('${c.id}')">
+          Selecionar
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectSaleClient(id){
+  const input = document.getElementById('saleClient');
+
+  state.selectedClient = id;
+
+  if(input){
+    input.disabled = true;
+  }
+
+  const results = document.getElementById('saleClientResults');
+
+  if(results){
+    results.innerHTML = `
+      <div class="card">
+        <strong>Cliente selecionado</strong>
+        <button
+          class="secondary"
+          style="margin-top:10px"
+          onclick="clearSaleClient()"
+        >
+          Trocar cliente
+        </button>
+      </div>
+    `;
+  }
+}
+
+function clearSaleClient(){
+  state.selectedClient = null;
+
+  const input = document.getElementById('saleClient');
+
+  if(input){
+    input.disabled = false;
+    input.value = '';
+    input.focus();
+  }
+
+  const results = document.getElementById('saleClientResults');
+
+  if(results){
+    results.innerHTML = `
+      <p class="muted">Digite o nome ou telefone do cliente.</p>
+    `;
+  }
 }
 function finishSale(){
   if(!state.cart.length){alert('Adicione pelo menos um produto.');return}
