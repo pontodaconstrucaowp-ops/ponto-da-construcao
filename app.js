@@ -274,6 +274,9 @@ function openSaleNewClientForm(){
 }
 
 async function saveSaleNewClient(){
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  console.log('USUARIO AUTENTICADO:', user);
+  
   const nome = document.getElementById('newSaleClientName').value.trim();
   const telefone = document.getElementById('newSaleClientPhone').value.trim();
   const endereco = document.getElementById('newSaleClientAddress').value.trim();
