@@ -82,6 +82,13 @@ function logout(){
 }
 function toggleUserMenu(){document.getElementById('userMenu').classList.toggle('hidden')}
 function navigate(page){
+  if(state.user && state.user.tipo === 'entregador'){
+  const permitidas = ['deliveries'];
+
+  if(!permitidas.includes(page)){
+    page = 'deliveries';
+  }
+}
   state.page=page;
   document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
   const titles={home:'Início',sales:'Nova venda',products:'Estoque',deliveries:'Entregas',more:'Mais opções',clients:'Clientes',cash:'Caixa',reports:'Relatórios',settings:'Configurações'};
