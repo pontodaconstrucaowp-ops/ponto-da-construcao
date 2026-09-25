@@ -286,3 +286,39 @@ async function renderClients(el){
     </div>
   `).join('');
 }
+async function saveClient(){
+  const nome = document.getElementById('clientName').value.trim();
+  const telefone = document.getElementById('clientPhone').value.trim();
+  const endereco = document.getElementById('clientAddress').value.trim();
+
+  if(!nome){
+    alert('Informe o nome do cliente.');
+    return;
+  }
+
+  if(!telefone){
+    alert('Informe o telefone do cliente.');
+    return;
+  }
+
+  if(!endereco){
+    alert('Informe o endereço do cliente.');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('clientes')
+    .insert({
+      nome: nome,
+      telefone: telefone,
+      endereço: endereco
+    });
+
+  if(error){
+    alert('Não foi possível cadastrar o cliente: ' + error.message);
+    return;
+  }
+
+  alert('Cliente cadastrado com sucesso!');
+  navigate('clients');
+}
