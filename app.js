@@ -130,26 +130,93 @@ function deliveryCard(d){
   return `<div class="card"><div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div><p class="muted">${d.address}</p><div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div></div>`
 }
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
-function renderSales(el){
+async function renderSales(el){
   el.innerHTML=`
     <div class="card">
-      <div class="section-title"><h2>Cliente</h2><button class="secondary" onclick="navigate('clients')">Cadastrar</button></div>
-      <div class="field"><label>Buscar cliente</label><input id="saleClient" class="search" placeholder="Nome ou telefone"></div>
+      <div class="section-title">
+        <h2>Cliente</h2>
+      </div>
+
+      <div class="field">
+        <label>Buscar cliente</label>
+        <input
+          id="saleClient"
+          class="search"
+          placeholder="Digite nome ou telefone..."
+          oninput="searchSaleClients()"
+        >
+      </div>
+
+      <div id="saleClientResults" style="margin-top:10px">
+        <p class="muted">Digite o nome ou telefone do cliente.</p>
+      </div>
     </div>
-    <div class="section-title"><h2>Materiais</h2></div>
-    <div class="list">${state.products.map(p=>`
-      <div class="card">
-        <div class="row"><div><div class="product-name">${p.name}</div><span class="muted">${p.unit} · estoque ${p.stock}</span></div><div class="price">${money(p.price)}</div></div>
-        <div class="actions">
-          <button class="secondary" onclick="addToCart(${p.id})">Adicionar</button>
+
+    <div class="section-title">
+      <h2>Materiais</h2>
+    </div>
+
+    <div class="list">
+      ${state.products.map(p=>`
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="product-name">${p.name}</div>
+              <span class="muted">${p.unit} · estoque ${p.stock}</span>
+            </div>
+
+            <div class="price">${money(p.price)}</div>
+          </div>
+
+          <div class="actions">
+            <button class="secondary" onclick="addToCart(${p.id})">
+              Adicionar
+            </button>
+          </div>
         </div>
-      </div>`).join('')}</div>
+      `).join('')}
+    </div>
+
     <div class="sale-cart">
-      <div class="row"><strong>Carrinho</strong><span>${state.cart.length} item(ns)</span></div>
-      <div id="cartItems">${state.cart.length?state.cart.map((x,i)=>`<div class="row" style="margin-top:10px"><span>${x.name} × ${x.qty}</span><span>${money(x.price*x.qty)}</span></div>`).join(''):'<p class="muted">Nenhum produto adicionado.</p>'}</div>
+      <div class="row">
+        <strong>Carrinho</strong>
+        <span>${state.cart.length} item(ns)</span>
+      </div>
+
+      <div id="cartItems">
+        ${
+          state.cart.length
+          ? state.cart.map(x=>`
+              <div class="row" style="margin-top:10px">
+                <span>${x.name} × ${x.qty}</span>
+                <span>${money(x.price*x.qty)}</span>
+              </div>
+            `).join('')
+          : '<p class="muted">Nenhum produto adicionado.</p>'
+        }
+      </div>
+
       <hr>
-      <div class="row"><span>Total</span><span class="total">${money(state.cart.reduce((s,x)=>s+x.price*x.qty,0))}</span></div>
-      <div class="actions"><button class="primary" onclick="finishSale()">Finalizar venda</button><button class="danger" onclick="state.cart=[];renderSales(document.getElementById('content'))">Limpar</button></div>
+
+      <div class="row">
+        <span>Total</span>
+        <span class="total">
+          ${money(state.cart.reduce((s,x)=>s+x.price*x.qty,0))}
+        </span>
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="finishSale()">
+          Continuar
+        </button>
+
+        <button
+          class="danger"
+          onclick="state.cart=[];renderSales(document.getElementById('content'))"
+        >
+          Limpar
+        </button>
+      </div>
     </div>
   `;
 }
