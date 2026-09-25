@@ -277,6 +277,12 @@ async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
   console.log('USUARIO AUTENTICADO:', user);
   
+  const { data: adminCheck, error: adminCheckError } =
+  await supabaseClient.rpc('usuario_e_admin');
+
+  console.log('USUARIO É ADMIN:', adminCheck);
+  console.log('ERRO AO VERIFICAR ADMIN:', adminCheckError);
+  
   const nome = document.getElementById('newSaleClientName').value.trim();
   const telefone = document.getElementById('newSaleClientPhone').value.trim();
   const endereco = document.getElementById('newSaleClientAddress').value.trim();
