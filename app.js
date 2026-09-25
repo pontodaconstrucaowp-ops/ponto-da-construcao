@@ -347,8 +347,7 @@ async function saveSaleNewClient(){
     `;
   }
 }
-function addToCart(id){
- async function searchSaleClients(){
+async function searchSaleClients(){
   const input = document.getElementById('saleClient');
   const results = document.getElementById('saleClientResults');
 
@@ -433,6 +432,7 @@ function selectSaleClient(id){
     results.innerHTML = `
       <div class="card">
         <strong>Cliente selecionado</strong>
+
         <button
           class="secondary"
           style="margin-top:10px"
@@ -463,6 +463,16 @@ function clearSaleClient(){
       <p class="muted">Digite o nome ou telefone do cliente.</p>
     `;
   }
+}
+
+function addToCart(id){
+  const p=state.products.find(x=>x.id===id);
+  const found=state.cart.find(x=>x.id===id);
+
+  if(found) found.qty++;
+  else state.cart.push({...p,qty:1});
+
+  renderSales(document.getElementById('content'));
 }
 function finishSale(){
   if(!state.cart.length){alert('Adicione pelo menos um produto.');return}
