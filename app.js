@@ -220,6 +220,133 @@ async function renderSales(el){
     </div>
   `;
 }
+function openSaleNewClientForm(){
+  const results = document.getElementById('saleClientResults');
+
+  if(!results) return;
+
+  results.innerHTML = `
+    <div class="card">
+      <div class="section-title">
+        <h3>Novo cliente</h3>
+      </div>
+
+      <div style="display:grid;gap:12px">
+
+        <input
+          id="newSaleClientName"
+          class="search"
+          placeholder="Nome do cliente"
+        >
+
+        <input
+          id="newSaleClientPhone"
+          class="search"
+          placeholder="Telefone"
+        >
+
+        <textarea
+          id="newSaleClientAddress"
+          class="search"
+          placeholder="Endereço"
+          rows="3"
+        ></textarea>
+
+        <div class="row">
+          <button
+            class="secondary"
+            onclick="clearSaleClient()"
+          >
+            Voltar
+          </button>
+
+          <button
+            class="primary"
+            onclick="saveSaleNewClient()"
+          >
+            Salvar e continuar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+async function saveSaleNewClient(){
+  const nome = document.getElementById('newSaleClientName').value.trim();
+  const telefone = document.getElementById('newSaleClientPhone').value.trim();
+  const endereco = document.getElementById('newSaleClientAddress').value.trim();
+
+  if(!nome){
+    alert('Informe o nome do cliente.');
+    return;
+  }
+
+  if(!telefone){
+    alert('Informe o telefone do cliente.');
+    return;
+  }
+
+  if(!endereco){
+    alert('Informe o endereço do cliente.');
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('clientes')
+    .insert({
+      nome: nome,
+      telefone: telefone,
+      endereço: endereco
+    })
+    .select('id,nome,telefone,endereço')
+    .single();
+
+  if(error){
+    alert('Não foi possível cadastrar o cliente: ' + error.message);
+    return;
+  }
+
+  state.selectedClient = data.id;
+
+  const input = document.getElementById('saleClient');
+
+  if(input){
+    input.value = data.nome;
+    input.disabled = true;
+  }
+
+  const results = document.getElementById('saleClientResults');
+
+  if(results){
+    results.innerHTML = `
+      <div class="card">
+        <div class="product-name">${data.nome}</div>
+
+        <div class="muted">
+          ${data.telefone}
+        </div>
+
+        <div class="muted">
+          ${data.endereço}
+        </div>
+
+        <div class="badge done" style="margin-top:10px">
+          Cliente cadastrado
+        </div>
+
+        <button
+          class="secondary"
+          style="margin-top:10px"
+          onclick="clearSaleClient()"
+        >
+          Trocar cliente
+        </button>
+      </div>
+    `;
+  }
+}
 function addToCart(id){
  async function searchSaleClients(){
   const input = document.getElementById('saleClient');
