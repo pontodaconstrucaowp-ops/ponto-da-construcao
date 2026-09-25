@@ -210,15 +210,50 @@ function renderMore(el){
  <button class="card" onclick="navigate('settings')"><strong>Configurações</strong><span class="muted">Usuários e preferências</span></button>
  </div>`;
 }
-function renderClients(el){
- el.innerHTML=`<div class="row" style="margin-bottom:12px"><input class="search" placeholder="Buscar cliente..."><button class="primary" onclick="alert('Cadastro será conectado ao Supabase.')">+ Cliente</button></div><div class="list">${state.clients.map(c=>`<div class="card"><div class="product-name">${c.name}</div><div class="muted">${c.phone} · ${c.city}</div><div class="actions"><button class="secondary">Histórico</button></div></div>`).join('')}</div>`;
-}
-function renderCash(el){
- el.innerHTML=`<div class="grid stats"><div class="card stat"><div class="label">Saldo</div><div class="value">${money(8420)}</div></div><div class="card stat"><div class="label">Entradas hoje</div><div class="value">${money(3250)}</div></div></div><div class="section-title"><h2>Movimentações</h2></div><div class="list"><div class="card row"><span>Venda #1024</span><strong>${money(1250)}</strong></div><div class="card row"><span>Combustível</span><strong>-${money(180)}</strong></div></div>`;
-}
-function renderReports(el){
- el.innerHTML=`<div class="card"><h2>Resumo</h2><p class="muted">Os relatórios serão alimentados pelos dados reais do Supabase.</p><div class="table-wrap"><table><tr><th>Indicador</th><th>Valor</th></tr><tr><td>Vendas no mês</td><td>${money(48250)}</td></tr><tr><td>Pedidos</td><td>87</td></tr><tr><td>Entregas</td><td>64</td></tr></table></div></div>`;
-}
-function renderSettings(el){
- el.innerHTML=`<div class="list"><div class="card"><strong>Usuários</strong><p class="muted">Administrador 1, Administrador 2 e Entregador.</p></div><div class="card"><strong>Banco de dados</strong><p class="muted">Supabase será conectado na próxima etapa.</p></div><div class="card"><strong>Aplicativo</strong><p class="muted">Interface mobile-first baseada na estrutura visual do sistema atual.</p></div></div>`;
+async function renderClients(el){
+  el.innerHTML = `
+    <div class="row" style="margin-bottom:12px">
+      <input id="clientSearch" class="search" placeholder="Buscar cliente...">
+      <button class="primary" onclick="openClientForm()">+ Cliente</button>
+    </div>
+
+    <div id="clientsList" class="list">
+      <div class="card muted">Carregando clientes...</div>
+    </div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from('clientes')
+    .select('*')
+    .order('nome', { ascending: true });
+
+  const list = document.getElementById('clientsList');
+
+  if(error){
+    list.innerHTML = `
+      <div class="card">
+        <strong>Erro ao carregar clientes</strong>
+        <p class="muted">${error.message}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if(!data || data.length === 0){
+    list.innerHTML = `
+      <div class="card">
+        <strong>Nenhum cliente cadastrado</strong>
+        <p class="muted">Clique em "+ Cliente" para cadastrar.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = data.map(c => `
+    <div class="card">
+      <div class="product-name">${c.nome || 'Sem nome'}</div>
+      <div class="muted">${c.telefone || 'Sem telefone'}</div>
+      <div class="muted">${c.endereço || 'Sem endereço'}</div>
+    </div>
+  `).join('');
 }
