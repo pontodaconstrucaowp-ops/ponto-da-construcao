@@ -483,10 +483,107 @@ function addToCart(id){
 
   renderSales(document.getElementById('content'));
 }
-function finishSale(){
-  if(!state.cart.length){alert('Adicione pelo menos um produto.');return}
-  alert('Venda registrada na versão de demonstração. Na próxima etapa vamos salvar no Supabase.');
-  state.cart=[];
+async function finishSale(){
+
+  if(!state.selectedClient){
+    alert('Selecione um cliente antes de continuar.');
+    return;
+  }
+
+  if(!state.cart.length){
+    alert('Adicione pelo menos um produto.');
+    return;
+  }
+
+  const total = state.cart.reduce(
+    (s,x) => s + (x.price * x.qty),
+    0
+  );
+
+  const formaPagamento = prompt(
+    'Forma de pagamento:\n\nDigite: dinheiro, pix, cartão ou prazo'
+  );
+
+  if(!formaPagamento){
+    return;
+  }
+
+  const pagamento = formaPagamento.trim().toLowerCase();
+
+  const formasPermitidas = [
+    'dinheiro',
+    'pix',
+    'cartão',
+    'cartao',
+    'prazo'
+  ];
+
+  if(!formasPermitidas.includes(pagamento)){
+    alert('Forma de pagamento inválida.');
+    return;
+  }
+
+  const formaFinal =
+    pagamento === 'cartao'
+      ? 'cartão'
+      : pagamento;
+
+  const { data: venda, error: vendaError } =
+    await supabaseClient
+      .from('vendas')
+      .insert({
+        cliente_id: state.selectedClient,
+        valor_total: total,
+        data: new Date().toISOString(),
+        forma_pagamento: formaFinal,
+        status: 'concluida'
+      })
+      .select('id')
+      .single();
+
+  if(vendaError){
+    console.error(vendaError);
+
+    alert(
+      'Não foi possível registrar a venda:\n' +
+      vendaError.message
+    );
+
+    return;
+  }
+
+  const itens = state.cart.map(item => ({
+    vendas_id: venda.id,
+    produtos_id: item.id,
+    quantidade: item.qty,
+    preco_unitario: item.price,
+    subtotal: item.price * item.qty
+  }));
+
+  const { error: itensError } =
+    await supabaseClient
+      .from('itens_venda')
+      .insert(itens);
+
+  if(itensError){
+    console.error(itensError);
+
+    alert(
+      'A venda foi criada, mas houve um erro ao salvar os itens:\n' +
+      itensError.message
+    );
+
+    return;
+  }
+
+  alert(
+    'Venda registrada com sucesso!\n\n' +
+    'Total: ' + money(total)
+  );
+
+  state.cart = [];
+  state.selectedClient = null;
+
   navigate('home');
 }
 function renderProducts(el){
