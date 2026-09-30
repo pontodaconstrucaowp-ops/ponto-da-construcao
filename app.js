@@ -1280,14 +1280,30 @@ function openClientForm(){
   `;
 }
 async function renderClients(el){
+
   el.innerHTML = `
     <div class="row" style="margin-bottom:12px">
-      <input id="clientSearch" class="search" placeholder="Buscar cliente...">
-      <button class="primary" onclick="openClientForm()">+ Cliente</button>
+
+      <input
+        id="clientSearch"
+        class="search"
+        placeholder="Buscar cliente..."
+        oninput="filterClients()"
+      >
+
+      <button
+        class="primary"
+        onclick="openClientForm()"
+      >
+        + Cliente
+      </button>
+
     </div>
 
     <div id="clientsList" class="list">
-      <div class="card muted">Carregando clientes...</div>
+      <div class="card muted">
+        Carregando clientes...
+      </div>
     </div>
   `;
 
@@ -1299,66 +1315,100 @@ async function renderClients(el){
   const list = document.getElementById('clientsList');
 
   if(error){
+
     list.innerHTML = `
       <div class="card">
         <strong>Erro ao carregar clientes</strong>
-        <p class="muted">${error.message}</p>
+        <p class="muted">
+          ${error.message}
+        </p>
       </div>
     `;
+
     return;
   }
 
+  window.currentClients = data || [];
+
   if(!data || data.length === 0){
+
     list.innerHTML = `
       <div class="card">
         <strong>Nenhum cliente cadastrado</strong>
-        <p class="muted">Clique em "+ Cliente" para cadastrar.</p>
+        <p class="muted">
+          Clique em "+ Cliente" para cadastrar.
+        </p>
       </div>
     `;
+
     return;
   }
 
   list.innerHTML = data.map(c => `
     <div class="card">
-      <div class="product-name">${c.nome || 'Sem nome'}</div>
-      <div class="muted">${c.telefone || 'Sem telefone'}</div>
-      <div class="muted">${c.endereço || 'Sem endereço'}</div>
+      <div class="product-name">
+        ${c.nome || 'Sem nome'}
+      </div>
+
+      <div class="muted">
+        ${c.telefone || 'Sem telefone'}
+      </div>
+
+      <div class="muted">
+        ${c.endereço || 'Sem endereço'}
+      </div>
     </div>
   `).join('');
 }
-async function saveClient(){
-  const nome = document.getElementById('clientName').value.trim();
-  const telefone = document.getElementById('clientPhone').value.trim();
-  const endereco = document.getElementById('clientAddress').value.trim();
 
-  if(!nome){
-    alert('Informe o nome do cliente.');
-    return;
-  }
+function filterClients(){
 
-  if(!telefone){
-    alert('Informe o telefone do cliente.');
-    return;
-  }
+  const input = document.getElementById('clientSearch');
+  const list = document.getElementById('clientsList');
 
-  if(!endereco){
-    alert('Informe o endereço do cliente.');
-    return;
-  }
+  if(!input || !list) return;
 
-  const { error } = await supabaseClient
-    .from('clientes')
-    .insert({
-      nome: nome,
-      telefone: telefone,
-      endereço: endereco
-    });
+  const busca = input.value
+    .trim()
+    .toLowerCase();
 
-  if(error){
-    alert('Não foi possível cadastrar o cliente: ' + error.message);
-    return;
-  }
+  const clientes = window.currentClients || [];
 
-  alert('Cliente cadastrado com sucesso!');
-  navigate('clients');
+  const filtrados = clientes.filter(c =>
+    String(c.nome || '')
+      .toLowerCase()
+      .includes(busca) ||
+
+    String(c.telefone || '')
+      .toLowerCase()
+      .includes(busca)
+  );
+
+  list.innerHTML = filtrados.length
+    ? filtrados.map(c => `
+        <div class="card">
+
+          <div class="product-name">
+            ${c.nome || 'Sem nome'}
+          </div>
+
+          <div class="muted">
+            ${c.telefone || 'Sem telefone'}
+          </div>
+
+          <div class="muted">
+            ${c.endereço || 'Sem endereço'}
+          </div>
+
+        </div>
+      `).join('')
+
+    : `
+        <div class="card">
+          <strong>Nenhum cliente encontrado</strong>
+          <p class="muted">
+            Não encontramos nenhum cliente com "${input.value}".
+          </p>
+        </div>
+      `;
 }
