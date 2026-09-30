@@ -277,8 +277,10 @@ async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
   console.log('USUARIO AUTENTICADO:', user);
   
-  const { data: adminCheck, error: adminCheckError } =
-  await supabaseClient.rpc('usuario_e_admin');
+const { data: adminCheck, error: adminCheckError } =
+  await supabaseClient.rpc('usuario_e_admin', {
+    uid: user.id
+  });
 
   console.log('USUARIO É ADMIN:', adminCheck);
   console.log('ERRO AO VERIFICAR ADMIN:', adminCheckError);
