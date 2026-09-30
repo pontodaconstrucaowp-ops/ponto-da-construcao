@@ -588,10 +588,66 @@ async function finishSale(){
 
   navigate('home');
 }
-function renderProducts(el){
-  el.innerHTML=`
-    <div class="row" style="margin-bottom:12px"><input class="search" id="productSearch" oninput="filterProducts()" placeholder="Buscar material..."><button class="primary" onclick="alert('Cadastro de produto será conectado ao banco na próxima etapa.')">+ Produto</button></div>
-    <div id="productList" class="list">${productRows(state.products)}</div>`;
+async function renderProducts(el){
+
+  el.innerHTML = `
+    <div class="row" style="margin-bottom:12px">
+      <input
+        class="search"
+        id="productSearch"
+        oninput="filterProducts()"
+        placeholder="Buscar material..."
+      >
+
+      <button
+        class="primary"
+        onclick="alert('Cadastro de produto será conectado ao banco na próxima etapa.')"
+      >
+        + Produto
+      </button>
+    </div>
+
+    <div id="productList" class="list">
+      <div class="card muted">
+        Carregando estoque...
+      </div>
+    </div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from('produtos')
+    .select('*')
+    .order('id', { ascending: true });
+
+  const list = document.getElementById('productList');
+
+  if(error){
+    console.error(error);
+
+    list.innerHTML = `
+      <div class="card">
+        <strong>Erro ao carregar estoque</strong>
+        <p class="muted">${error.message}</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  if(!data || data.length === 0){
+    list.innerHTML = `
+      <div class="card">
+        <strong>Nenhum produto cadastrado</strong>
+        <p class="muted">
+          Clique em "+ Produto" para cadastrar.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML = productRows(data);
 }
 function productRows(items){
  return items.map(p=>`<div class="card"><div class="row"><div><div class="product-name">${p.name}</div><span class="muted">${p.unit} · estoque ${p.stock}</span></div><strong class="price">${money(p.price)}</strong></div><div class="actions"><button class="secondary" onclick="alert('Edição de produto será conectada ao banco.')">Editar</button></div></div>`).join('')
