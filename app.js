@@ -646,53 +646,39 @@ async function finishSale(){
       ? 'cartão'
       : pagamento;
 
-  const { data: venda, error: vendaError } =
-    await supabaseClient
-      .from('vendas')
-      .insert({
-        cliente_id: state.selectedClient,
-        valor_total: total,
-        data: new Date().toISOString(),
-        forma_pagamento: formaFinal,
-        status: 'concluida'
-      })
-      .select('id')
-      .single();
-
-  if(vendaError){
-    console.error(vendaError);
-
-    alert(
-      'Não foi possível registrar a venda:\n' +
-      vendaError.message
-    );
-
-    return;
-  }
-
   const itens = state.cart.map(item => ({
-    vendas_id: venda.id,
     produtos_id: item.id,
     quantidade: item.qty,
-    preco_unitario: item.price,
-    subtotal: item.price * item.qty
+    preco_unitario: item.price
   }));
 
-  const { error: itensError } =
-    await supabaseClient
-      .from('itens_venda')
-      .insert(itens);
+  const { data: vendaId, error } =
+    await supabaseClient.rpc('registrar_venda', {
+      p_cliente_id: state.selectedClient,
+      p_valor_total: total,
+      p_forma_pagamento: formaFinal,
+      p_itens: itens
+    });
 
-  if(itensError){
-    console.error(itensError);
+  if(error){
+
+    console.error(
+      'ERRO AO REGISTRAR VENDA:',
+      error
+    );
 
     alert(
-      'A venda foi criada, mas houve um erro ao salvar os itens:\n' +
-      itensError.message
+      'Não foi possível registrar a venda:\n\n' +
+      error.message
     );
 
     return;
   }
+
+  console.log(
+    'VENDA REGISTRADA:',
+    vendaId
+  );
 
   alert(
     'Venda registrada com sucesso!\n\n' +
