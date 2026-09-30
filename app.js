@@ -394,7 +394,6 @@ async function searchSaleClients(){
     return;
   }
 
-  window.currentProducts = data || [];
  
   if(!data || data.length === 0){
     results.innerHTML = `
