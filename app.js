@@ -846,8 +846,24 @@ function productRows(items){
   `).join('');
 }
 function filterProducts(){
- const q=document.getElementById('productSearch').value.toLowerCase();
- document.getElementById('productList').innerHTML=productRows(state.products.filter(p=>p.name.toLowerCase().includes(q)));
+
+  const q = document
+    .getElementById('productSearch')
+    .value
+    .toLowerCase()
+    .trim();
+
+  const list = document.getElementById('productList');
+
+  if(!window.currentProducts){
+    return;
+  }
+
+  const filtered = window.currentProducts.filter(p =>
+    p.nome.toLowerCase().includes(q)
+  );
+
+  list.innerHTML = productRows(filtered);
 }
 function renderDeliveries(el){
   el.innerHTML=`
