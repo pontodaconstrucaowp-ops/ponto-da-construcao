@@ -599,13 +599,12 @@ async function renderProducts(el){
         placeholder="Buscar material..."
       >
 
-      <button
-        class="primary"
-        onclick="alert('Cadastro de produto será conectado ao banco na próxima etapa.')"
-      >
-        + Produto
-      </button>
-    </div>
+<button
+  class="primary"
+  onclick="openProductForm()"
+>
+  + Produto
+</button>
 
     <div id="productList" class="list">
       <div class="card muted">
