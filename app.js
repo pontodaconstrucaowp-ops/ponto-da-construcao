@@ -849,87 +849,7 @@ function productRows(items){
   `).join('');
 }
 function openProductEdit(id){
-async function saveProductEdit(id){
 
-  const nome = document.getElementById('editProductName').value.trim();
-  const categoria = document.getElementById('editProductCategory').value.trim();
-  const unidade = document.getElementById('editProductUnit').value.trim();
-
-  const preco = Number(
-    document.getElementById('editProductPrice').value
-  );
-
-  const estoque = Number(
-    document.getElementById('editProductStock').value
-  );
-
-  const estoque_minimo = Number(
-    document.getElementById('editProductMinStock').value
-  );
-
-  if(!nome){
-    alert('Informe o nome do produto.');
-    return;
-  }
-
-  if(!categoria){
-    alert('Informe a categoria do produto.');
-    return;
-  }
-
-  if(!unidade){
-    alert('Informe a unidade do produto.');
-    return;
-  }
-
-  if(isNaN(preco) || preco < 0){
-    alert('Informe um preço válido.');
-    return;
-  }
-
-  if(isNaN(estoque) || estoque < 0){
-    alert('Informe um estoque válido.');
-    return;
-  }
-
-  if(isNaN(estoque_minimo) || estoque_minimo < 0){
-    alert('Informe um estoque mínimo válido.');
-    return;
-  }
-
-  const { data, error } = await supabaseClient
-    .from('produtos')
-    .update({
-      nome: nome,
-      categoria: categoria,
-      unidade: unidade,
-      preco: preco,
-      estoque: estoque,
-      estoque_minimo: estoque_minimo
-    })
-    .eq('id', id)
-    .select()
-    .single();
-
-  if(error){
-    console.error('ERRO AO ATUALIZAR PRODUTO:', error);
-
-    alert(
-      'Não foi possível atualizar o produto:\n\n' +
-      error.message
-    );
-
-    return;
-  }
-
-  console.log('PRODUTO ATUALIZADO:', data);
-
-  alert('Produto atualizado com sucesso!');
-
-  renderProducts(
-    document.getElementById('content')
-  );
-}
   const produto = window.currentProducts.find(
     p => p.id === id
   );
@@ -1020,6 +940,90 @@ async function saveProductEdit(id){
 
     </div>
   `;
+}
+
+
+async function saveProductEdit(id){
+
+  const nome = document.getElementById('editProductName').value.trim();
+  const categoria = document.getElementById('editProductCategory').value.trim();
+  const unidade = document.getElementById('editProductUnit').value.trim();
+
+  const preco = Number(
+    document.getElementById('editProductPrice').value
+  );
+
+  const estoque = Number(
+    document.getElementById('editProductStock').value
+  );
+
+  const estoque_minimo = Number(
+    document.getElementById('editProductMinStock').value
+  );
+
+  if(!nome){
+    alert('Informe o nome do produto.');
+    return;
+  }
+
+  if(!categoria){
+    alert('Informe a categoria do produto.');
+    return;
+  }
+
+  if(!unidade){
+    alert('Informe a unidade do produto.');
+    return;
+  }
+
+  if(isNaN(preco) || preco < 0){
+    alert('Informe um preço válido.');
+    return;
+  }
+
+  if(isNaN(estoque) || estoque < 0){
+    alert('Informe um estoque válido.');
+    return;
+  }
+
+  if(isNaN(estoque_minimo) || estoque_minimo < 0){
+    alert('Informe um estoque mínimo válido.');
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('produtos')
+    .update({
+      nome: nome,
+      categoria: categoria,
+      unidade: unidade,
+      preco: preco,
+      estoque: estoque,
+      estoque_minimo: estoque_minimo
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if(error){
+
+    console.error('ERRO AO ATUALIZAR PRODUTO:', error);
+
+    alert(
+      'Não foi possível atualizar o produto:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  console.log('PRODUTO ATUALIZADO:', data);
+
+  alert('Produto atualizado com sucesso!');
+
+  renderProducts(
+    document.getElementById('content')
+  );
 }
 function filterProducts(){
 
