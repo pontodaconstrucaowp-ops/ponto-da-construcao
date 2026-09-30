@@ -850,23 +850,33 @@ function productRows(items){
 }
 function filterProducts(){
 
-  const q = document
-    .getElementById('productSearch')
-    .value
-    .toLowerCase()
-    .trim();
-
+  const input = document.getElementById('productSearch');
   const list = document.getElementById('productList');
 
-  if(!window.currentProducts){
-    return;
-  }
+  if(!input || !list) return;
 
-  const filtered = window.currentProducts.filter(p =>
-    p.nome.toLowerCase().includes(q)
+  const busca = input.value
+    .trim()
+    .toLowerCase();
+
+  const produtos = window.currentProducts || [];
+
+  const filtrados = produtos.filter(p =>
+    String(p.nome || '')
+      .toLowerCase()
+      .includes(busca)
   );
 
-  list.innerHTML = productRows(filtered);
+  list.innerHTML = filtrados.length
+    ? productRows(filtrados)
+    : `
+      <div class="card">
+        <strong>Nenhum produto encontrado</strong>
+        <p class="muted">
+          Não encontramos nenhum material com "${input.value}".
+        </p>
+      </div>
+    `;
 }
 function renderDeliveries(el){
   el.innerHTML=`
