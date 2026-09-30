@@ -649,7 +649,8 @@ async function renderProducts(el){
     return;
   }
 
-  list.innerHTML = productRows(data);
+window.currentProducts = data;
+list.innerHTML = productRows(data);
 }
 
 
