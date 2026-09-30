@@ -836,14 +836,23 @@ function productRows(items){
         </strong>
       </div>
 
-      <div class="actions">
-        <button
-  class="secondary"
-  onclick="openProductEdit(${p.id})"
->
-  Editar
-</button>
-      </div>
+     <div class="actions">
+
+  <button
+    class="secondary"
+    onclick="openProductEdit(${p.id})"
+  >
+    Editar
+  </button>
+
+  <button
+    class="danger"
+    onclick="deleteProduct(${p.id})"
+  >
+    Excluir
+  </button>
+
+</div>
     </div>
   `).join('');
 }
