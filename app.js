@@ -599,12 +599,13 @@ async function renderProducts(el){
         placeholder="Buscar material..."
       >
 
-<button
-  class="primary"
-  onclick="openProductForm()"
->
-  + Produto
-</button>
+      <button
+        class="primary"
+        onclick="openProductForm()"
+      >
+        + Produto
+      </button>
+    </div>
 
     <div id="productList" class="list">
       <div class="card muted">
@@ -648,6 +649,174 @@ async function renderProducts(el){
 
   list.innerHTML = productRows(data);
 }
+
+
+function openProductForm(){
+
+  const list = document.getElementById('productList');
+
+  list.innerHTML = `
+    <div class="card">
+
+      <div class="section-title">
+        <h2>Novo produto</h2>
+      </div>
+
+      <div style="display:grid;gap:12px">
+
+        <input
+          id="newProductName"
+          class="search"
+          placeholder="Nome do produto"
+        >
+
+        <input
+          id="newProductCategory"
+          class="search"
+          placeholder="Categoria"
+        >
+
+        <input
+          id="newProductUnit"
+          class="search"
+          placeholder="Unidade (ex.: saco, m³, unidade)"
+        >
+
+        <input
+          id="newProductPrice"
+          class="search"
+          type="number"
+          step="0.01"
+          placeholder="Preço"
+        >
+
+        <input
+          id="newProductStock"
+          class="search"
+          type="number"
+          step="0.01"
+          placeholder="Estoque inicial"
+        >
+
+        <input
+          id="newProductMinStock"
+          class="search"
+          type="number"
+          step="0.01"
+          placeholder="Estoque mínimo"
+        >
+
+        <div class="row">
+
+          <button
+            class="secondary"
+            onclick="renderProducts(document.getElementById('content'))"
+          >
+            Cancelar
+          </button>
+
+          <button
+            class="primary"
+            onclick="saveNewProduct()"
+          >
+            Salvar produto
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
+
+
+async function saveNewProduct(){
+
+  const nome = document.getElementById('newProductName').value.trim();
+  const categoria = document.getElementById('newProductCategory').value.trim();
+  const unidade = document.getElementById('newProductUnit').value.trim();
+
+  const preco = Number(
+    document.getElementById('newProductPrice').value
+  );
+
+  const estoque = Number(
+    document.getElementById('newProductStock').value
+  );
+
+  const estoque_minimo = Number(
+    document.getElementById('newProductMinStock').value
+  );
+
+
+  if(!nome){
+    alert('Informe o nome do produto.');
+    return;
+  }
+
+  if(!categoria){
+    alert('Informe a categoria do produto.');
+    return;
+  }
+
+  if(!unidade){
+    alert('Informe a unidade do produto.');
+    return;
+  }
+
+  if(isNaN(preco) || preco < 0){
+    alert('Informe um preço válido.');
+    return;
+  }
+
+  if(isNaN(estoque) || estoque < 0){
+    alert('Informe um estoque válido.');
+    return;
+  }
+
+  if(isNaN(estoque_minimo) || estoque_minimo < 0){
+    alert('Informe um estoque mínimo válido.');
+    return;
+  }
+
+
+  const { data, error } = await supabaseClient
+    .from('produtos')
+    .insert({
+      nome: nome,
+      categoria: categoria,
+      unidade: unidade,
+      preco: preco,
+      estoque: estoque,
+      estoque_minimo: estoque_minimo
+    })
+    .select()
+    .single();
+
+
+  if(error){
+
+    console.error('ERRO AO CADASTRAR PRODUTO:', error);
+
+    alert(
+      'Não foi possível cadastrar o produto:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+
+  console.log('PRODUTO CADASTRADO:', data);
+
+  alert('Produto cadastrado com sucesso!');
+
+  renderProducts(
+    document.getElementById('content')
+  );
+}
+
 function productRows(items){
   return items.map(p => `
     <div class="card">
