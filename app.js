@@ -556,13 +556,50 @@ function clearSaleClient(){
 }
 
 function addToCart(id){
-  const p=state.products.find(x=>x.id===id);
-  const found=state.cart.find(x=>x.id===id);
 
-  if(found) found.qty++;
-  else state.cart.push({...p,qty:1});
+  const p = (window.saleProducts || []).find(
+    x => x.id === id
+  );
 
-  renderSales(document.getElementById('content'));
+  if(!p){
+    alert('Produto não encontrado.');
+    return;
+  }
+
+  if(Number(p.estoque) <= 0){
+    alert('Este produto está sem estoque.');
+    return;
+  }
+
+  const found = state.cart.find(
+    x => x.id === id
+  );
+
+  if(found){
+
+    if(found.qty >= Number(p.estoque)){
+      alert('Quantidade maior que o estoque disponível.');
+      return;
+    }
+
+    found.qty++;
+
+  }else{
+
+    state.cart.push({
+      id: p.id,
+      name: p.nome,
+      unit: p.unidade,
+      price: Number(p.preco),
+      stock: Number(p.estoque),
+      qty: 1
+    });
+
+  }
+
+  renderSales(
+    document.getElementById('content')
+  );
 }
 async function finishSale(){
 
