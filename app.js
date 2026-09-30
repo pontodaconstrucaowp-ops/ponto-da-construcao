@@ -131,6 +131,7 @@ function deliveryCard(d){
 }
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
 async function renderSales(el){
+
   el.innerHTML=`
     <div class="card">
       <div class="section-title">
@@ -156,25 +157,10 @@ async function renderSales(el){
       <h2>Materiais</h2>
     </div>
 
-    <div class="list">
-      ${state.products.map(p=>`
-        <div class="card">
-          <div class="row">
-            <div>
-              <div class="product-name">${p.name}</div>
-              <span class="muted">${p.unit} · estoque ${p.stock}</span>
-            </div>
-
-            <div class="price">${money(p.price)}</div>
-          </div>
-
-          <div class="actions">
-            <button class="secondary" onclick="addToCart(${p.id})">
-              Adicionar
-            </button>
-          </div>
-        </div>
-      `).join('')}
+    <div id="saleProducts" class="list">
+      <div class="card muted">
+        Carregando materiais...
+      </div>
     </div>
 
     <div class="sale-cart">
@@ -201,12 +187,21 @@ async function renderSales(el){
       <div class="row">
         <span>Total</span>
         <span class="total">
-          ${money(state.cart.reduce((s,x)=>s+x.price*x.qty,0))}
+          ${money(
+            state.cart.reduce(
+              (s,x)=>s+x.price*x.qty,
+              0
+            )
+          )}
         </span>
       </div>
 
       <div class="actions">
-        <button class="primary" onclick="finishSale()">
+
+        <button
+          class="primary"
+          onclick="finishSale()"
+        >
           Continuar
         </button>
 
@@ -216,9 +211,92 @@ async function renderSales(el){
         >
           Limpar
         </button>
+
       </div>
     </div>
   `;
+
+  const { data, error } = await supabaseClient
+    .from('produtos')
+    .select('*')
+    .order('nome', { ascending: true });
+
+  const productsList = document.getElementById('saleProducts');
+
+  if(error){
+
+    console.error(
+      'ERRO AO CARREGAR PRODUTOS PARA VENDA:',
+      error
+    );
+
+    productsList.innerHTML=`
+      <div class="card">
+        <strong>Erro ao carregar materiais</strong>
+        <p class="muted">
+          ${error.message}
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  if(!data || data.length === 0){
+
+    productsList.innerHTML=`
+      <div class="card">
+        <strong>Nenhum material cadastrado</strong>
+        <p class="muted">
+          Cadastre produtos no Estoque antes de realizar uma venda.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  window.saleProducts = data;
+
+  productsList.innerHTML = data.map(p=>`
+
+    <div class="card">
+
+      <div class="row">
+
+        <div>
+
+          <div class="product-name">
+            ${p.nome}
+          </div>
+
+          <span class="muted">
+            ${p.unidade} · estoque ${p.estoque}
+          </span>
+
+        </div>
+
+        <div class="price">
+          ${money(p.preco)}
+        </div>
+
+      </div>
+
+      <div class="actions">
+
+        <button
+          class="secondary"
+          onclick="addToCart(${p.id})"
+          ${Number(p.estoque) <= 0 ? 'disabled' : ''}
+        >
+          ${Number(p.estoque) <= 0 ? 'Sem estoque' : 'Adicionar'}
+        </button>
+
+      </div>
+
+    </div>
+
+  `).join('');
 }
 function openSaleNewClientForm(){
   const results = document.getElementById('saleClientResults');
