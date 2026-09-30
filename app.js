@@ -952,57 +952,7 @@ function openProductEdit(id){
 
 
 async function saveProductEdit(id){
-async function deleteProduct(id){
 
-  const produto = window.currentProducts.find(
-    p => p.id === id
-  );
-
-  if(!produto){
-    alert('Produto não encontrado.');
-    return;
-  }
-
-  const confirmar = confirm(
-    `Tem certeza que deseja excluir o produto "${produto.nome}"?`
-  );
-
-  if(!confirmar){
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from('produtos')
-    .delete()
-    .eq('id', id);
-
-  if(error){
-
-    console.error('ERRO AO EXCLUIR PRODUTO:', error);
-
-    if(
-      error.code === '23503' ||
-      error.message.toLowerCase().includes('foreign key')
-    ){
-      alert(
-        'Não é possível excluir este produto porque ele já está vinculado a uma venda.'
-      );
-    }else{
-      alert(
-        'Não foi possível excluir o produto:\n\n' +
-        error.message
-      );
-    }
-
-    return;
-  }
-
-  alert('Produto excluído com sucesso!');
-
-  renderProducts(
-    document.getElementById('content')
-  );
-}
   const nome = document.getElementById('editProductName').value.trim();
   const categoria = document.getElementById('editProductCategory').value.trim();
   const unidade = document.getElementById('editProductUnit').value.trim();
@@ -1078,6 +1028,59 @@ async function deleteProduct(id){
   console.log('PRODUTO ATUALIZADO:', data);
 
   alert('Produto atualizado com sucesso!');
+
+  renderProducts(
+    document.getElementById('content')
+  );
+}
+
+
+async function deleteProduct(id){
+
+  const produto = window.currentProducts.find(
+    p => p.id === id
+  );
+
+  if(!produto){
+    alert('Produto não encontrado.');
+    return;
+  }
+
+  const confirmar = confirm(
+    `Tem certeza que deseja excluir o produto "${produto.nome}"?`
+  );
+
+  if(!confirmar){
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('produtos')
+    .delete()
+    .eq('id', id);
+
+  if(error){
+
+    console.error('ERRO AO EXCLUIR PRODUTO:', error);
+
+    if(
+      error.code === '23503' ||
+      error.message.toLowerCase().includes('foreign key')
+    ){
+      alert(
+        'Não é possível excluir este produto porque ele já está vinculado a uma venda.'
+      );
+    }else{
+      alert(
+        'Não foi possível excluir o produto:\n\n' +
+        error.message
+      );
+    }
+
+    return;
+  }
+
+  alert('Produto excluído com sucesso!');
 
   renderProducts(
     document.getElementById('content')
