@@ -839,11 +839,11 @@ function productRows(items){
 
       <div class="actions">
         <button
-          class="secondary"
-          onclick="alert('Edição de produto será conectada ao banco.')"
-        >
-          Editar
-        </button>
+  class="secondary"
+  onclick="openProductEdit(${p.id})"
+>
+  Editar
+</button>
       </div>
     </div>
   `).join('');
