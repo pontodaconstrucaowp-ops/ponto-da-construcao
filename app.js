@@ -650,7 +650,32 @@ async function renderProducts(el){
   list.innerHTML = productRows(data);
 }
 function productRows(items){
- return items.map(p=>`<div class="card"><div class="row"><div><div class="product-name">${p.name}</div><span class="muted">${p.unit} · estoque ${p.stock}</span></div><strong class="price">${money(p.price)}</strong></div><div class="actions"><button class="secondary" onclick="alert('Edição de produto será conectada ao banco.')">Editar</button></div></div>`).join('')
+  return items.map(p => `
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="product-name">${p.nome}</div>
+
+          <span class="muted">
+            ${p.unidade} · estoque ${p.estoque}
+          </span>
+        </div>
+
+        <strong class="price">
+          ${money(p.preco)}
+        </strong>
+      </div>
+
+      <div class="actions">
+        <button
+          class="secondary"
+          onclick="alert('Edição de produto será conectada ao banco.')"
+        >
+          Editar
+        </button>
+      </div>
+    </div>
+  `).join('');
 }
 function filterProducts(){
  const q=document.getElementById('productSearch').value.toLowerCase();
