@@ -848,6 +848,99 @@ function productRows(items){
     </div>
   `).join('');
 }
+function openProductEdit(id){
+
+  const produto = window.currentProducts.find(
+    p => p.id === id
+  );
+
+  if(!produto){
+    alert('Produto não encontrado.');
+    return;
+  }
+
+  const list = document.getElementById('productList');
+
+  list.innerHTML = `
+    <div class="card">
+
+      <div class="section-title">
+        <h2>Editar produto</h2>
+      </div>
+
+      <div style="display:grid;gap:12px">
+
+        <input
+          id="editProductName"
+          class="search"
+          value="${produto.nome || ''}"
+          placeholder="Nome do produto"
+        >
+
+        <input
+          id="editProductCategory"
+          class="search"
+          value="${produto.categoria || ''}"
+          placeholder="Categoria"
+        >
+
+        <input
+          id="editProductUnit"
+          class="search"
+          value="${produto.unidade || ''}"
+          placeholder="Unidade"
+        >
+
+        <input
+          id="editProductPrice"
+          class="search"
+          type="number"
+          step="0.01"
+          value="${produto.preco ?? ''}"
+          placeholder="Preço"
+        >
+
+        <input
+          id="editProductStock"
+          class="search"
+          type="number"
+          step="0.01"
+          value="${produto.estoque ?? ''}"
+          placeholder="Estoque"
+        >
+
+        <input
+          id="editProductMinStock"
+          class="search"
+          type="number"
+          step="0.01"
+          value="${produto.estoque_minimo ?? ''}"
+          placeholder="Estoque mínimo"
+        >
+
+        <div class="row">
+
+          <button
+            class="secondary"
+            onclick="renderProducts(document.getElementById('content'))"
+          >
+            Cancelar
+          </button>
+
+          <button
+            class="primary"
+            onclick="saveProductEdit(${produto.id})"
+          >
+            Salvar alterações
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
 function filterProducts(){
 
   const input = document.getElementById('productSearch');
