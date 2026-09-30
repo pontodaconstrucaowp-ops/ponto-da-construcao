@@ -395,6 +395,7 @@ async function searchSaleClients(){
   }
 
   window.currentProducts = data || [];
+ 
   if(!data || data.length === 0){
     results.innerHTML = `
       <div class="card">
