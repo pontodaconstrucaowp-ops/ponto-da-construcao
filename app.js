@@ -1596,13 +1596,13 @@ async function renderDeliveries(el){
     </div>
   `;
 }
-async function moveDelivery(i,dir){
+async function moveDelivery(index, direction){
 
   const { data, error } = await supabaseClient
     .from('entregas')
-    .select('id, posicao_fila')
-    .order('posicao_fila', { ascending: true })
-    .order('id', { ascending: true });
+    .select('id, posicao_fila, prioridade, status')
+    .neq('status', 'entregue')
+    .order('posicao_fila', { ascending: true });
 
   if(error){
 
@@ -1612,64 +1612,78 @@ async function moveDelivery(i,dir){
     );
 
     alert(
-      'Não foi possível reorganizar a fila:\n\n' +
+      'Não foi possível organizar a fila:\n\n' +
       error.message
     );
 
     return;
   }
 
-  if(!data || data.length === 0){
+  if(!data || data.length < 2){
     return;
   }
 
-  const novoIndex = i + dir;
+  const newIndex = index + direction;
 
-  if(novoIndex < 0 || novoIndex >= data.length){
+  if(newIndex < 0 || newIndex >= data.length){
     return;
   }
 
-  const atual = data[i];
-  const destino = data[novoIndex];
+  const atual = data[index];
+  const destino = data[newIndex];
+
+  /*
+   * Troca temporariamente as posições
+   * para evitar conflito de valores.
+   */
 
   const posicaoAtual = atual.posicao_fila;
   const posicaoDestino = destino.posicao_fila;
 
-  const { error: errorAtual } = await supabaseClient
-    .from('entregas')
-    .update({
-      posicao_fila: posicaoDestino
-    })
-    .eq('id', atual.id);
+  const { error: errorTemp } =
+    await supabaseClient
+      .from('entregas')
+      .update({
+        posicao_fila: -1
+      })
+      .eq('id', atual.id);
 
-  if(errorAtual){
+  if(errorTemp){
 
     console.error(
-      'ERRO AO MOVER ENTREGA:',
-      errorAtual
+      'ERRO AO mover entrega:',
+      errorTemp
     );
 
     alert(
       'Não foi possível mover a entrega:\n\n' +
-      errorAtual.message
+      errorTemp.message
     );
 
     return;
   }
 
-  const { error: errorDestino } = await supabaseClient
-    .from('entregas')
-    .update({
-      posicao_fila: posicaoAtual
-    })
-    .eq('id', destino.id);
+  const { error: errorDestino } =
+    await supabaseClient
+      .from('entregas')
+      .update({
+        posicao_fila: posicaoAtual
+      })
+      .eq('id', destino.id);
 
   if(errorDestino){
 
     console.error(
-      'ERRO AO ATUALIZAR POSIÇÃO DA ENTREGA:',
+      'ERRO AO atualizar posição:',
       errorDestino
     );
+
+    await supabaseClient
+      .from('entregas')
+      .update({
+        posicao_fila: posicaoAtual
+      })
+      .eq('id', atual.id);
 
     alert(
       'Não foi possível reorganizar a fila:\n\n' +
@@ -1679,64 +1693,34 @@ async function moveDelivery(i,dir){
     return;
   }
 
-  renderDeliveries(
-    document.getElementById('content')
-  );
-}
-async function nextDelivery(id){
-
-  const { data, error } = await supabaseClient
-    .from('entregas')
-    .select('status')
-    .eq('id', id)
-    .single();
-
-  if(error){
-
-    console.error(
-      'ERRO AO BUSCAR ENTREGA:',
-      error
-    );
-
-    alert(
-      'Não foi possível atualizar a entrega:\n\n' +
-      error.message
-    );
-
-    return;
-  }
-
-  const novoStatus =
-    data.status === 'pendente'
-      ? 'em_rota'
-      : 'entregue';
-
-  const { error: updateError } =
+  const { error: errorAtual } =
     await supabaseClient
       .from('entregas')
       .update({
-        status: novoStatus
+        posicao_fila: posicaoDestino
       })
-      .eq('id', id);
+      .eq('id', atual.id);
 
-  if(updateError){
+  if(errorAtual){
 
     console.error(
-      'ERRO AO ATUALIZAR ENTREGA:',
-      updateError
+      'ERRO AO finalizar movimentação:',
+      errorAtual
     );
 
     alert(
-      'Não foi possível atualizar a entrega:\n\n' +
-      updateError.message
+      'A fila pode não ter sido atualizada corretamente.'
     );
 
     return;
   }
 
-  renderDeliveries(
-    document.getElementById('content')
-  );
+  /*
+   * Recarrega a tela de entregas
+   * já com a nova ordem.
+   */
+
+  navigate('deliveries');
 }
 function renderMore(el){
  el.innerHTML=`<div class="list">
