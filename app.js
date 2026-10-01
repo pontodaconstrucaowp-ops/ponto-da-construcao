@@ -1750,7 +1750,7 @@ async function moveDelivery(index, direction){
    * já com a nova ordem.
    */
 
-  navigate('deliveries');
+await renderDeliveries(document.getElementById('app'));
 }
 function renderMore(el){
  el.innerHTML=`<div class="list">
