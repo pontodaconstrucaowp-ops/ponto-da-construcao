@@ -753,6 +753,149 @@ async function finishSale(){
   window.salePayment = null;
   window.saleType = null;
 }
+function selectPayment(payment){
+
+  window.salePayment = payment;
+
+  const el = document.getElementById('selectedPayment');
+
+  if(el){
+    el.innerHTML =
+      'Pagamento selecionado: <strong>' +
+      payment.charAt(0).toUpperCase() +
+      payment.slice(1) +
+      '</strong>';
+  }
+
+  updateConfirmSaleButton();
+}
+
+
+function selectSaleType(type){
+
+  window.saleType = type;
+
+  const el = document.getElementById('selectedSaleType');
+
+  if(el){
+    el.innerHTML =
+      'Atendimento selecionado: <strong>' +
+      (type === 'entrega'
+        ? '🚚 Entrega'
+        : '🏪 Retirada') +
+      '</strong>';
+  }
+
+  updateConfirmSaleButton();
+}
+
+
+function updateConfirmSaleButton(){
+
+  const button =
+    document.getElementById('confirmSaleButton');
+
+  if(!button){
+    return;
+  }
+
+  button.disabled =
+    !window.salePayment ||
+    !window.saleType;
+}
+async function confirmSale(){
+
+  if(!window.salePayment){
+    alert('Selecione a forma de pagamento.');
+    return;
+  }
+
+  if(!window.saleType){
+    alert('Selecione entrega ou retirada.');
+    return;
+  }
+
+  const total = state.cart.reduce(
+    (s,x) => s + (x.price * x.qty),
+    0
+  );
+
+  const itens = state.cart.map(item => ({
+    produtos_id: item.id,
+    quantidade: item.qty,
+    preco_unitario: item.price
+  }));
+
+  const { data: vendaId, error } =
+    await supabaseClient.rpc('registrar_venda', {
+      p_cliente_id: state.selectedClient,
+      p_valor_total: total,
+      p_forma_pagamento: window.salePayment,
+      p_itens: itens
+    });
+
+  if(error){
+
+    console.error(
+      'ERRO AO REGISTRAR VENDA:',
+      error
+    );
+
+    alert(
+      'Não foi possível registrar a venda:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  console.log(
+    'VENDA REGISTRADA:',
+    vendaId
+  );
+
+  if(window.saleType === 'entrega'){
+
+    const { error: entregaError } =
+      await supabaseClient
+        .from('entregas')
+        .insert({
+          venda_id: vendaId,
+          prioridade: false,
+          posicao_fila: 999999,
+          status: 'pendente'
+        });
+
+    if(entregaError){
+
+      console.error(
+        'ERRO AO CRIAR ENTREGA:',
+        entregaError
+      );
+
+      alert(
+        'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
+        entregaError.message
+      );
+
+      return;
+    }
+  }
+
+  alert(
+    window.saleType === 'entrega'
+      ? 'Venda registrada e entrega adicionada à fila!'
+      : 'Venda registrada como retirada no local!'
+  );
+
+  state.cart = [];
+  state.selectedClient = null;
+
+  window.salePayment = null;
+  window.saleType = null;
+
+  navigate('home');
+}
 async function renderProducts(el){
 
   el.innerHTML = `
