@@ -1749,10 +1749,9 @@ async function moveDelivery(id, direction){
     return;
   }
 
-  await renderDeliveries(
-    document.getElementById('app')
-  );
-}
+await renderDeliveries(
+  document.getElementById('content')
+);
 function renderMore(el){
  el.innerHTML=`<div class="list">
  <button class="card" onclick="navigate('clients')"><strong>Clientes</strong><span class="muted">Cadastro e histórico</span></button>
