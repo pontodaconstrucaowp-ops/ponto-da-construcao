@@ -1395,10 +1395,60 @@ function moveDelivery(i,dir){
  [state.deliveries[i],state.deliveries[j]]=[state.deliveries[j],state.deliveries[i]];
  renderDeliveries(document.getElementById('content'));
 }
-function nextDelivery(id){
- const d=state.deliveries.find(x=>x.id===id);
- d.status=d.status==='pending'?'route':'done';
- renderDeliveries(document.getElementById('content'));
+async function nextDelivery(id){
+
+  const { data, error } = await supabaseClient
+    .from('entregas')
+    .select('status')
+    .eq('id', id)
+    .single();
+
+  if(error){
+
+    console.error(
+      'ERRO AO BUSCAR ENTREGA:',
+      error
+    );
+
+    alert(
+      'Não foi possível atualizar a entrega:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  const novoStatus =
+    data.status === 'pendente'
+      ? 'em_rota'
+      : 'entregue';
+
+  const { error: updateError } =
+    await supabaseClient
+      .from('entregas')
+      .update({
+        status: novoStatus
+      })
+      .eq('id', id);
+
+  if(updateError){
+
+    console.error(
+      'ERRO AO ATUALIZAR ENTREGA:',
+      updateError
+    );
+
+    alert(
+      'Não foi possível atualizar a entrega:\n\n' +
+      updateError.message
+    );
+
+    return;
+  }
+
+  renderDeliveries(
+    document.getElementById('content')
+  );
 }
 function renderMore(el){
  el.innerHTML=`<div class="list">
