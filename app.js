@@ -1390,10 +1390,92 @@ async function renderDeliveries(el){
     </div>
   `;
 }
-function moveDelivery(i,dir){
- const j=i+dir;
- [state.deliveries[i],state.deliveries[j]]=[state.deliveries[j],state.deliveries[i]];
- renderDeliveries(document.getElementById('content'));
+async function moveDelivery(i,dir){
+
+  const { data, error } = await supabaseClient
+    .from('entregas')
+    .select('id, posicao_fila')
+    .order('posicao_fila', { ascending: true })
+    .order('id', { ascending: true });
+
+  if(error){
+
+    console.error(
+      'ERRO AO CARREGAR FILA:',
+      error
+    );
+
+    alert(
+      'Não foi possível reorganizar a fila:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  if(!data || data.length === 0){
+    return;
+  }
+
+  const novoIndex = i + dir;
+
+  if(novoIndex < 0 || novoIndex >= data.length){
+    return;
+  }
+
+  const atual = data[i];
+  const destino = data[novoIndex];
+
+  const posicaoAtual = atual.posicao_fila;
+  const posicaoDestino = destino.posicao_fila;
+
+  const { error: errorAtual } = await supabaseClient
+    .from('entregas')
+    .update({
+      posicao_fila: posicaoDestino
+    })
+    .eq('id', atual.id);
+
+  if(errorAtual){
+
+    console.error(
+      'ERRO AO MOVER ENTREGA:',
+      errorAtual
+    );
+
+    alert(
+      'Não foi possível mover a entrega:\n\n' +
+      errorAtual.message
+    );
+
+    return;
+  }
+
+  const { error: errorDestino } = await supabaseClient
+    .from('entregas')
+    .update({
+      posicao_fila: posicaoAtual
+    })
+    .eq('id', destino.id);
+
+  if(errorDestino){
+
+    console.error(
+      'ERRO AO ATUALIZAR POSIÇÃO DA ENTREGA:',
+      errorDestino
+    );
+
+    alert(
+      'Não foi possível reorganizar a fila:\n\n' +
+      errorDestino.message
+    );
+
+    return;
+  }
+
+  renderDeliveries(
+    document.getElementById('content')
+  );
 }
 async function nextDelivery(id){
 
