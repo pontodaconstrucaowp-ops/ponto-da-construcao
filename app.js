@@ -856,61 +856,46 @@ async function confirmSale(){
 
   if(window.saleType === 'entrega'){
 
-  const { data: ultimaEntrega, error: filaError } =
-    await supabaseClient
-      .from('entregas')
-      .select('posicao_fila')
-      .neq('status', 'entregue')
-      .order('posicao_fila', { ascending: false })
-      .limit(1);
+    const { data: ultimaEntrega, error: filaError } =
+      await supabaseClient
+        .from('entregas')
+        .select('posicao_fila')
+        .neq('status', 'entregue')
+        .order('posicao_fila', { ascending: false })
+        .limit(1);
 
-  if(filaError){
+    if(filaError){
 
-    console.error(
-      'ERRO AO VERIFICAR FILA:',
-      filaError
-    );
+      console.error(
+        'ERRO AO VERIFICAR FILA:',
+        filaError
+      );
 
-    alert(
-      'A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' +
-      filaError.message
-    );
+      alert(
+        'A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' +
+        filaError.message
+      );
 
-    return;
-  }
+      return;
+    }
 
-  const ultimaPosicao =
-    ultimaEntrega && ultimaEntrega.length
-      ? Number(ultimaEntrega[0].posicao_fila || 0)
-      : 0;
+    const ultimaPosicao =
+      ultimaEntrega && ultimaEntrega.length
+        ? Number(ultimaEntrega[0].posicao_fila || 0)
+        : 0;
 
-  const novaPosicao = ultimaPosicao + 1;
+    const novaPosicao = ultimaPosicao + 1;
 
-  const { error: entregaError } =
-    await supabaseClient
-      .from('entregas')
-      .insert({
-        venda_id: vendaId,
-        prioridade: false,
-        posicao_fila: novaPosicao,
-        status: 'pendente'
-      });
+    const { error: entregaError } =
+      await supabaseClient
+        .from('entregas')
+        .insert({
+          venda_id: vendaId,
+          prioridade: false,
+          posicao_fila: novaPosicao,
+          status: 'pendente'
+        });
 
-  if(entregaError){
-
-    console.error(
-      'ERRO AO CRIAR ENTREGA:',
-      entregaError
-    );
-
-    alert(
-      'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
-      entregaError.message
-    );
-
-    return;
-  }
-}
     if(entregaError){
 
       console.error(
