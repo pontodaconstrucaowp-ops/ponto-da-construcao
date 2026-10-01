@@ -1589,7 +1589,7 @@ async function renderDeliveries(el){
               ${i > 0 ? `
                 <button
                   class="secondary"
-                  onclick="moveDelivery(${i},-1)"
+                  onclick="moveDelivery(${d.id},-1)"
                 >
                   ↑ Colocar na frente
                 </button>
@@ -1598,7 +1598,7 @@ async function renderDeliveries(el){
               ${i < data.length - 1 ? `
                 <button
                   class="secondary"
-                  onclick="moveDelivery(${i},1)"
+                  onclick="moveDelivery(${d.id},-1)"
                 >
                   ↓
                 </button>
