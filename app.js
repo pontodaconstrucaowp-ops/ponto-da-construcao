@@ -646,6 +646,23 @@ async function finishSale(){
       ? 'cartão'
       : pagamento;
 
+  const tipoEntrega = prompt(
+    'Tipo de atendimento:\n\nDigite "entrega" ou "retirada"'
+  );
+
+  if(!tipoEntrega){
+    return;
+  }
+
+  const tipoFinal = tipoEntrega.trim().toLowerCase();
+
+  if(!['entrega','retirada'].includes(tipoFinal)){
+    alert(
+      'Opção inválida.\n\nDigite "entrega" ou "retirada".'
+    );
+    return;
+  }
+
   const itens = state.cart.map(item => ({
     produtos_id: item.id,
     quantidade: item.qty,
@@ -680,9 +697,43 @@ async function finishSale(){
     vendaId
   );
 
+  if(tipoFinal === 'entrega'){
+
+    const { error: entregaError } =
+      await supabaseClient
+        .from('entregas')
+        .insert({
+          venda_id: vendaId,
+          prioridade: false,
+          posicao_fila: 999999,
+          status: 'pendente'
+        });
+
+    if(entregaError){
+
+      console.error(
+        'ERRO AO CRIAR ENTREGA:',
+        entregaError
+      );
+
+      alert(
+        'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
+        entregaError.message
+      );
+
+      state.cart = [];
+      state.selectedClient = null;
+
+      navigate('home');
+
+      return;
+    }
+  }
+
   alert(
-    'Venda registrada com sucesso!\n\n' +
-    'Total: ' + money(total)
+    tipoFinal === 'entrega'
+      ? 'Venda registrada e entrega adicionada à fila!\n\nTotal: ' + money(total)
+      : 'Venda registrada como retirada no local!\n\nTotal: ' + money(total)
   );
 
   state.cart = [];
