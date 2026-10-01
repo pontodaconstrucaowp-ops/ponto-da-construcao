@@ -1626,7 +1626,7 @@ async function renderDeliveries(el){
     </div>
   `;
 }
-async function moveDelivery(index, direction){
+async function moveDelivery(id, direction){
 
   const { data, error } = await supabaseClient
     .from('entregas')
@@ -1653,6 +1653,15 @@ async function moveDelivery(index, direction){
     return;
   }
 
+  const index = data.findIndex(
+    entrega => Number(entrega.id) === Number(id)
+  );
+
+  if(index === -1){
+    alert('Entrega não encontrada na fila.');
+    return;
+  }
+
   const newIndex = index + direction;
 
   if(newIndex < 0 || newIndex >= data.length){
@@ -1661,11 +1670,6 @@ async function moveDelivery(index, direction){
 
   const atual = data[index];
   const destino = data[newIndex];
-
-  /*
-   * Troca temporariamente as posições
-   * para evitar conflito de valores.
-   */
 
   const posicaoAtual = atual.posicao_fila;
   const posicaoDestino = destino.posicao_fila;
@@ -1745,12 +1749,9 @@ async function moveDelivery(index, direction){
     return;
   }
 
-  /*
-   * Recarrega a tela de entregas
-   * já com a nova ordem.
-   */
-
-await renderDeliveries(document.getElementById('app'));
+  await renderDeliveries(
+    document.getElementById('app')
+  );
 }
 function renderMore(el){
  el.innerHTML=`<div class="list">
