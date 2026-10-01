@@ -618,128 +618,140 @@ async function finishSale(){
     0
   );
 
-  const formaPagamento = prompt(
-    'Forma de pagamento:\n\nDigite: dinheiro, pix, cartão ou prazo'
-  );
+  const content = document.getElementById('content');
 
-  if(!formaPagamento){
-    return;
-  }
+  content.innerHTML = `
 
-  const pagamento = formaPagamento.trim().toLowerCase();
+    <div class="card">
 
-  const formasPermitidas = [
-    'dinheiro',
-    'pix',
-    'cartão',
-    'cartao',
-    'prazo'
-  ];
+      <div class="section-title">
+        <h2>Finalizar venda</h2>
+      </div>
 
-  if(!formasPermitidas.includes(pagamento)){
-    alert('Forma de pagamento inválida.');
-    return;
-  }
+      <p class="muted">
+        Total da venda
+      </p>
 
-  const formaFinal =
-    pagamento === 'cartao'
-      ? 'cartão'
-      : pagamento;
+      <div class="total" style="font-size:28px;margin-bottom:24px">
+        ${money(total)}
+      </div>
 
-  const tipoEntrega = prompt(
-    'Tipo de atendimento:\n\nDigite "entrega" ou "retirada"'
-  );
+      <div class="section-title">
+        <h3>Forma de pagamento</h3>
+      </div>
 
-  if(!tipoEntrega){
-    return;
-  }
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(2,1fr);
+          gap:10px;
+          margin-bottom:24px;
+        "
+      >
 
-  const tipoFinal = tipoEntrega.trim().toLowerCase();
+        <button
+          class="secondary"
+          onclick="selectPayment('dinheiro')"
+        >
+          💵 Dinheiro
+        </button>
 
-  if(!['entrega','retirada'].includes(tipoFinal)){
-    alert(
-      'Opção inválida.\n\nDigite "entrega" ou "retirada".'
-    );
-    return;
-  }
+        <button
+          class="secondary"
+          onclick="selectPayment('pix')"
+        >
+          📱 PIX
+        </button>
 
-  const itens = state.cart.map(item => ({
-    produtos_id: item.id,
-    quantidade: item.qty,
-    preco_unitario: item.price
-  }));
+        <button
+          class="secondary"
+          onclick="selectPayment('cartão')"
+        >
+          💳 Cartão
+        </button>
 
-  const { data: vendaId, error } =
-    await supabaseClient.rpc('registrar_venda', {
-      p_cliente_id: state.selectedClient,
-      p_valor_total: total,
-      p_forma_pagamento: formaFinal,
-      p_itens: itens
-    });
+        <button
+          class="secondary"
+          onclick="selectPayment('prazo')"
+        >
+          📋 Prazo
+        </button>
 
-  if(error){
+      </div>
 
-    console.error(
-      'ERRO AO REGISTRAR VENDA:',
-      error
-    );
+      <div
+        id="selectedPayment"
+        class="muted"
+        style="margin-bottom:24px"
+      >
+        Nenhuma forma de pagamento selecionada.
+      </div>
 
-    alert(
-      'Não foi possível registrar a venda:\n\n' +
-      error.message
-    );
+      <div class="section-title">
+        <h3>Tipo de atendimento</h3>
+      </div>
 
-    return;
-  }
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(2,1fr);
+          gap:10px;
+        "
+      >
 
-  console.log(
-    'VENDA REGISTRADA:',
-    vendaId
-  );
+        <button
+          class="secondary"
+          onclick="selectSaleType('entrega')"
+        >
+          🚚 Entrega
+        </button>
 
-  if(tipoFinal === 'entrega'){
+        <button
+          class="secondary"
+          onclick="selectSaleType('retirada')"
+        >
+          🏪 Retirada
+        </button>
 
-    const { error: entregaError } =
-      await supabaseClient
-        .from('entregas')
-        .insert({
-          venda_id: vendaId,
-          prioridade: false,
-          posicao_fila: 999999,
-          status: 'pendente'
-        });
+      </div>
 
-    if(entregaError){
+      <div
+        id="selectedSaleType"
+        class="muted"
+        style="margin-top:12px"
+      >
+        Nenhum tipo de atendimento selecionado.
+      </div>
 
-      console.error(
-        'ERRO AO CRIAR ENTREGA:',
-        entregaError
-      );
+      <div
+        class="actions"
+        style="margin-top:24px"
+      >
 
-      alert(
-        'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
-        entregaError.message
-      );
+        <button
+          class="secondary"
+          onclick="renderSales(document.getElementById('content'))"
+        >
+          Voltar
+        </button>
 
-      state.cart = [];
-      state.selectedClient = null;
+        <button
+          id="confirmSaleButton"
+          class="primary"
+          onclick="confirmSale()"
+          disabled
+        >
+          Confirmar venda
+        </button>
 
-      navigate('home');
+      </div>
 
-      return;
-    }
-  }
+    </div>
 
-  alert(
-    tipoFinal === 'entrega'
-      ? 'Venda registrada e entrega adicionada à fila!\n\nTotal: ' + money(total)
-      : 'Venda registrada como retirada no local!\n\nTotal: ' + money(total)
-  );
+  `;
 
-  state.cart = [];
-  state.selectedClient = null;
-
-  navigate('home');
+  window.salePayment = null;
+  window.saleType = null;
 }
 async function renderProducts(el){
 
