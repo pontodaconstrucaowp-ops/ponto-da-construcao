@@ -1605,10 +1605,20 @@ async function moveDelivery(id, direction){
   );
 
   if(index === -1){
-    alert('Entrega não encontrada na fila.');
-    return;
-  }
 
+  console.log('ENTREGA NÃO ENCONTRADA:', {
+    idRecebido: id,
+    tipoId: typeof id,
+    entregasEncontradas: data
+  });
+
+  alert(
+    'Entrega não encontrada na fila.\n\n' +
+    'ID recebido: ' + id
+  );
+
+  return;
+}
   const newIndex = index + direction;
 
   if(newIndex < 0 || newIndex >= data.length){
