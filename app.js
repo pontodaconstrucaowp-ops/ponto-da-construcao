@@ -1217,20 +1217,178 @@ function filterProducts(){
       </div>
     `;
 }
-function renderDeliveries(el){
-  el.innerHTML=`
-    <div class="card"><strong>Fila de entregas</strong><p class="muted">Prioridade e ordem poderão ser alteradas pelo administrador.</p></div>
-    <div class="list" style="margin-top:12px">${state.deliveries.map((d,i)=>`
+async function renderDeliveries(el){
+
+  el.innerHTML = `
+    <div class="card">
+      <strong>Fila de entregas</strong>
+      <p class="muted">
+        Carregando entregas...
+      </p>
+    </div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from('entregas')
+    .select(`
+      id,
+      venda_id,
+      prioridade,
+      posicao_fila,
+      status,
+      endereço,
+      entregador_id,
+      vendas (
+        id,
+        valor_total,
+        forma_pagamento,
+        status,
+        clientes (
+          nome,
+          telefone,
+          endereço
+        )
+      )
+    `)
+    .order('posicao_fila', { ascending: true });
+
+  if(error){
+
+    console.error(
+      'ERRO AO CARREGAR ENTREGAS:',
+      error
+    );
+
+    el.innerHTML = `
       <div class="card">
-        <div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div>
-        <p class="muted">${d.address}</p>
-        <div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div>
-        <div class="actions">
-          ${i>0?`<button class="secondary" onclick="moveDelivery(${i},-1)">↑ Colocar na frente</button>`:''}
-          ${i<state.deliveries.length-1?`<button class="secondary" onclick="moveDelivery(${i},1)">↓</button>`:''}
-          ${d.status!=='done'?`<button class="primary" onclick="nextDelivery(${d.id})">${d.status==='pending'?'Iniciar rota':'Marcar entregue'}</button>`:''}
-        </div>
-      </div>`).join('')}</div>`;
+        <strong>Erro ao carregar entregas</strong>
+        <p class="muted">
+          ${error.message}
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  if(!data || data.length === 0){
+
+    el.innerHTML = `
+      <div class="card">
+        <strong>Nenhuma entrega na fila</strong>
+        <p class="muted">
+          As entregas aparecerão aqui quando forem criadas.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="card">
+      <strong>Fila de entregas</strong>
+      <p class="muted">
+        ${data.length} entrega(s) na fila.
+      </p>
+    </div>
+
+    <div class="list" style="margin-top:12px">
+
+      ${data.map((d, i) => {
+
+        const venda = d.vendas;
+        const cliente = venda?.clientes;
+
+        const endereco =
+          d.endereço ||
+          cliente?.endereço ||
+          'Endereço não informado';
+
+        const nomeCliente =
+          cliente?.nome ||
+          'Cliente não informado';
+
+        const telefone =
+          cliente?.telefone ||
+          'Sem telefone';
+
+        const valor =
+          Number(venda?.valor_total || 0);
+
+        return `
+
+          <div class="card">
+
+            <div class="row">
+              <strong>
+                #${d.id} · ${nomeCliente}
+              </strong>
+
+              <span class="badge ${d.status}">
+                ${d.status}
+              </span>
+            </div>
+
+            <p class="muted">
+              📍 ${endereco}
+            </p>
+
+            <p class="muted">
+              ☎ ${telefone}
+            </p>
+
+            <div class="row">
+              <span>
+                ${money(valor)}
+              </span>
+
+              <span class="muted">
+                ${venda?.forma_pagamento || ''}
+              </span>
+            </div>
+
+            <div class="actions">
+
+              ${i > 0 ? `
+                <button
+                  class="secondary"
+                  onclick="moveDelivery(${i},-1)"
+                >
+                  ↑ Colocar na frente
+                </button>
+              ` : ''}
+
+              ${i < data.length - 1 ? `
+                <button
+                  class="secondary"
+                  onclick="moveDelivery(${i},1)"
+                >
+                  ↓
+                </button>
+              ` : ''}
+
+              ${d.status !== 'entregue' ? `
+                <button
+                  class="primary"
+                  onclick="nextDelivery(${d.id})"
+                >
+                  ${d.status === 'pendente'
+                    ? 'Iniciar rota'
+                    : 'Marcar entregue'}
+                </button>
+              ` : ''}
+
+            </div>
+
+          </div>
+
+        `;
+
+      }).join('')}
+
+    </div>
+  `;
 }
 function moveDelivery(i,dir){
  const j=i+dir;
