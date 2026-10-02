@@ -601,6 +601,47 @@ function addToCart(id){
     document.getElementById('content')
   );
 }
+function changeCartQty(id, delta){
+
+  const item = state.cart.find(
+    x => x.id === id
+  );
+
+  if(!item){
+    return;
+  }
+
+  const isM3 =
+    String(item.unit || '')
+      .toLowerCase()
+      .trim() === 'm³';
+
+  const step = isM3 ? 0.5 : 1;
+  const novaQuantidade =
+    Math.round((item.qty + delta * step) * 100) / 100;
+
+  if(novaQuantidade < step){
+    state.cart = state.cart.filter(
+      x => x.id !== id
+    );
+  }
+  else if(novaQuantidade > item.stock){
+
+    alert(
+      'Quantidade maior que o estoque disponível.'
+    );
+
+    return;
+  }
+  else{
+
+    item.qty = novaQuantidade;
+  }
+
+  renderSales(
+    document.getElementById('content')
+  );
+}
 async function finishSale(){
 
   if(!state.selectedClient){
