@@ -643,65 +643,49 @@ function addToCart(id){
 
   if(found){
 
-    if(found.qty >= Number(p.estoque)){
+    const step =
+      p.unidade === 'm³'
+        ? 0.5
+        : 1;
+
+    if(found.qty + step > Number(p.estoque)){
       alert('Quantidade maior que o estoque disponível.');
       return;
     }
 
-    found.qty++;
+    found.qty =
+      Math.round(
+        (found.qty + step) * 100
+      ) / 100;
 
   }else{
 
     state.cart.push({
+
       id: p.id,
+
       name: p.nome,
+
       unit: p.unidade,
+
       price: Number(p.preco),
+
       stock: Number(p.estoque),
-      qty: 1
+
+      qty: 1,
+
+      milheiroInteiro:
+        p.unidade === 'milheiro'
+          ? 1
+          : 0,
+
+      unidadesAvulsas:
+        p.unidade === 'milheiro'
+          ? 0
+          : 0
+
     });
 
-  }
-
-  renderSales(
-    document.getElementById('content')
-  );
-}
-function changeCartQty(id, delta){
-
-  const item = state.cart.find(
-    x => x.id === id
-  );
-
-  if(!item){
-    return;
-  }
-
-  const isM3 =
-    String(item.unit || '')
-      .toLowerCase()
-      .trim() === 'm³';
-
-  const step = isM3 ? 0.5 : 1;
-  const novaQuantidade =
-    Math.round((item.qty + delta * step) * 100) / 100;
-
-  if(novaQuantidade < step){
-    state.cart = state.cart.filter(
-      x => x.id !== id
-    );
-  }
-  else if(novaQuantidade > item.stock){
-
-    alert(
-      'Quantidade maior que o estoque disponível.'
-    );
-
-    return;
-  }
-  else{
-
-    item.qty = novaQuantidade;
   }
 
   renderSales(
