@@ -1667,6 +1667,14 @@ async function moveDelivery(id, direction){
       })
       .eq('id', destino.id);
 
+  console.log('MOVIMENTAÇÃO:', {
+  atual: atual.id,
+  destino: destino.id,
+  posicaoAtual: posicaoAtual,
+  posicaoDestino: posicaoDestino,
+  erro: errorDestino
+});
+  
   if(errorDestino){
 
     console.error(
