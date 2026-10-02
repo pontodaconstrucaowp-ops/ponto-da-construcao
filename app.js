@@ -1724,6 +1724,79 @@ await renderDeliveries(
 );
 }
 
+async function nextDelivery(id){
+
+  const { data, error } = await supabaseClient
+    .from('entregas')
+    .select('id, status, posicao_fila')
+    .eq('id', id)
+    .single();
+
+  if(error){
+
+    console.error(
+      'ERRO AO BUSCAR ENTREGA:',
+      error
+    );
+
+    alert(
+      'Não foi possível carregar a entrega:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  if(!data){
+    alert('Entrega não encontrada.');
+    return;
+  }
+
+  let novoStatus = data.status;
+
+  if(data.status === 'pendente'){
+    novoStatus = 'em_rota';
+  }
+  else if(data.status === 'em_rota'){
+    novoStatus = 'entregue';
+  }
+  else {
+    return;
+  }
+
+  const atualizacao = {
+    status: novoStatus
+  };
+
+  if(novoStatus === 'entregue'){
+    atualizacao.posicao_fila = -1;
+  }
+
+  const { error: updateError } =
+    await supabaseClient
+      .from('entregas')
+      .update(atualizacao)
+      .eq('id', id);
+
+  if(updateError){
+
+    console.error(
+      'ERRO AO ATUALIZAR ENTREGA:',
+      updateError
+    );
+
+    alert(
+      'Não foi possível atualizar a entrega:\n\n' +
+      updateError.message
+    );
+
+    return;
+  }
+
+  await renderDeliveries(
+    document.getElementById('content')
+  );
+}
 function renderMore(el){
  el.innerHTML=`<div class="list">
  <button class="card" onclick="navigate('clients')"><strong>Clientes</strong><span class="muted">Cadastro e histórico</span></button>
