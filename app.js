@@ -1122,11 +1122,20 @@ function openProductForm(){
           placeholder="Categoria"
         >
 
-        <input
+        <select
           id="newProductUnit"
           class="search"
-          placeholder="Unidade (ex.: saco, m³, unidade)"
         >
+          <option value="">Selecione a unidade</option>
+          <option value="m³">m³</option>
+          <option value="kg">kg</option>
+          <option value="carrada">carrada</option>
+          <option value="balde">balde</option>
+          <option value="lata">lata</option>
+          <option value="saco">saco</option>
+          <option value="unidade">unidade</option>
+          <option value="milheiro">milheiro</option>
+        </select>
 
         <input
           id="newProductPrice"
@@ -1175,7 +1184,6 @@ function openProductForm(){
     </div>
   `;
 }
-
 
 async function saveNewProduct(){
 
