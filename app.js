@@ -195,66 +195,125 @@ async function renderSales(el){
 
           ? state.cart.map(x => `
 
-              <div
-                class="row"
-                style="
-                  margin-top:10px;
-                  align-items:center;
-                  gap:10px;
-                "
-              >
+<div
+  class="row"
+  style="
+    margin-top:10px;
+    align-items:center;
+    gap:10px;
+  "
+>
 
-                <div style="flex:1">
+  <div style="flex:1">
 
-                  <strong>
-                    ${x.name}
-                  </strong>
+    <strong>
+      ${x.name}
+    </strong>
 
-                  <div class="muted">
-                    ${x.qty} ${x.unit}
-                  </div>
+    ${
+      x.unit === 'milheiro'
 
-                </div>
+      ? `
+        <div class="muted">
+          ${
+            x.milheiroInteiro || 0
+          } milheiro(s)
+          ${
+            x.unidadesAvulsas
+              ? `+ ${x.unidadesAvulsas} unidades`
+              : ''
+          }
+        </div>
+      `
 
-                <div
-                  style="
-                    display:flex;
-                    align-items:center;
-                    gap:6px;
-                  "
-                >
+      : `
+        <div class="muted">
+          ${x.qty} ${x.unit}
+        </div>
+      `
+    }
 
-                  <button
-                    class="secondary"
-                    onclick="changeCartQty(${x.id},-1)"
-                  >
-                    −
-                  </button>
+  </div>
 
-                  <strong
-                    style="
-                      min-width:40px;
-                      text-align:center;
-                    "
-                  >
-                    ${x.qty}
-                  </strong>
+  <div
+    style="
+      display:flex;
+      align-items:center;
+      gap:6px;
+    "
+  >
 
-                  <button
-                    class="secondary"
-                    onclick="changeCartQty(${x.id},1)"
-                  >
-                    +
-                  </button>
+    <button
+      class="secondary"
+      onclick="changeCartQty(${x.id},-1)"
+    >
+      −
+    </button>
 
-                </div>
+    <strong
+      style="
+        min-width:40px;
+        text-align:center;
+      "
+    >
+      ${
+        x.unit === 'milheiro'
+          ? (x.milheiroInteiro || 0)
+          : x.qty
+      }
+    </strong>
 
-                <strong>
-                  ${money(x.price * x.qty)}
-                </strong>
+    <button
+      class="secondary"
+      onclick="changeCartQty(${x.id},1)"
+    >
+      +
+    </button>
 
-              </div>
+  </div>
 
+  ${
+    x.unit === 'milheiro'
+
+    ? `
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          gap:6px;
+        "
+      >
+
+        <label
+          class="muted"
+          style="white-space:nowrap"
+        >
+          Avulsos:
+        </label>
+
+        <input
+          class="search"
+          type="number"
+          min="0"
+          max="999"
+          step="1"
+          value="${x.unidadesAvulsas || 0}"
+          style="width:90px"
+          onchange="updateMilheiroAvulso(${x.id}, this.value)"
+        >
+
+      </div>
+
+    `
+
+    : ''
+  }
+
+  <strong>
+    ${money(x.price * x.qty)}
+  </strong>
+
+</div>
             `).join('')
 
           : '<p class="muted">Nenhum produto adicionado.</p>'
