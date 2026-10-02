@@ -1533,22 +1533,26 @@ async function renderDeliveries(el){
 
             <div class="actions">
 
-             ${i > 0 ? `
-  <button
-    class="secondary"
-    onclick="moveDelivery(${d.id},-1)"
-  >
-    ↑ Colocar na frente
-  </button>
-` : ''}
+            ${d.status !== 'entregue' ? `
 
-${i < data.length - 1 ? `
-  <button
-    class="secondary"
-    onclick="moveDelivery(${d.id},1)"
-  >
-    ↓
-  </button> 
+  ${i > 0 ? `
+    <button
+      class="secondary"
+      onclick="moveDelivery(${d.id},-1)"
+    >
+      ↑ Colocar na frente
+    </button>
+  ` : ''}
+
+  ${i < data.length - 1 ? `
+    <button
+      class="secondary"
+      onclick="moveDelivery(${d.id},1)"
+    >
+      ↓
+    </button>
+  ` : ''}
+
 ` : ''}
 
               ${d.status !== 'entregue' ? `
