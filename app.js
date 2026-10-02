@@ -134,160 +134,151 @@ async function renderSales(el){
 
   el.innerHTML=`
     <div class="card">
+
       <div class="section-title">
         <h2>Cliente</h2>
       </div>
 
       <div class="field">
+
         <label>Buscar cliente</label>
+
         <input
           id="saleClient"
           class="search"
           placeholder="Digite nome ou telefone..."
           oninput="searchSaleClients()"
         >
+
       </div>
 
-      <div id="saleClientResults" style="margin-top:10px">
-        <p class="muted">Digite o nome ou telefone do cliente.</p>
+      <div
+        id="saleClientResults"
+        style="margin-top:10px"
+      >
+        <p class="muted">
+          Digite o nome ou telefone do cliente.
+        </p>
       </div>
+
     </div>
 
     <div class="section-title">
       <h2>Materiais</h2>
     </div>
 
-    <div id="saleProducts" class="list">
+    <div
+      id="saleProducts"
+      class="list"
+    >
       <div class="card muted">
         Carregando materiais...
       </div>
     </div>
 
     <div class="sale-cart">
+
       <div class="row">
+
         <strong>Carrinho</strong>
-        <span>${state.cart.length} item(ns)</span>
+
+        <span>
+          ${state.cart.length} item(ns)
+        </span>
+
       </div>
-<div id="cartItems">
-  ${
-    state.cart.length
-    ? state.cart.map(x => {
 
-        const isM3 =
-          String(x.unit || '')
-            .toLowerCase()
-            .trim() === 'm³';
+      <div id="cartItems">
 
-        return `
-          <div
-            class="row"
-            style="
-              margin-top:10px;
-              align-items:center;
-              gap:10px;
-            "
-          >
+        ${
+          state.cart.length
 
-            <div style="flex:1">
+          ? state.cart.map(x => `
 
-              <strong>${x.name}</strong>
+              <div
+                class="row"
+                style="
+                  margin-top:10px;
+                  align-items:center;
+                  gap:10px;
+                "
+              >
 
-              <div class="muted">
-                ${x.qty} ${x.unit}
+                <div style="flex:1">
+
+                  <strong>
+                    ${x.name}
+                  </strong>
+
+                  <div class="muted">
+                    ${x.qty} ${x.unit}
+                  </div>
+
+                </div>
+
+                <div
+                  style="
+                    display:flex;
+                    align-items:center;
+                    gap:6px;
+                  "
+                >
+
+                  <button
+                    class="secondary"
+                    onclick="changeCartQty(${x.id},-1)"
+                  >
+                    −
+                  </button>
+
+                  <strong
+                    style="
+                      min-width:40px;
+                      text-align:center;
+                    "
+                  >
+                    ${x.qty}
+                  </strong>
+
+                  <button
+                    class="secondary"
+                    onclick="changeCartQty(${x.id},1)"
+                  >
+                    +
+                  </button>
+
+                </div>
+
+                <strong>
+                  ${money(x.price * x.qty)}
+                </strong>
+
               </div>
 
-            </div>
+            `).join('')
 
-            <div
-              style="
-                display:flex;
-                align-items:center;
-                gap:6px;
-              "
-            >
-
-              <button
-                class="secondary"
-                onclick="changeCartQty(${x.id},-1)"
-              >
-                −
-              </button>
-
-              <strong style="min-width:40px;text-align:center">
-                ${x.qty}
-              </strong>
-
-              <button
-                class="secondary"
-                onclick="changeCartQty(${x.id},1)"
-              >
-                +
-              </button>
-
-            </div>
-
-            <strong>
-              ${money(x.price * x.qty)}
-            </strong>
-
-          </div>
-        `;
-
-      }).join('')
-    : '<p class="muted">Nenhum produto adicionado.</p>'
-  }
-</div>
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          gap:6px;
-        "
-      >
-
-        <button
-          class="secondary"
-          onclick="changeCartQty(${x.id},-1)"
-        >
-          −
-        </button>
-
-        <strong style="min-width:40px;text-align:center">
-          ${x.qty}
-        </strong>
-
-        <button
-          class="secondary"
-          onclick="changeCartQty(${x.id},1)"
-        >
-          +
-        </button>
-
-      </div>
-
-      <strong>
-        ${money(x.price*x.qty)}
-      </strong>
-
-    </div>
-  `;
-}).join('')
           : '<p class="muted">Nenhum produto adicionado.</p>'
         }
+
       </div>
 
       <hr>
 
       <div class="row">
+
         <span>Total</span>
+
         <span class="total">
+
           ${money(
             state.cart.reduce(
-              (s,x)=>s+x.price*x.qty,
+              (s,x) => s + x.price * x.qty,
               0
             )
           )}
+
         </span>
+
       </div>
 
       <div class="actions">
@@ -301,21 +292,31 @@ async function renderSales(el){
 
         <button
           class="danger"
-          onclick="state.cart=[];renderSales(document.getElementById('content'))"
+          onclick="
+            state.cart=[];
+            renderSales(
+              document.getElementById('content')
+            )
+          "
         >
           Limpar
         </button>
 
       </div>
+
     </div>
   `;
 
-  const { data, error } = await supabaseClient
-    .from('produtos')
-    .select('*')
-    .order('nome', { ascending: true });
+  const { data, error } =
+    await supabaseClient
+      .from('produtos')
+      .select('*')
+      .order('nome', {
+        ascending: true
+      });
 
-  const productsList = document.getElementById('saleProducts');
+  const productsList =
+    document.getElementById('saleProducts');
 
   if(error){
 
@@ -325,12 +326,19 @@ async function renderSales(el){
     );
 
     productsList.innerHTML=`
+
       <div class="card">
-        <strong>Erro ao carregar materiais</strong>
+
+        <strong>
+          Erro ao carregar materiais
+        </strong>
+
         <p class="muted">
           ${error.message}
         </p>
+
       </div>
+
     `;
 
     return;
@@ -339,12 +347,20 @@ async function renderSales(el){
   if(!data || data.length === 0){
 
     productsList.innerHTML=`
+
       <div class="card">
-        <strong>Nenhum material cadastrado</strong>
+
+        <strong>
+          Nenhum material cadastrado
+        </strong>
+
         <p class="muted">
-          Cadastre produtos no Estoque antes de realizar uma venda.
+          Cadastre produtos no Estoque antes
+          de realizar uma venda.
         </p>
+
       </div>
+
     `;
 
     return;
@@ -352,97 +368,53 @@ async function renderSales(el){
 
   window.saleProducts = data;
 
-  productsList.innerHTML = data.map(p=>`
+  productsList.innerHTML =
+    data.map(p => `
 
-    <div class="card">
-
-      <div class="row">
-
-        <div>
-
-          <div class="product-name">
-            ${p.nome}
-          </div>
-
-          <span class="muted">
-            ${p.unidade} · estoque ${p.estoque}
-          </span>
-
-        </div>
-
-        <div class="price">
-          ${money(p.preco)}
-        </div>
-
-      </div>
-
-      <div class="actions">
-
-        <button
-          class="secondary"
-          onclick="addToCart(${p.id})"
-          ${Number(p.estoque) <= 0 ? 'disabled' : ''}
-        >
-          ${Number(p.estoque) <= 0 ? 'Sem estoque' : 'Adicionar'}
-        </button>
-
-      </div>
-
-    </div>
-
-  `).join('');
-}
-function openSaleNewClientForm(){
-  const results = document.getElementById('saleClientResults');
-
-  if(!results) return;
-
-  results.innerHTML = `
-    <div class="card">
-      <div class="section-title">
-        <h3>Novo cliente</h3>
-      </div>
-
-      <div style="display:grid;gap:12px">
-
-        <input
-          id="newSaleClientName"
-          class="search"
-          placeholder="Nome do cliente"
-        >
-
-        <input
-          id="newSaleClientPhone"
-          class="search"
-          placeholder="Telefone"
-        >
-
-        <textarea
-          id="newSaleClientAddress"
-          class="search"
-          placeholder="Endereço"
-          rows="3"
-        ></textarea>
+      <div class="card">
 
         <div class="row">
-          <button
-            class="secondary"
-            onclick="clearSaleClient()"
-          >
-            Voltar
-          </button>
+
+          <div>
+
+            <div class="product-name">
+              ${p.nome}
+            </div>
+
+            <span class="muted">
+              ${p.unidade} · estoque ${p.estoque}
+            </span>
+
+          </div>
+
+          <div class="price">
+            ${money(p.preco)}
+          </div>
+
+        </div>
+
+        <div class="actions">
 
           <button
-            class="primary"
-            onclick="saveSaleNewClient()"
+            class="secondary"
+            onclick="addToCart(${p.id})"
+            ${Number(p.estoque) <= 0
+              ? 'disabled'
+              : ''
+            }
           >
-            Salvar e continuar
+            ${
+              Number(p.estoque) <= 0
+                ? 'Sem estoque'
+                : 'Adicionar'
+            }
           </button>
+
         </div>
 
       </div>
-    </div>
-  `;
+
+    `).join('');
 }
 
 async function saveSaleNewClient(){
