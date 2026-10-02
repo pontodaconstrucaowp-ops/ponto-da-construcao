@@ -732,6 +732,149 @@ function addToCart(id){
     document.getElementById('content')
   );
 }
+function changeCartQty(id, delta){
+
+  const item = state.cart.find(
+    x => x.id === id
+  );
+
+  if(!item){
+    return;
+  }
+
+  // MILHEIRO
+  if(item.unit === 'milheiro'){
+
+    const atual =
+      item.milheiroInteiro || 0;
+
+    const avulsas =
+      item.unidadesAvulsas || 0;
+
+    const novoMilheiro =
+      atual + delta;
+
+    // Não permite quantidade negativa
+    if(novoMilheiro < 0){
+      return;
+    }
+
+    const novaQuantidade =
+      novoMilheiro +
+      (avulsas / 1000);
+
+    // Não ultrapassar o estoque
+    if(novaQuantidade > item.stock){
+
+      alert(
+        'Quantidade maior que o estoque disponível.'
+      );
+
+      return;
+    }
+
+    item.milheiroInteiro =
+      novoMilheiro;
+
+    item.qty =
+      Math.round(
+        novaQuantidade * 1000
+      ) / 1000;
+
+    // Se ficou totalmente zerado, remove do carrinho
+    if(
+      item.milheiroInteiro === 0 &&
+      item.unidadesAvulsas === 0
+    ){
+
+      state.cart =
+        state.cart.filter(
+          x => x.id !== id
+        );
+    }
+
+  }
+
+  // M³
+  else if(
+    String(item.unit || '')
+      .toLowerCase()
+      .trim() === 'm³'
+  ){
+
+    const step = 0.5;
+
+    const novaQuantidade =
+      Math.round(
+        (item.qty + delta * step) * 100
+      ) / 100;
+
+    if(novaQuantidade < step){
+
+      state.cart =
+        state.cart.filter(
+          x => x.id !== id
+        );
+
+    }
+    else if(
+      novaQuantidade > item.stock
+    ){
+
+      alert(
+        'Quantidade maior que o estoque disponível.'
+      );
+
+      return;
+
+    }
+    else{
+
+      item.qty =
+        novaQuantidade;
+
+    }
+
+  }
+
+  // OUTRAS UNIDADES
+  else{
+
+    const novaQuantidade =
+      item.qty + delta;
+
+    if(novaQuantidade <= 0){
+
+      state.cart =
+        state.cart.filter(
+          x => x.id !== id
+        );
+
+    }
+    else if(
+      novaQuantidade > item.stock
+    ){
+
+      alert(
+        'Quantidade maior que o estoque disponível.'
+      );
+
+      return;
+
+    }
+    else{
+
+      item.qty =
+        novaQuantidade;
+
+    }
+
+  }
+
+  renderSales(
+    document.getElementById('content')
+  );
+}
 async function finishSale(){
 
   if(!state.selectedClient){
