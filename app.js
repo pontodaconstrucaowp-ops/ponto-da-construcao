@@ -934,6 +934,71 @@ function changeCartQty(id, delta){
     document.getElementById('content')
   );
 }
+function updateMilheiroAvulso(id, value){
+
+  const item = state.cart.find(
+    x => x.id === id
+  );
+
+  if(!item){
+    return;
+  }
+
+  if(item.unit !== 'milheiro'){
+    return;
+  }
+
+  let unidades = Number(value);
+
+  if(isNaN(unidades) || unidades < 0){
+    unidades = 0;
+  }
+
+  unidades = Math.floor(unidades);
+
+  // Se passar de 999, transforma automaticamente
+  // em milheiros adicionais.
+  if(unidades >= 1000){
+
+    const milheirosExtras =
+      Math.floor(unidades / 1000);
+
+    unidades =
+      unidades % 1000;
+
+    item.milheiroInteiro =
+      (item.milheiroInteiro || 0) +
+      milheirosExtras;
+  }
+
+  const novaQuantidade =
+    (item.milheiroInteiro || 0) +
+    (unidades / 1000);
+
+  if(novaQuantidade > item.stock){
+
+    alert(
+      'Quantidade maior que o estoque disponível.'
+    );
+
+    renderSales(
+      document.getElementById('content')
+    );
+
+    return;
+  }
+
+  item.unidadesAvulsas = unidades;
+
+  item.qty =
+    Math.round(
+      novaQuantidade * 1000
+    ) / 1000;
+
+  renderSales(
+    document.getElementById('content')
+  );
+}
 async function finishSale(){
 
   if(!state.selectedClient){
