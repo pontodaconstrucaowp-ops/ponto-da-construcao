@@ -172,12 +172,68 @@ async function renderSales(el){
       <div id="cartItems">
         ${
           state.cart.length
-          ? state.cart.map(x=>`
-              <div class="row" style="margin-top:10px">
-                <span>${x.name} × ${x.qty}</span>
-                <span>${money(x.price*x.qty)}</span>
-              </div>
-            `).join('')
+state.cart.map(x=>{
+
+  const isM3 =
+    String(x.unit || '')
+      .toLowerCase()
+      .trim() === 'm³';
+
+  return `
+    <div
+      class="row"
+      style="
+        margin-top:10px;
+        align-items:center;
+        gap:10px;
+      "
+    >
+
+      <div style="flex:1">
+
+        <strong>${x.name}</strong>
+
+        <div class="muted">
+          ${x.qty} ${x.unit}
+        </div>
+
+      </div>
+
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          gap:6px;
+        "
+      >
+
+        <button
+          class="secondary"
+          onclick="changeCartQty(${x.id},-1)"
+        >
+          −
+        </button>
+
+        <strong style="min-width:40px;text-align:center">
+          ${x.qty}
+        </strong>
+
+        <button
+          class="secondary"
+          onclick="changeCartQty(${x.id},1)"
+        >
+          +
+        </button>
+
+      </div>
+
+      <strong>
+        ${money(x.price*x.qty)}
+      </strong>
+
+    </div>
+  `;
+}).join('')
           : '<p class="muted">Nenhum produto adicionado.</p>'
         }
       </div>
