@@ -1606,11 +1606,12 @@ async function moveDelivery(id, direction){
 
   if(index === -1){
 
-  console.log('ENTREGA NÃO ENCONTRADA:', {
-    idRecebido: id,
-    tipoId: typeof id,
-    entregasEncontradas: data
-  });
+ console.log(
+  'ID RECEBIDO:',
+  id,
+  'IDS ENCONTRADOS:',
+  data.map(entrega => entrega.id)
+);
 
   alert(
     'Entrega não encontrada na fila.\n\n' +
