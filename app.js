@@ -1344,12 +1344,69 @@ function openProductEdit(id){
           placeholder="Categoria"
         >
 
-        <input
+        <select
           id="editProductUnit"
           class="search"
-          value="${produto.unidade || ''}"
-          placeholder="Unidade"
         >
+          <option value="">Selecione a unidade</option>
+
+          <option
+            value="m³"
+            ${produto.unidade === 'm³' ? 'selected' : ''}
+          >
+            m³
+          </option>
+
+          <option
+            value="kg"
+            ${produto.unidade === 'kg' ? 'selected' : ''}
+          >
+            kg
+          </option>
+
+          <option
+            value="carrada"
+            ${produto.unidade === 'carrada' ? 'selected' : ''}
+          >
+            carrada
+          </option>
+
+          <option
+            value="balde"
+            ${produto.unidade === 'balde' ? 'selected' : ''}
+          >
+            balde
+          </option>
+
+          <option
+            value="lata"
+            ${produto.unidade === 'lata' ? 'selected' : ''}
+          >
+            lata
+          </option>
+
+          <option
+            value="saco"
+            ${produto.unidade === 'saco' ? 'selected' : ''}
+          >
+            saco
+          </option>
+
+          <option
+            value="unidade"
+            ${produto.unidade === 'unidade' ? 'selected' : ''}
+          >
+            unidade
+          </option>
+
+          <option
+            value="milheiro"
+            ${produto.unidade === 'milheiro' ? 'selected' : ''}
+          >
+            milheiro
+          </option>
+
+        </select>
 
         <input
           id="editProductPrice"
@@ -1401,7 +1458,6 @@ function openProductEdit(id){
     </div>
   `;
 }
-
 
 async function saveProductEdit(id){
 
