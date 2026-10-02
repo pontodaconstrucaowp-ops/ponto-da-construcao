@@ -1967,3 +1967,44 @@ function filterClients(){
         </div>
       `;
 }
+async function saveClient(){
+
+  const nome = document.getElementById('clientName')?.value.trim();
+  const telefone = document.getElementById('clientPhone')?.value.trim();
+  const endereco = document.getElementById('clientAddress')?.value.trim();
+
+  if(!nome){
+
+    alert('Informe o nome do cliente.');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('clientes')
+    .insert({
+      nome: nome,
+      telefone: telefone || null,
+      endereço: endereco || null
+    });
+
+  if(error){
+
+    console.error(
+      'ERRO AO CADASTRAR CLIENTE:',
+      error
+    );
+
+    alert(
+      'Não foi possível cadastrar o cliente:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  alert('Cliente cadastrado com sucesso!');
+
+  await renderClients(
+    document.getElementById('content')
+  );
+}
