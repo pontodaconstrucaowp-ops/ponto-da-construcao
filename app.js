@@ -1548,7 +1548,7 @@ ${i < data.length - 1 ? `
     onclick="moveDelivery(${d.id},1)"
   >
     ↓
-  </button>
+  </button> 
 ` : ''}
 
               ${d.status !== 'entregue' ? `
