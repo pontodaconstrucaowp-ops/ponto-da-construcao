@@ -857,11 +857,14 @@ function changeCartQty(id, delta){
   }
 
   // M³
-  else if(
-    String(item.unit || '')
-      .toLowerCase()
-      .trim() === 'm³'
-  ){
+else if(
+  String(item.unit || '')
+    .toLowerCase()
+    .trim() === 'm³' ||
+  String(item.unit || '')
+    .toLowerCase()
+    .trim() === 'kg'
+){
 
     const step = 0.5;
 
