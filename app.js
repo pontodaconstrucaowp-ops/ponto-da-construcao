@@ -726,23 +726,25 @@ function addToCart(id){
 
     }
 
-    // M³
-    else if(p.unidade === 'm³'){
+// M³ e KG
+else if(
+  p.unidade === 'm³' ||
+  p.unidade === 'kg'
+){
 
-      const step = 0.5;
+  const step = 0.5;
 
-      if(found.qty + step > Number(p.estoque)){
-        alert('Quantidade maior que o estoque disponível.');
-        return;
-      }
+  if(found.qty + step > Number(p.estoque)){
+    alert('Quantidade maior que o estoque disponível.');
+    return;
+  }
 
-      found.qty =
-        Math.round(
-          (found.qty + step) * 100
-        ) / 100;
+  found.qty =
+    Math.round(
+      (found.qty + step) * 100
+    ) / 100;
 
-    }
-
+}
     // OUTRAS UNIDADES
     else{
 
