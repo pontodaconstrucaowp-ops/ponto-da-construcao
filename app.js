@@ -643,20 +643,60 @@ function addToCart(id){
 
   if(found){
 
-    const step =
-      p.unidade === 'm³'
-        ? 0.5
-        : 1;
+    // MILHEIRO
+    if(p.unidade === 'milheiro'){
 
-    if(found.qty + step > Number(p.estoque)){
-      alert('Quantidade maior que o estoque disponível.');
-      return;
+      const novoMilheiro =
+        (found.milheiroInteiro || 0) + 1;
+
+      const novaQuantidade =
+        novoMilheiro +
+        ((found.unidadesAvulsas || 0) / 1000);
+
+      if(novaQuantidade > Number(p.estoque)){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      found.milheiroInteiro = novoMilheiro;
+
+      found.qty =
+        Math.round(
+          novaQuantidade * 1000
+        ) / 1000;
+
     }
 
-    found.qty =
-      Math.round(
-        (found.qty + step) * 100
-      ) / 100;
+    // M³
+    else if(p.unidade === 'm³'){
+
+      const step = 0.5;
+
+      if(found.qty + step > Number(p.estoque)){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      found.qty =
+        Math.round(
+          (found.qty + step) * 100
+        ) / 100;
+
+    }
+
+    // OUTRAS UNIDADES
+    else{
+
+      const step = 1;
+
+      if(found.qty + step > Number(p.estoque)){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      found.qty++;
+
+    }
 
   }else{
 
