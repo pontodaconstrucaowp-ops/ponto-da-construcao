@@ -1395,90 +1395,309 @@ list.innerHTML = productRows(data);
 
 function openProductForm(){
 
-  const list = document.getElementById('productList');
+  const modal = document.createElement('div');
 
-  list.innerHTML = `
-    <div class="card">
+  modal.id = 'productModal';
 
-      <div class="section-title">
-        <h2>Novo produto</h2>
-      </div>
+  modal.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-card">
 
-      <div style="display:grid;gap:12px">
-
-        <input
-          id="newProductName"
-          class="search"
-          placeholder="Nome do produto"
-        >
-
-        <input
-          id="newProductCategory"
-          class="search"
-          placeholder="Categoria"
-        >
-
-        <select
-          id="newProductUnit"
-          class="search"
-        >
-          <option value="">Selecione a unidade</option>
-          <option value="m³">m³</option>
-          <option value="kg">kg</option>
-          <option value="carrada">carrada</option>
-          <option value="balde">balde</option>
-          <option value="lata">lata</option>
-          <option value="saco">saco</option>
-          <option value="unidade">unidade</option>
-          <option value="milheiro">milheiro</option>
-        </select>
-
-        <input
-          id="newProductPrice"
-          class="search"
-          type="number"
-          step="0.01"
-          placeholder="Preço"
-        >
-
-        <input
-          id="newProductStock"
-          class="search"
-          type="number"
-          step="0.01"
-          placeholder="Estoque inicial"
-        >
-
-        <input
-          id="newProductMinStock"
-          class="search"
-          type="number"
-          step="0.01"
-          placeholder="Estoque mínimo"
-        >
-
-        <div class="row">
+        <div class="modal-header">
+          <h2>Novo produto</h2>
 
           <button
-            class="secondary"
-            onclick="renderProducts(document.getElementById('content'))"
+            type="button"
+            onclick="document.getElementById('productModal')?.remove()"
           >
-            Cancelar
+            ✕
           </button>
+        </div>
+
+        <div class="modal-body">
+
+          <label>
+            Nome do produto
+          </label>
+
+          <input
+            id="newProductName"
+            type="text"
+            placeholder="Ex.: Cimento Poty"
+          >
+
+          <label>
+            Categoria
+          </label>
+
+          <input
+            id="newProductCategory"
+            type="text"
+            placeholder="Ex.: Cimento"
+          >
+
+          <label>
+            Unidade
+          </label>
+
+          <select id="newProductUnit">
+
+            <option value="m³">m³</option>
+            <option value="kg">kg</option>
+            <option value="carrada">carrada</option>
+            <option value="balde">balde</option>
+            <option value="lata">lata</option>
+            <option value="saco">saco</option>
+            <option value="unidade">unidade</option>
+            <option value="milheiro">milheiro</option>
+
+          </select>
+
+          <label>
+            Preço
+          </label>
+
+          <input
+            id="newProductPrice"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0,00"
+          >
+
+          <label>
+            Tipo de produto
+          </label>
+
+          <select id="newProductStockType">
+
+            <option value="estoque">
+              📦 Tem no estoque
+            </option>
+
+            <option value="revenda">
+              🛒 Item de revenda
+            </option>
+
+          </select>
+
+          <div id="stockFields">
+
+            <label>
+              Estoque atual
+            </label>
+
+            <input
+              id="newProductStock"
+              type="number"
+              min="0"
+              step="0.01"
+              value="0"
+            >
+
+            <label>
+              Estoque mínimo
+            </label>
+
+            <input
+              id="newProductMinStock"
+              type="number"
+              min="0"
+              step="0.01"
+              value="0"
+            >
+
+          </div>
 
           <button
-            class="primary"
-            onclick="saveNewProduct()"
+            type="button"
+            id="saveNewProductButton"
+            class="primary-button"
           >
-            Salvar produto
+            Cadastrar produto
           </button>
 
         </div>
 
       </div>
-
     </div>
   `;
+
+  document.body.appendChild(modal);
+
+  const stockType =
+    document.getElementById('newProductStockType');
+
+  const stockFields =
+    document.getElementById('stockFields');
+
+  function updateStockFields(){
+
+    if(stockType.value === 'revenda'){
+
+      stockFields.style.display = 'none';
+
+    }else{
+
+      stockFields.style.display = 'block';
+
+    }
+
+  }
+
+  stockType.addEventListener(
+    'change',
+    updateStockFields
+  );
+
+  updateStockFields();
+
+  document
+    .getElementById('saveNewProductButton')
+    .addEventListener('click', async () => {
+
+      const nome =
+        document
+          .getElementById('newProductName')
+          .value
+          .trim();
+
+      const categoria =
+        document
+          .getElementById('newProductCategory')
+          .value
+          .trim();
+
+      const unidade =
+        document
+          .getElementById('newProductUnit')
+          .value;
+
+      const preco =
+        Number(
+          document
+            .getElementById('newProductPrice')
+            .value
+        );
+
+      const tipoProduto =
+        document
+          .getElementById('newProductStockType')
+          .value;
+
+      const controlaEstoque =
+        tipoProduto === 'estoque';
+
+      const estoque =
+        controlaEstoque
+          ? Number(
+              document
+                .getElementById('newProductStock')
+                .value
+            )
+          : 0;
+
+      const estoqueMinimo =
+        controlaEstoque
+          ? Number(
+              document
+                .getElementById('newProductMinStock')
+                .value
+            )
+          : 0;
+
+      if(!nome){
+
+        alert('Informe o nome do produto.');
+        return;
+
+      }
+
+      if(!categoria){
+
+        alert('Informe a categoria.');
+        return;
+
+      }
+
+      if(!Number.isFinite(preco) || preco < 0){
+
+        alert('Informe um preço válido.');
+        return;
+
+      }
+
+      if(
+        !Number.isFinite(estoque) ||
+        estoque < 0
+      ){
+
+        alert('Informe um estoque válido.');
+        return;
+
+      }
+
+      if(
+        !Number.isFinite(estoqueMinimo) ||
+        estoqueMinimo < 0
+      ){
+
+        alert('Informe um estoque mínimo válido.');
+        return;
+
+      }
+
+      const { error } =
+        await supabaseClient
+          .from('produtos')
+          .insert({
+
+            nome: nome,
+
+            categoria: categoria,
+
+            unidade: unidade,
+
+            preco: preco,
+
+            estoque: estoque,
+
+            estoque_minimo: estoqueMinimo,
+
+            controla_estoque:
+              controlaEstoque
+
+          });
+
+      if(error){
+
+        console.error(
+          'Erro ao cadastrar produto:',
+          error
+        );
+
+        alert(
+          'Não foi possível cadastrar o produto.'
+        );
+
+        return;
+
+      }
+
+      alert(
+        'Produto cadastrado com sucesso!'
+      );
+
+      document
+        .getElementById('productModal')
+        ?.remove();
+
+      renderProducts(
+        document.getElementById('content')
+      );
+
+    });
+
 }
 
 async function saveNewProduct(){
