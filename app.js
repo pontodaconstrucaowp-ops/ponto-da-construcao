@@ -1941,21 +1941,55 @@ function openProductEdit(id){
 }
 async function saveProductEdit(id){
 
-  const nome = document.getElementById('editProductName').value.trim();
-  const categoria = document.getElementById('editProductCategory').value.trim();
-  const unidade = document.getElementById('editProductUnit').value.trim();
+  const nome =
+    document
+      .getElementById('editProductName')
+      .value
+      .trim();
 
-  const preco = Number(
-    document.getElementById('editProductPrice').value
-  );
+  const categoria =
+    document
+      .getElementById('editProductCategory')
+      .value
+      .trim();
 
-  const estoque = Number(
-    document.getElementById('editProductStock').value
-  );
+  const unidade =
+    document
+      .getElementById('editProductUnit')
+      .value;
 
-  const estoque_minimo = Number(
-    document.getElementById('editProductMinStock').value
-  );
+  const preco =
+    Number(
+      document
+        .getElementById('editProductPrice')
+        .value
+    );
+
+  const tipoProduto =
+    document
+      .getElementById('editProductStockType')
+      .value;
+
+  const controlaEstoque =
+    tipoProduto === 'estoque';
+
+  const estoque =
+    controlaEstoque
+      ? Number(
+          document
+            .getElementById('editProductStock')
+            .value
+        )
+      : 0;
+
+  const estoqueMinimo =
+    controlaEstoque
+      ? Number(
+          document
+            .getElementById('editProductMinStock')
+            .value
+        )
+      : 0;
 
   if(!nome){
     alert('Informe o nome do produto.');
@@ -1963,47 +1997,50 @@ async function saveProductEdit(id){
   }
 
   if(!categoria){
-    alert('Informe a categoria do produto.');
+    alert('Informe a categoria.');
     return;
   }
 
   if(!unidade){
-    alert('Informe a unidade do produto.');
+    alert('Informe a unidade.');
     return;
   }
 
-  if(isNaN(preco) || preco < 0){
+  if(!Number.isFinite(preco) || preco < 0){
     alert('Informe um preço válido.');
     return;
   }
 
-  if(isNaN(estoque) || estoque < 0){
+  if(!Number.isFinite(estoque) || estoque < 0){
     alert('Informe um estoque válido.');
     return;
   }
 
-  if(isNaN(estoque_minimo) || estoque_minimo < 0){
+  if(!Number.isFinite(estoqueMinimo) || estoqueMinimo < 0){
     alert('Informe um estoque mínimo válido.');
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from('produtos')
-    .update({
-      nome: nome,
-      categoria: categoria,
-      unidade: unidade,
-      preco: preco,
-      estoque: estoque,
-      estoque_minimo: estoque_minimo
-    })
-    .eq('id', id)
-    .select()
-    .single();
+  const { error } =
+    await supabaseClient
+      .from('produtos')
+      .update({
+        nome: nome,
+        categoria: categoria,
+        unidade: unidade,
+        preco: preco,
+        estoque: estoque,
+        estoque_minimo: estoqueMinimo,
+        controla_estoque: controlaEstoque
+      })
+      .eq('id', id);
 
   if(error){
 
-    console.error('ERRO AO ATUALIZAR PRODUTO:', error);
+    console.error(
+      'Erro ao atualizar produto:',
+      error
+    );
 
     alert(
       'Não foi possível atualizar o produto:\n\n' +
@@ -2013,9 +2050,11 @@ async function saveProductEdit(id){
     return;
   }
 
-  console.log('PRODUTO ATUALIZADO:', data);
-
   alert('Produto atualizado com sucesso!');
+
+  document
+    .getElementById('productModal')
+    ?.remove();
 
   renderProducts(
     document.getElementById('content')
