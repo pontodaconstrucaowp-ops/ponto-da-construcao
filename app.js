@@ -366,14 +366,14 @@ async function renderSales(el){
     </div>
   `;
 
-  const { data, error } =
-    await supabaseClient
-      .from('produtos')
-      .select('*')
-      .order('nome', {
-        ascending: true
-      });
-
+const { data, error } =
+  await supabaseClient
+    .from('produtos')
+    .select('*')
+    .eq('ativo', true)
+    .order('nome', {
+      ascending: true
+    });
   const productsList =
     document.getElementById('saleProducts');
 
