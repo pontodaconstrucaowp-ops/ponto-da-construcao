@@ -698,81 +698,89 @@ function clearSaleClient(){
 
 function addToCart(id){
 
-  const p = (window.saleProducts || []).find(
-    x => x.id === id
-  );
+  const p =
+    (window.saleProducts || [])
+      .find(x => x.id === id);
 
   if(!p){
     alert('Produto não encontrado.');
     return;
   }
 
-  if(Number(p.estoque) <= 0){
+  const controlaEstoque =
+    p.controla_estoque !== false;
+
+  if(
+    controlaEstoque &&
+    Number(p.estoque) <= 0
+  ){
     alert('Este produto está sem estoque.');
     return;
   }
 
-  const found = state.cart.find(
-    x => x.id === id
-  );
+  const found =
+    state.cart.find(x => x.id === id);
 
   if(found){
 
-    // MILHEIRO
     if(p.unidade === 'milheiro'){
 
-      const novoMilheiro =
-        (found.milheiroInteiro || 0) + 1;
+      const atual =
+        Number(found.milheiroInteiro || 0);
 
-      const novaQuantidade =
-        novoMilheiro +
-        ((found.unidadesAvulsas || 0) / 1000);
+      const novo =
+        atual + 1;
 
-      if(novaQuantidade > Number(p.estoque)){
+      if(
+        controlaEstoque &&
+        novo > Number(p.estoque)
+      ){
         alert('Quantidade maior que o estoque disponível.');
         return;
       }
 
-      found.milheiroInteiro = novoMilheiro;
+      found.milheiroInteiro = novo;
 
       found.qty =
-        Math.round(
-          novaQuantidade * 1000
-        ) / 1000;
+        novo +
+        (
+          Number(found.unidadesAvulsas || 0) / 1000
+        );
 
-    }
+    }else if(
+      p.unidade === 'm³' ||
+      p.unidade === 'kg'
+    ){
 
-// M³ e KG
-else if(
-  p.unidade === 'm³' ||
-  p.unidade === 'kg'
-){
+      const step = 0.5;
 
-  const step = 0.5;
+      const novo =
+        Number(found.qty || 0) + step;
 
-  if(found.qty + step > Number(p.estoque)){
-    alert('Quantidade maior que o estoque disponível.');
-    return;
-  }
-
-  found.qty =
-    Math.round(
-      (found.qty + step) * 100
-    ) / 100;
-
-}
-    // OUTRAS UNIDADES
-    else{
-
-      const step = 1;
-
-      if(found.qty + step > Number(p.estoque)){
+      if(
+        controlaEstoque &&
+        novo > Number(p.estoque)
+      ){
         alert('Quantidade maior que o estoque disponível.');
         return;
       }
 
-      found.qty++;
+      found.qty = novo;
 
+    }else{
+
+      const novo =
+        Number(found.qty || 0) + 1;
+
+      if(
+        controlaEstoque &&
+        novo > Number(p.estoque)
+      ){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      found.qty = novo;
     }
 
   }else{
@@ -788,6 +796,8 @@ else if(
       price: Number(p.preco),
 
       stock: Number(p.estoque),
+
+      controlaEstoque: controlaEstoque,
 
       qty: 1,
 
