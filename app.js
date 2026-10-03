@@ -1706,92 +1706,6 @@ function openProductForm(){
 
 }
 
-async function saveNewProduct(){
-
-  const nome = document.getElementById('newProductName').value.trim();
-  const categoria = document.getElementById('newProductCategory').value.trim();
-  const unidade = document.getElementById('newProductUnit').value.trim();
-
-  const preco = Number(
-    document.getElementById('newProductPrice').value
-  );
-
-  const estoque = Number(
-    document.getElementById('newProductStock').value
-  );
-
-  const estoque_minimo = Number(
-    document.getElementById('newProductMinStock').value
-  );
-
-
-  if(!nome){
-    alert('Informe o nome do produto.');
-    return;
-  }
-
-  if(!categoria){
-    alert('Informe a categoria do produto.');
-    return;
-  }
-
-  if(!unidade){
-    alert('Informe a unidade do produto.');
-    return;
-  }
-
-  if(isNaN(preco) || preco < 0){
-    alert('Informe um preço válido.');
-    return;
-  }
-
-  if(isNaN(estoque) || estoque < 0){
-    alert('Informe um estoque válido.');
-    return;
-  }
-
-  if(isNaN(estoque_minimo) || estoque_minimo < 0){
-    alert('Informe um estoque mínimo válido.');
-    return;
-  }
-
-
-  const { data, error } = await supabaseClient
-    .from('produtos')
-    .insert({
-      nome: nome,
-      categoria: categoria,
-      unidade: unidade,
-      preco: preco,
-      estoque: estoque,
-      estoque_minimo: estoque_minimo
-    })
-    .select()
-    .single();
-
-
-  if(error){
-
-    console.error('ERRO AO CADASTRAR PRODUTO:', error);
-
-    alert(
-      'Não foi possível cadastrar o produto:\n\n' +
-      error.message
-    );
-
-    return;
-  }
-
-
-  console.log('PRODUTO CADASTRADO:', data);
-
-  alert('Produto cadastrado com sucesso!');
-
-  renderProducts(
-    document.getElementById('content')
-  );
-}
-
 function productRows(items){
   return items.map(p => `
     <div class="card">
@@ -1831,7 +1745,7 @@ function productRows(items){
 }
 function openProductEdit(id){
 
-  const produto = window.currentProducts.find(
+  const produto = (window.currentProducts || []).find(
     p => p.id === id
   );
 
@@ -1840,146 +1754,191 @@ function openProductEdit(id){
     return;
   }
 
-  const list = document.getElementById('productList');
+  document
+    .getElementById('productModal')
+    ?.remove();
 
-  list.innerHTML = `
-    <div class="card">
+  const modal = document.createElement('div');
 
-      <div class="section-title">
-        <h2>Editar produto</h2>
-      </div>
+  modal.id = 'productModal';
 
-      <div style="display:grid;gap:12px">
+  modal.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-card">
 
-        <input
-          id="editProductName"
-          class="search"
-          value="${produto.nome || ''}"
-          placeholder="Nome do produto"
-        >
-
-        <input
-          id="editProductCategory"
-          class="search"
-          value="${produto.categoria || ''}"
-          placeholder="Categoria"
-        >
-
-        <select
-          id="editProductUnit"
-          class="search"
-        >
-          <option value="">Selecione a unidade</option>
-
-          <option
-            value="m³"
-            ${produto.unidade === 'm³' ? 'selected' : ''}
-          >
-            m³
-          </option>
-
-          <option
-            value="kg"
-            ${produto.unidade === 'kg' ? 'selected' : ''}
-          >
-            kg
-          </option>
-
-          <option
-            value="carrada"
-            ${produto.unidade === 'carrada' ? 'selected' : ''}
-          >
-            carrada
-          </option>
-
-          <option
-            value="balde"
-            ${produto.unidade === 'balde' ? 'selected' : ''}
-          >
-            balde
-          </option>
-
-          <option
-            value="lata"
-            ${produto.unidade === 'lata' ? 'selected' : ''}
-          >
-            lata
-          </option>
-
-          <option
-            value="saco"
-            ${produto.unidade === 'saco' ? 'selected' : ''}
-          >
-            saco
-          </option>
-
-          <option
-            value="unidade"
-            ${produto.unidade === 'unidade' ? 'selected' : ''}
-          >
-            unidade
-          </option>
-
-          <option
-            value="milheiro"
-            ${produto.unidade === 'milheiro' ? 'selected' : ''}
-          >
-            milheiro
-          </option>
-
-        </select>
-
-        <input
-          id="editProductPrice"
-          class="search"
-          type="number"
-          step="0.01"
-          value="${produto.preco ?? ''}"
-          placeholder="Preço"
-        >
-
-        <input
-          id="editProductStock"
-          class="search"
-          type="number"
-          step="0.01"
-          value="${produto.estoque ?? ''}"
-          placeholder="Estoque"
-        >
-
-        <input
-          id="editProductMinStock"
-          class="search"
-          type="number"
-          step="0.01"
-          value="${produto.estoque_minimo ?? ''}"
-          placeholder="Estoque mínimo"
-        >
-
-        <div class="row">
+        <div class="modal-header">
+          <h2>Editar produto</h2>
 
           <button
-            class="secondary"
-            onclick="renderProducts(document.getElementById('content'))"
+            type="button"
+            onclick="document.getElementById('productModal')?.remove()"
           >
-            Cancelar
+            ✕
           </button>
+        </div>
 
-          <button
-            class="primary"
-            onclick="saveProductEdit(${produto.id})"
+        <div class="modal-body">
+
+          <label>
+            Nome do produto
+          </label>
+
+          <input
+            id="editProductName"
+            type="text"
+            value="${produto.nome || ''}"
           >
-            Salvar alterações
-          </button>
+
+          <label>
+            Categoria
+          </label>
+
+          <input
+            id="editProductCategory"
+            type="text"
+            value="${produto.categoria || ''}"
+          >
+
+          <label>
+            Unidade
+          </label>
+
+          <select id="editProductUnit">
+
+            <option value="m³" ${produto.unidade === 'm³' ? 'selected' : ''}>m³</option>
+            <option value="kg" ${produto.unidade === 'kg' ? 'selected' : ''}>kg</option>
+            <option value="carrada" ${produto.unidade === 'carrada' ? 'selected' : ''}>carrada</option>
+            <option value="balde" ${produto.unidade === 'balde' ? 'selected' : ''}>balde</option>
+            <option value="lata" ${produto.unidade === 'lata' ? 'selected' : ''}>lata</option>
+            <option value="saco" ${produto.unidade === 'saco' ? 'selected' : ''}>saco</option>
+            <option value="unidade" ${produto.unidade === 'unidade' ? 'selected' : ''}>unidade</option>
+            <option value="milheiro" ${produto.unidade === 'milheiro' ? 'selected' : ''}>milheiro</option>
+
+          </select>
+
+          <label>
+            Preço
+          </label>
+
+          <input
+            id="editProductPrice"
+            type="number"
+            min="0"
+            step="0.01"
+            value="${Number(produto.preco || 0)}"
+          >
+
+          <label>
+            Tipo de produto
+          </label>
+
+          <select id="editProductStockType">
+
+            <option
+              value="estoque"
+              ${produto.controla_estoque !== false ? 'selected' : ''}
+            >
+              📦 Tem no estoque
+            </option>
+
+            <option
+              value="revenda"
+              ${produto.controla_estoque === false ? 'selected' : ''}
+            >
+              🛒 Item de revenda
+            </option>
+
+          </select>
+
+          <div id="editStockFields">
+
+            <label>
+              Estoque atual
+            </label>
+
+            <input
+              id="editProductStock"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(produto.estoque || 0)}"
+            >
+
+            <label>
+              Estoque mínimo
+            </label>
+
+            <input
+              id="editProductMinStock"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(produto.estoque_minimo || 0)}"
+            >
+
+          </div>
+
+          <div class="actions">
+
+            <button
+              type="button"
+              class="secondary"
+              onclick="document.getElementById('productModal')?.remove()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              id="saveProductEditButton"
+              class="primary"
+            >
+              Salvar alterações
+            </button>
+
+          </div>
 
         </div>
 
       </div>
-
     </div>
   `;
-}
 
+  document.body.appendChild(modal);
+
+  const stockType =
+    document.getElementById('editProductStockType');
+
+  const stockFields =
+    document.getElementById('editStockFields');
+
+  function updateEditStockFields(){
+
+    if(stockType.value === 'revenda'){
+
+      stockFields.style.display = 'none';
+
+    }else{
+
+      stockFields.style.display = 'block';
+
+    }
+
+  }
+
+  stockType.addEventListener(
+    'change',
+    updateEditStockFields
+  );
+
+  updateEditStockFields();
+
+  document
+    .getElementById('saveProductEditButton')
+    .addEventListener('click', () => {
+      saveProductEdit(id);
+    });
+}
 async function saveProductEdit(id){
 
   const nome = document.getElementById('editProductName').value.trim();
