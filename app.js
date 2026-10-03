@@ -1395,6 +1395,11 @@ list.innerHTML = productRows(data);
 
 function openProductForm(){
 
+  // Evita criar vários modais ao mesmo tempo
+  document
+    .getElementById('productModal')
+    ?.remove();
+
   const modal = document.createElement('div');
 
   modal.id = 'productModal';
@@ -1412,6 +1417,7 @@ function openProductForm(){
           >
             ✕
           </button>
+
         </div>
 
         <div class="modal-body">
