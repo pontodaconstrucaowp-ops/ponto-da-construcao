@@ -710,14 +710,6 @@ function addToCart(id){
   const controlaEstoque =
     p.controla_estoque !== false;
 
-  if(
-    controlaEstoque &&
-    Number(p.estoque) <= 0
-  ){
-    alert('Este produto está sem estoque.');
-    return;
-  }
-
   const found =
     state.cart.find(x => x.id === id);
 
@@ -733,6 +725,7 @@ function addToCart(id){
 
       if(
         controlaEstoque &&
+        Number(p.estoque) > 0 &&
         novo > Number(p.estoque)
       ){
         alert('Quantidade maior que o estoque disponível.');
@@ -759,6 +752,7 @@ function addToCart(id){
 
       if(
         controlaEstoque &&
+        Number(p.estoque) > 0 &&
         novo > Number(p.estoque)
       ){
         alert('Quantidade maior que o estoque disponível.');
@@ -774,6 +768,7 @@ function addToCart(id){
 
       if(
         controlaEstoque &&
+        Number(p.estoque) > 0 &&
         novo > Number(p.estoque)
       ){
         alert('Quantidade maior que o estoque disponível.');
