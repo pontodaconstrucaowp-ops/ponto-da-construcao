@@ -1294,6 +1294,560 @@ async function confirmSale(){
 
   navigate('home');
 }
+async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
+
+  if(!vendaId){
+    alert('Venda não encontrada.');
+    return;
+  }
+
+  const { data: venda, error } =
+    await supabaseClient
+      .from('vendas')
+      .select(`
+        id,
+        data,
+        valor_total,
+        forma_pagamento,
+        status,
+        clientes (
+          nome,
+          telefone,
+          endereço
+        ),
+        itens_venda (
+          quantidade,
+          subtotal,
+          produtos (
+            nome,
+            unidade
+          )
+        )
+      `)
+      .eq('id', vendaId)
+      .single();
+
+  if(error){
+
+    console.error(
+      'ERRO AO CARREGAR VENDA PARA IMPRESSÃO:',
+      error
+    );
+
+    alert(
+      'Não foi possível carregar os dados da venda:\n\n' +
+      error.message
+    );
+
+    return;
+  }
+
+  const cliente =
+    venda.clientes || {};
+
+  const itens =
+    venda.itens_venda || [];
+
+  const formatarQuantidade = (quantidade) => {
+
+    const numero = Number(quantidade);
+
+    if(Number.isInteger(numero)){
+      return String(numero);
+    }
+
+    return numero
+      .toFixed(3)
+      .replace(/\.?0+$/, '');
+  };
+
+  const formatarUnidade = (unidade) => {
+
+    const mapa = {
+      'unidade': 'un.',
+      'dúzia': 'dz.',
+      'duzia': 'dz.',
+      'm³': 'm³',
+      'kg': 'kg',
+      'milheiro': 'mil.',
+      'carrada': 'carr.',
+      'balde': 'balde',
+      'saco': 'saco'
+    };
+
+    return mapa[unidade] || unidade || '';
+  };
+
+  const linhasItens = itens.map(item => {
+
+    const produto =
+      item.produtos || {};
+
+    const quantidade =
+      formatarQuantidade(item.quantidade);
+
+    const unidade =
+      formatarUnidade(produto.unidade);
+
+    return `
+      <tr>
+        <td>
+          ${produto.nome || 'Produto'}
+        </td>
+
+        <td class="quantidade">
+          ${quantidade} ${unidade}
+        </td>
+
+        <td class="valor">
+          ${money(Number(item.subtotal || 0))}
+        </td>
+      </tr>
+    `;
+
+  }).join('');
+
+  const titulo =
+    tipo === 'orcamento'
+      ? 'ORÇAMENTO'
+      : 'COMPROVANTE DE VENDA';
+
+  const carimbo =
+    tipo === 'orcamento'
+      ? ''
+      : '<div class="carimbo-pago">PAGO</div>';
+
+  const html = `
+
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>
+  ${titulo} - Venda #${venda.id}
+</title>
+
+<style>
+
+  *{
+    box-sizing:border-box;
+  }
+
+  body{
+    margin:0;
+    padding:20px;
+    background:#eee;
+    font-family:Arial,Helvetica,sans-serif;
+    color:#111;
+  }
+
+  .folha{
+    width:210mm;
+    min-height:297mm;
+    margin:0 auto;
+    background:#fff;
+    padding:12mm;
+  }
+
+  .via{
+    position:relative;
+    min-height:125mm;
+  }
+
+  .cabecalho{
+    text-align:center;
+    border-bottom:1px solid #222;
+    padding-bottom:8px;
+    margin-bottom:10px;
+  }
+
+  .empresa{
+    font-size:22px;
+    font-weight:bold;
+  }
+
+  .subtitulo{
+    font-size:12px;
+    margin-top:3px;
+  }
+
+  .identificacao{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+    font-size:12px;
+  }
+
+  .cliente{
+    margin-bottom:10px;
+    font-size:12px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+  }
+
+  th{
+    border-bottom:1px solid #222;
+    padding:5px 3px;
+    text-align:left;
+  }
+
+  td{
+    padding:6px 3px;
+    border-bottom:1px solid #ddd;
+  }
+
+  .quantidade{
+    width:25%;
+    text-align:center;
+  }
+
+  .valor{
+    width:25%;
+    text-align:right;
+  }
+
+  .total{
+    display:flex;
+    justify-content:space-between;
+    margin-top:12px;
+    padding-top:8px;
+    border-top:2px solid #222;
+    font-size:16px;
+    font-weight:bold;
+  }
+
+  .pagamento{
+    margin-top:8px;
+    font-size:12px;
+  }
+
+  .rodape{
+    margin-top:12px;
+    text-align:center;
+    font-size:10px;
+  }
+
+  .linha-corte{
+    border-top:2px dashed #777;
+    margin:6mm 0;
+    text-align:center;
+    font-size:9px;
+    color:#555;
+    padding-top:3px;
+  }
+
+  .via-titulo{
+    text-align:right;
+    font-size:10px;
+    font-weight:bold;
+    margin-bottom:4px;
+  }
+
+  .carimbo-pago{
+    position:absolute;
+    right:10px;
+    top:42px;
+    border:4px solid #111;
+    padding:5px 12px;
+    font-size:22px;
+    font-weight:bold;
+    transform:rotate(-8deg);
+  }
+
+  .orcamento{
+    text-align:center;
+    font-size:15px;
+    font-weight:bold;
+    margin-bottom:8px;
+  }
+
+  @media print{
+
+    body{
+      padding:0;
+      background:#fff;
+    }
+
+    .folha{
+      width:210mm;
+      min-height:297mm;
+      margin:0;
+      padding:10mm;
+    }
+
+    @page{
+      size:A4;
+      margin:0;
+    }
+
+  }
+
+</style>
+
+</head>
+
+<body>
+
+<div class="folha">
+
+  <div class="via">
+
+    <div class="via-titulo">
+      VIA DO CLIENTE
+    </div>
+
+    ${carimbo}
+
+    <div class="cabecalho">
+
+      <div class="empresa">
+        PONTO DA CONSTRUÇÃO
+      </div>
+
+      <div class="subtitulo">
+        MATERIAIS DE CONSTRUÇÃO
+      </div>
+
+    </div>
+
+    ${
+      tipo === 'orcamento'
+        ? '<div class="orcamento">ORÇAMENTO</div>'
+        : ''
+    }
+
+    <div class="identificacao">
+
+      <div>
+        Venda nº: <strong>${venda.id}</strong>
+      </div>
+
+      <div>
+        ${new Date(venda.data).toLocaleDateString('pt-BR')}
+      </div>
+
+    </div>
+
+    <div class="cliente">
+
+      <strong>Cliente:</strong>
+      ${cliente.nome || 'Não informado'}
+
+      ${
+        cliente.telefone
+          ? `<br><strong>Telefone:</strong> ${cliente.telefone}`
+          : ''
+      }
+
+    </div>
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Produto</th>
+          <th>Quantidade</th>
+          <th style="text-align:right">
+            Valor
+          </th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${linhasItens}
+
+      </tbody>
+
+    </table>
+
+    <div class="total">
+
+      <span>TOTAL</span>
+
+      <span>
+        ${money(Number(venda.valor_total || 0))}
+      </span>
+
+    </div>
+
+    ${
+      tipo !== 'orcamento'
+        ? `
+          <div class="pagamento">
+            <strong>Forma de pagamento:</strong>
+            ${venda.forma_pagamento || '-'}
+          </div>
+        `
+        : ''
+    }
+
+    <div class="rodape">
+      Obrigado pela preferência!
+    </div>
+
+  </div>
+
+
+  <div class="linha-corte">
+    ✂ VIA DO CLIENTE / VIA DA EMPRESA ✂
+  </div>
+
+
+  <div class="via">
+
+    <div class="via-titulo">
+      VIA DA EMPRESA
+    </div>
+
+    ${carimbo}
+
+    <div class="cabecalho">
+
+      <div class="empresa">
+        PONTO DA CONSTRUÇÃO
+      </div>
+
+      <div class="subtitulo">
+        MATERIAIS DE CONSTRUÇÃO
+      </div>
+
+    </div>
+
+    ${
+      tipo === 'orcamento'
+        ? '<div class="orcamento">ORÇAMENTO</div>'
+        : ''
+    }
+
+    <div class="identificacao">
+
+      <div>
+        Venda nº: <strong>${venda.id}</strong>
+      </div>
+
+      <div>
+        ${new Date(venda.data).toLocaleDateString('pt-BR')}
+      </div>
+
+    </div>
+
+    <div class="cliente">
+
+      <strong>Cliente:</strong>
+      ${cliente.nome || 'Não informado'}
+
+      ${
+        cliente.telefone
+          ? `<br><strong>Telefone:</strong> ${cliente.telefone}`
+          : ''
+      }
+
+    </div>
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Produto</th>
+          <th>Quantidade</th>
+          <th style="text-align:right">
+            Valor
+          </th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${linhasItens}
+
+      </tbody>
+
+    </table>
+
+    <div class="total">
+
+      <span>TOTAL</span>
+
+      <span>
+        ${money(Number(venda.valor_total || 0))}
+      </span>
+
+    </div>
+
+    ${
+      tipo !== 'orcamento'
+        ? `
+          <div class="pagamento">
+            <strong>Forma de pagamento:</strong>
+            ${venda.forma_pagamento || '-'}
+          </div>
+        `
+        : ''
+    }
+
+    <div class="rodape">
+      Controle interno — Via da empresa
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+  window.onload = function(){
+
+    window.focus();
+
+    setTimeout(function(){
+      window.print();
+    }, 300);
+
+  };
+
+</script>
+
+</body>
+
+</html>
+
+  `;
+
+  const janela =
+    window.open(
+      '',
+      '_blank',
+      'width=900,height=700'
+    );
+
+  if(!janela){
+
+    alert(
+      'O navegador bloqueou a janela de impressão. Permita pop-ups para este site.'
+    );
+
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(html);
+  janela.document.close();
+
+}
 async function renderProducts(el){
 
   el.innerHTML = `
