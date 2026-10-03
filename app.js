@@ -428,52 +428,68 @@ async function renderSales(el){
   window.saleProducts = data;
 
   productsList.innerHTML =
-    data.map(p => `
+    data.map(p => {
 
-      <div class="card">
+      const controlaEstoque =
+        p.controla_estoque !== false;
 
-        <div class="row">
+      const semEstoque =
+        controlaEstoque &&
+        Number(p.estoque) <= 0;
 
-          <div>
+      return `
 
-            <div class="product-name">
-              ${p.nome}
+        <div class="card">
+
+          <div class="row">
+
+            <div>
+
+              <div class="product-name">
+                ${p.nome}
+              </div>
+
+              <span class="muted">
+
+                ${
+                  controlaEstoque
+                    ? `${p.unidade} · estoque ${p.estoque}`
+                    : `${p.unidade} · 🛒 revenda`
+                }
+
+              </span>
+
             </div>
 
-            <span class="muted">
-              ${p.unidade} · estoque ${p.estoque}
-            </span>
+            <div class="price">
+              ${money(p.preco)}
+            </div>
 
           </div>
 
-          <div class="price">
-            ${money(p.preco)}
+          <div class="actions">
+
+            <button
+              class="secondary"
+              onclick="addToCart(${p.id})"
+              ${semEstoque ? 'disabled' : ''}
+            >
+
+              ${
+                semEstoque
+                  ? 'Sem estoque'
+                  : 'Adicionar'
+              }
+
+            </button>
+
           </div>
 
         </div>
 
-        <div class="actions">
+      `;
 
-          <button
-            class="secondary"
-            onclick="addToCart(${p.id})"
-            ${Number(p.estoque) <= 0
-              ? 'disabled'
-              : ''
-            }
-          >
-            ${
-              Number(p.estoque) <= 0
-                ? 'Sem estoque'
-                : 'Adicionar'
-            }
-          </button>
-
-        </div>
-
-      </div>
-
-    `).join('');
+    }).join('');
 }
 
 async function saveSaleNewClient(){
