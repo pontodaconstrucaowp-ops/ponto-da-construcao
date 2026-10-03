@@ -820,6 +820,106 @@ function addToCart(id){
   );
 }
 function changeCartQty(id, delta){
+
+  const item =
+    state.cart.find(x => x.id === id);
+
+  if(!item){
+    return;
+  }
+
+  const controlaEstoque =
+    item.controlaEstoque !== false;
+
+  if(item.unit === 'milheiro'){
+
+    const atual =
+      Number(item.milheiroInteiro || 0);
+
+    const novo =
+      atual + delta;
+
+    if(novo <= 0){
+
+      state.cart =
+        state.cart.filter(x => x.id !== id);
+
+    }else{
+
+      if(
+        controlaEstoque &&
+        novo > Number(item.stock)
+      ){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      item.milheiroInteiro = novo;
+
+      item.qty =
+        novo +
+        (
+          Number(item.unidadesAvulsas || 0) / 1000
+        );
+    }
+
+  }else if(
+    item.unit === 'm³' ||
+    item.unit === 'kg'
+  ){
+
+    const step = 0.5;
+
+    const novo =
+      Number(item.qty || 0) + (delta * step);
+
+    if(novo <= 0){
+
+      state.cart =
+        state.cart.filter(x => x.id !== id);
+
+    }else{
+
+      if(
+        controlaEstoque &&
+        novo > Number(item.stock)
+      ){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      item.qty = novo;
+    }
+
+  }else{
+
+    const novo =
+      Number(item.qty || 0) + delta;
+
+    if(novo <= 0){
+
+      state.cart =
+        state.cart.filter(x => x.id !== id);
+
+    }else{
+
+      if(
+        controlaEstoque &&
+        novo > Number(item.stock)
+      ){
+        alert('Quantidade maior que o estoque disponível.');
+        return;
+      }
+
+      item.qty = novo;
+    }
+  }
+
+  renderSales(
+    document.getElementById('content')
+  );
+}
+
 function updateMilheiroAvulso(id, value){
 
   const item = state.cart.find(
