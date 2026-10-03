@@ -1404,6 +1404,10 @@ function openProductForm(){
 
   modal.id = 'productModal';
 
+  modal.style.position = 'fixed';
+  modal.style.inset = '0';
+  modal.style.zIndex = '9999';
+  
   modal.innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-card">
