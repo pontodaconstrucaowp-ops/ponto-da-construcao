@@ -366,14 +366,15 @@ async function renderSales(el){
     </div>
   `;
 
-const { data, error } =
-  await supabaseClient
-    .from('produtos')
-    .select('*')
-    .eq('ativo', true)
-    .order('nome', {
-      ascending: true
-    });
+  const { data, error } =
+    await supabaseClient
+      .from('produtos')
+      .select('*')
+      .eq('ativo', true)
+      .order('nome', {
+        ascending: true
+      });
+
   const productsList =
     document.getElementById('saleProducts');
 
@@ -433,10 +434,6 @@ const { data, error } =
       const controlaEstoque =
         p.controla_estoque !== false;
 
-      const semEstoque =
-        controlaEstoque &&
-        Number(p.estoque) <= 0;
-
       return `
 
         <div class="card">
@@ -472,15 +469,8 @@ const { data, error } =
             <button
               class="secondary"
               onclick="addToCart(${p.id})"
-              ${semEstoque ? 'disabled' : ''}
             >
-
-              ${
-                semEstoque
-                  ? 'Sem estoque'
-                  : 'Adicionar'
-              }
-
+              Adicionar
             </button>
 
           </div>
@@ -491,7 +481,6 @@ const { data, error } =
 
     }).join('');
 }
-
 async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
   console.log('USUARIO AUTENTICADO:', user);
