@@ -1089,14 +1089,29 @@ const total = totalMateriais - desconto;
         <h2>Finalizar venda</h2>
       </div>
 
-      <p class="muted">
-        Total da venda
-      </p>
+<p class="muted">
+  Total dos materiais
+</p>
 
-      <div class="total" style="font-size:28px;margin-bottom:24px">
-        ${money(total)}
-      </div>
+<div style="margin-bottom:8px">
+  ${money(totalMateriais)}
+</div>
 
+<p class="muted">
+  Valor abatido
+</p>
+
+<div style="margin-bottom:8px">
+  ${money(desconto)}
+</div>
+
+<p class="muted">
+  Total final
+</p>
+
+<div class="total" style="font-size:28px;margin-bottom:24px">
+  ${money(total)}
+</div>
       <div class="section-title">
         <h3>Forma de pagamento</h3>
       </div>
