@@ -3697,6 +3697,30 @@ async function nextDelivery(id){
     document.getElementById('content')
   );
 }
+async function renderReports(el){
+
+  el.innerHTML = `
+    <div class="card">
+
+      <div class="section-title">
+        <h2>Relatórios</h2>
+      </div>
+
+      <p class="muted">
+        Resumo das vendas registradas.
+      </p>
+
+      <div class="card">
+        <strong>Vendas</strong>
+        <p class="muted">
+          Consulte as vendas realizadas e imprima os comprovantes.
+        </p>
+      </div>
+
+    </div>
+  `;
+
+}
 function renderMore(el){
  el.innerHTML=`<div class="list">
  <button class="card" onclick="navigate('clients')"><strong>Clientes</strong><span class="muted">Cadastro e histórico</span></button>
