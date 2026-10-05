@@ -2151,7 +2151,7 @@ body{
       </span>
 
       <span>
-        ${money(Number(venda.valor_total || 0))}
+       ${money(totalFinal)}
       </span>
 
     </div>
@@ -2358,7 +2358,7 @@ body{
       </span>
 
       <span>
-        ${money(Number(venda.valor_total || 0))}
+        ${money(totalFinal)}
       </span>
 
     </div>
