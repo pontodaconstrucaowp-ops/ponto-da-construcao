@@ -358,16 +358,12 @@ async function renderSales(el){
           step="0.01"
           placeholder="0,00"
           value="${state.saleDiscount || ''}"
-          oninput="
-            state.saleDiscount = Math.max(
-              0,
-              Number(this.value) || 0
-            );
-
-            renderSales(
-              document.getElementById('content')
-            );
-          "
+oninput="
+  state.saleDiscount = Math.max(
+    0,
+    Number(this.value) || 0
+  );
+"
         >
 
       </div>
