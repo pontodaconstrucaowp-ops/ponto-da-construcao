@@ -1068,11 +1068,17 @@ async function finishSale(){
     return;
   }
 
-  const total = state.cart.reduce(
-    (s,x) => s + (x.price * x.qty),
-    0
-  );
+const totalMateriais = state.cart.reduce(
+  (s,x) => s + (x.price * x.qty),
+  0
+);
 
+const desconto = Math.min(
+  Math.max(0, Number(state.saleDiscount) || 0),
+  totalMateriais
+);
+
+const total = totalMateriais - desconto;
   const content = document.getElementById('content');
 
   content.innerHTML = `
