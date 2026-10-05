@@ -3701,25 +3701,122 @@ async function renderReports(el){
 
   el.innerHTML = `
     <div class="card">
-
       <div class="section-title">
         <h2>Relatórios</h2>
       </div>
 
-      <p class="muted">
-        Resumo das vendas registradas.
-      </p>
+      <p class="muted">Vendas realizadas</p>
 
-      <div class="card">
-        <strong>Vendas</strong>
-        <p class="muted">
-          Consulte as vendas realizadas e imprima os comprovantes.
-        </p>
+      <div id="reportsList" class="list">
+        <div class="muted">Carregando vendas...</div>
       </div>
-
     </div>
   `;
 
+  const { data: vendas, error } = await supabaseClient
+    .from('vendas')
+    .select('*')
+    .order('id', { ascending: false });
+
+  if(error){
+    console.error(error);
+
+    document.getElementById('reportsList').innerHTML = `
+      <div class="card">
+        <strong>Erro ao carregar vendas</strong>
+        <p class="muted">${error.message}</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  if(!vendas || vendas.length === 0){
+    document.getElementById('reportsList').innerHTML = `
+      <div class="card">
+        <p class="muted">Nenhuma venda registrada ainda.</p>
+      </div>
+    `;
+
+    return;
+  }
+
+  const clientesIds = [
+    ...new Set(
+      vendas
+        .map(v => v.cliente_id)
+        .filter(Boolean)
+    )
+  ];
+
+  let clientes = [];
+
+  if(clientesIds.length){
+
+    const respostaClientes = await supabaseClient
+      .from('clientes')
+      .select('id,nome,telefone')
+      .in('id', clientesIds);
+
+    clientes = respostaClientes.data || [];
+  }
+
+  const mapaClientes = {};
+
+  clientes.forEach(c => {
+    mapaClientes[c.id] = c;
+  });
+
+  document.getElementById('reportsList').innerHTML =
+    vendas.map(venda => {
+
+      const cliente =
+        mapaClientes[venda.cliente_id];
+
+      const nomeCliente =
+        cliente?.nome || 'Cliente não informado';
+
+      const formaPagamento =
+        venda.forma_pagamento || 'Não informado';
+
+      return `
+        <div class="card">
+
+          <div class="row">
+            <strong>Venda #${venda.id}</strong>
+
+            <strong class="total">
+              ${money(Number(venda.valor_total || 0))}
+            </strong>
+          </div>
+
+          <div class="muted">
+            ${nomeCliente}
+          </div>
+
+          <div class="muted">
+            Pagamento: ${formaPagamento}
+          </div>
+
+          <div class="row" style="margin-top:12px">
+
+            <span class="muted">
+              Status: ${venda.status || '—'}
+            </span>
+
+            <button
+              class="btn primary"
+              onclick="abrirImpressaoVenda(${venda.id}, 'pago')"
+            >
+              Imprimir
+            </button>
+
+          </div>
+
+        </div>
+      `;
+
+    }).join('');
 }
 function renderMore(el){
  el.innerHTML=`<div class="list">
