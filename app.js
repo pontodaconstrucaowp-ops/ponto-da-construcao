@@ -1301,7 +1301,8 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     return;
   }
 
-  const { data: venda, error } =
+  // 1. Buscar a venda
+  const { data: venda, error: vendaError } =
     await supabaseClient
       .from('vendas')
       .select(`
@@ -1310,44 +1311,155 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         valor_total,
         forma_pagamento,
         status,
-        clientes (
-          nome,
-          telefone,
-          endereço
-        ),
-        itens_venda (
-          quantidade,
-          subtotal,
-          produtos (
-            nome,
-            unidade
-          )
-        )
+        cliente_id
       `)
       .eq('id', vendaId)
-      .single();
+      .maybeSingle();
 
-  if(error){
+  if(vendaError){
 
     console.error(
-      'ERRO AO CARREGAR VENDA PARA IMPRESSÃO:',
-      error
+      'ERRO AO CARREGAR VENDA:',
+      vendaError
     );
 
     alert(
-      'Não foi possível carregar os dados da venda:\n\n' +
-      error.message
+      'Não foi possível carregar a venda:\n\n' +
+      vendaError.message
     );
 
     return;
   }
 
-  const cliente =
-    venda.clientes || {};
+  if(!venda){
 
-  const itens =
-    venda.itens_venda || [];
+    alert(
+      'A venda nº ' +
+      vendaId +
+      ' não foi encontrada.'
+    );
 
+    return;
+  }
+
+
+  // 2. Buscar cliente separadamente
+  let cliente = {};
+
+  if(venda.cliente_id){
+
+    const { data: clienteData, error: clienteError } =
+      await supabaseClient
+        .from('clientes')
+        .select(`
+          nome,
+          telefone,
+          endereço
+        `)
+        .eq('id', venda.cliente_id)
+        .maybeSingle();
+
+    if(clienteError){
+
+      console.error(
+        'ERRO AO CARREGAR CLIENTE:',
+        clienteError
+      );
+
+    }else if(clienteData){
+
+      cliente = clienteData;
+
+    }
+
+  }
+
+
+  // 3. Buscar itens da venda
+  const { data: itens, error: itensError } =
+    await supabaseClient
+      .from('itens_venda')
+      .select(`
+        quantidade,
+        subtotal,
+        produtos_id
+      `)
+      .eq('vendas_id', vendaId);
+
+  if(itensError){
+
+    console.error(
+      'ERRO AO CARREGAR ITENS:',
+      itensError
+    );
+
+    alert(
+      'Não foi possível carregar os itens da venda:\n\n' +
+      itensError.message
+    );
+
+    return;
+  }
+
+
+  // 4. Buscar os produtos
+  const produtoIds =
+    (itens || [])
+      .map(item => item.produtos_id)
+      .filter(Boolean);
+
+  let produtos = [];
+
+  if(produtoIds.length){
+
+    const { data: produtosData, error: produtosError } =
+      await supabaseClient
+        .from('produtos')
+        .select(`
+          id,
+          nome,
+          unidade
+        `)
+        .in('id', produtoIds);
+
+    if(produtosError){
+
+      console.error(
+        'ERRO AO CARREGAR PRODUTOS:',
+        produtosError
+      );
+
+      alert(
+        'Não foi possível carregar os produtos da venda:\n\n' +
+        produtosError.message
+      );
+
+      return;
+    }
+
+    produtos = produtosData || [];
+
+  }
+
+
+  // 5. Juntar item + produto
+  const itensComProdutos =
+    (itens || []).map(item => {
+
+      const produto =
+        produtos.find(
+          p => Number(p.id) === Number(item.produtos_id)
+        );
+
+      return {
+        ...item,
+        produto: produto || {}
+      };
+
+    });
+
+
+  // 6. Formatação
   const formatarQuantidade = (quantidade) => {
 
     const numero = Number(quantidade);
@@ -1359,7 +1471,9 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     return numero
       .toFixed(3)
       .replace(/\.?0+$/, '');
+
   };
+
 
   const formatarUnidade = (unidade) => {
 
@@ -1376,47 +1490,57 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     };
 
     return mapa[unidade] || unidade || '';
+
   };
 
-  const linhasItens = itens.map(item => {
 
-    const produto =
-      item.produtos || {};
+  // 7. Montar linhas dos produtos
+  const linhasItens =
+    itensComProdutos.map(item => {
 
-    const quantidade =
-      formatarQuantidade(item.quantidade);
+      const produto =
+        item.produto || {};
 
-    const unidade =
-      formatarUnidade(produto.unidade);
+      const quantidade =
+        formatarQuantidade(item.quantidade);
 
-    return `
-      <tr>
-        <td>
-          ${produto.nome || 'Produto'}
-        </td>
+      const unidade =
+        formatarUnidade(produto.unidade);
 
-        <td class="quantidade">
-          ${quantidade} ${unidade}
-        </td>
+      return `
+        <tr>
 
-        <td class="valor">
-          ${money(Number(item.subtotal || 0))}
-        </td>
-      </tr>
-    `;
+          <td>
+            ${produto.nome || 'Produto'}
+          </td>
 
-  }).join('');
+          <td class="quantidade">
+            ${quantidade} ${unidade}
+          </td>
+
+          <td class="valor">
+            ${money(Number(item.subtotal || 0))}
+          </td>
+
+        </tr>
+      `;
+
+    }).join('');
+
 
   const titulo =
     tipo === 'orcamento'
       ? 'ORÇAMENTO'
       : 'COMPROVANTE DE VENDA';
 
+
   const carimbo =
     tipo === 'orcamento'
       ? ''
       : '<div class="carimbo-pago">PAGO</div>';
 
+
+  // 8. Documento de impressão
   const html = `
 
 <!DOCTYPE html>
@@ -1599,6 +1723,9 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
 <div class="folha">
 
+
+  <!-- VIA DO CLIENTE -->
+
   <div class="via">
 
     <div class="via-titulo">
@@ -1628,7 +1755,8 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     <div class="identificacao">
 
       <div>
-        Venda nº: <strong>${venda.id}</strong>
+        Venda nº:
+        <strong>${venda.id}</strong>
       </div>
 
       <div>
@@ -1655,11 +1783,19 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       <thead>
 
         <tr>
-          <th>Produto</th>
-          <th>Quantidade</th>
+
+          <th>
+            Produto
+          </th>
+
+          <th>
+            Quantidade
+          </th>
+
           <th style="text-align:right">
             Valor
           </th>
+
         </tr>
 
       </thead>
@@ -1674,7 +1810,9 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     <div class="total">
 
-      <span>TOTAL</span>
+      <span>
+        TOTAL
+      </span>
 
       <span>
         ${money(Number(venda.valor_total || 0))}
@@ -1686,8 +1824,13 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       tipo !== 'orcamento'
         ? `
           <div class="pagamento">
-            <strong>Forma de pagamento:</strong>
+
+            <strong>
+              Forma de pagamento:
+            </strong>
+
             ${venda.forma_pagamento || '-'}
+
           </div>
         `
         : ''
@@ -1704,6 +1847,8 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     ✂ VIA DO CLIENTE / VIA DA EMPRESA ✂
   </div>
 
+
+  <!-- VIA DA EMPRESA -->
 
   <div class="via">
 
@@ -1734,7 +1879,8 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     <div class="identificacao">
 
       <div>
-        Venda nº: <strong>${venda.id}</strong>
+        Venda nº:
+        <strong>${venda.id}</strong>
       </div>
 
       <div>
@@ -1761,11 +1907,19 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       <thead>
 
         <tr>
-          <th>Produto</th>
-          <th>Quantidade</th>
+
+          <th>
+            Produto
+          </th>
+
+          <th>
+            Quantidade
+          </th>
+
           <th style="text-align:right">
             Valor
           </th>
+
         </tr>
 
       </thead>
@@ -1780,7 +1934,9 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     <div class="total">
 
-      <span>TOTAL</span>
+      <span>
+        TOTAL
+      </span>
 
       <span>
         ${money(Number(venda.valor_total || 0))}
@@ -1792,8 +1948,13 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       tipo !== 'orcamento'
         ? `
           <div class="pagamento">
-            <strong>Forma de pagamento:</strong>
+
+            <strong>
+              Forma de pagamento:
+            </strong>
+
             ${venda.forma_pagamento || '-'}
+
           </div>
         `
         : ''
@@ -1807,6 +1968,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
 </div>
 
+
 <script>
 
   window.onload = function(){
@@ -1814,7 +1976,9 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     window.focus();
 
     setTimeout(function(){
+
       window.print();
+
     }, 300);
 
   };
@@ -1827,12 +1991,15 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
   `;
 
+
+  // 9. Abrir impressão
   const janela =
     window.open(
       '',
       '_blank',
       'width=900,height=700'
     );
+
 
   if(!janela){
 
@@ -1843,8 +2010,11 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     return;
   }
 
+
   janela.document.open();
+
   janela.document.write(html);
+
   janela.document.close();
 
 }
