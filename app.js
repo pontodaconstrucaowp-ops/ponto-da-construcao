@@ -3701,27 +3701,94 @@ async function renderReports(el){
 
   el.innerHTML = `
     <div class="card">
+
       <div class="section-title">
         <h2>Relatórios</h2>
       </div>
 
-      <p class="muted">Vendas realizadas</p>
+      <div class="row" style="gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+
+        <div class="field" style="flex:1; min-width:140px;">
+          <label>Data inicial</label>
+          <input
+            id="reportDateStart"
+            class="search"
+            type="date"
+          >
+        </div>
+
+        <div class="field" style="flex:1; min-width:140px;">
+          <label>Data final</label>
+          <input
+            id="reportDateEnd"
+            class="search"
+            type="date"
+          >
+        </div>
+
+        <button
+          class="btn primary"
+          onclick="carregarRelatorio()"
+          style="margin-top:22px;"
+        >
+          Filtrar
+        </button>
+
+      </div>
+
+      <div id="reportSummary"></div>
 
       <div id="reportsList" class="list">
         <div class="muted">Carregando vendas...</div>
       </div>
+
     </div>
   `;
 
-  const { data: vendas, error } = await supabaseClient
+  await carregarRelatorio();
+}
+
+
+async function carregarRelatorio(){
+
+  const lista = document.getElementById('reportsList');
+
+  if(!lista){
+    return;
+  }
+
+  lista.innerHTML = `
+    <div class="muted">
+      Carregando vendas...
+    </div>
+  `;
+
+  const inicio =
+    document.getElementById('reportDateStart')?.value;
+
+  const fim =
+    document.getElementById('reportDateEnd')?.value;
+
+  let query = supabaseClient
     .from('vendas')
     .select('*')
-    .order('id', { ascending: false });
+    .order('id', { ascending:false });
+
+  if(inicio){
+    query = query.gte('data', inicio);
+  }
+
+  if(fim){
+    query = query.lte('data', fim + 'T23:59:59');
+  }
+
+  const { data: vendas, error } = await query;
 
   if(error){
+
     console.error(error);
 
-    document.getElementById('reportsList').innerHTML = `
+    lista.innerHTML = `
       <div class="card">
         <strong>Erro ao carregar vendas</strong>
         <p class="muted">${error.message}</p>
@@ -3732,9 +3799,14 @@ async function renderReports(el){
   }
 
   if(!vendas || vendas.length === 0){
-    document.getElementById('reportsList').innerHTML = `
+
+    document.getElementById('reportSummary').innerHTML = '';
+
+    lista.innerHTML = `
       <div class="card">
-        <p class="muted">Nenhuma venda registrada ainda.</p>
+        <p class="muted">
+          Nenhuma venda encontrada nesse período.
+        </p>
       </div>
     `;
 
@@ -3753,21 +3825,47 @@ async function renderReports(el){
 
   if(clientesIds.length){
 
-    const respostaClientes = await supabaseClient
-      .from('clientes')
-      .select('id,nome,telefone')
-      .in('id', clientesIds);
+    const respostaClientes =
+      await supabaseClient
+        .from('clientes')
+        .select('id,nome,telefone')
+        .in('id', clientesIds);
 
     clientes = respostaClientes.data || [];
   }
 
   const mapaClientes = {};
 
-  clientes.forEach(c => {
-    mapaClientes[c.id] = c;
+  clientes.forEach(cliente => {
+    mapaClientes[cliente.id] = cliente;
   });
 
-  document.getElementById('reportsList').innerHTML =
+  const totalVendido =
+    vendas.reduce(
+      (soma, venda) =>
+        soma + Number(venda.valor_total || 0),
+      0
+    );
+
+  document.getElementById('reportSummary').innerHTML = `
+    <div class="card" style="margin-bottom:15px;">
+
+      <div class="row">
+        <span>Quantidade de vendas</span>
+        <strong>${vendas.length}</strong>
+      </div>
+
+      <div class="row">
+        <span>Total vendido</span>
+        <strong class="total">
+          ${money(totalVendido)}
+        </strong>
+      </div>
+
+    </div>
+  `;
+
+  lista.innerHTML =
     vendas.map(venda => {
 
       const cliente =
@@ -3779,15 +3877,24 @@ async function renderReports(el){
       const formaPagamento =
         venda.forma_pagamento || 'Não informado';
 
+      const dataVenda =
+        venda.data
+          ? new Date(venda.data).toLocaleString('pt-BR')
+          : 'Data não informada';
+
       return `
         <div class="card">
 
           <div class="row">
-            <strong>Venda #${venda.id}</strong>
+
+            <strong>
+              Venda #${venda.id}
+            </strong>
 
             <strong class="total">
               ${money(Number(venda.valor_total || 0))}
             </strong>
+
           </div>
 
           <div class="muted">
@@ -3795,10 +3902,14 @@ async function renderReports(el){
           </div>
 
           <div class="muted">
+            ${dataVenda}
+          </div>
+
+          <div class="muted">
             Pagamento: ${formaPagamento}
           </div>
 
-          <div class="row" style="margin-top:12px">
+          <div class="row" style="margin-top:12px;">
 
             <span class="muted">
               Status: ${venda.status || '—'}
