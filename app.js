@@ -363,6 +363,22 @@ oninput="
     0,
     Number(this.value) || 0
   );
+
+  const totalMateriais = state.cart.reduce(
+    (s,x) => s + x.price * x.qty,
+    0
+  );
+
+  const desconto = Math.min(
+    state.saleDiscount,
+    totalMateriais
+  );
+
+  document.getElementById('saleDiscountValue').textContent =
+    money(desconto);
+
+  document.getElementById('saleFinalTotal').textContent =
+    money(totalMateriais - desconto);
 "
         >
 
