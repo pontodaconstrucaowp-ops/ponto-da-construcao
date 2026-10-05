@@ -384,6 +384,49 @@ oninput="
 
       </div>
 
+      <div class="row">
+
+  <span>Valor abatido</span>
+
+  <span id="saleDiscountValue">
+    ${money(
+      Math.min(
+        Number(state.saleDiscount) || 0,
+        state.cart.reduce(
+          (s,x) => s + x.price * x.qty,
+          0
+        )
+      )
+    )}
+  </span>
+
+</div>
+
+<div class="row">
+
+  <strong>Total final</strong>
+
+  <strong
+    id="saleFinalTotal"
+    class="total"
+  >
+    ${money(
+      state.cart.reduce(
+        (s,x) => s + x.price * x.qty,
+        0
+      ) -
+      Math.min(
+        Number(state.saleDiscount) || 0,
+        state.cart.reduce(
+          (s,x) => s + x.price * x.qty,
+          0
+        )
+      )
+    )}
+  </strong>
+
+</div>
+
       <div class="actions">
 
         <button
