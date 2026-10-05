@@ -1291,11 +1291,17 @@ async function confirmSale(){
     return;
   }
 
-  const total = state.cart.reduce(
-    (s,x) => s + (x.price * x.qty),
-    0
-  );
+const totalMateriais = state.cart.reduce(
+  (s,x) => s + (x.price * x.qty),
+  0
+);
 
+const desconto = Math.min(
+  Math.max(0, Number(state.saleDiscount) || 0),
+  totalMateriais
+);
+
+const total = totalMateriais - desconto;
   const itens = state.cart.map(item => ({
     produtos_id: item.id,
     quantidade: item.qty,
