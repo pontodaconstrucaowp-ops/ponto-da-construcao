@@ -1301,7 +1301,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     return;
   }
 
-  // 1. Buscar a venda
+  // ==============================
+  // VENDA
+  // ==============================
+
   const { data: venda, error: vendaError } =
     await supabaseClient
       .from('vendas')
@@ -1343,7 +1346,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   }
 
 
-  // 2. Buscar cliente separadamente
+  // ==============================
+  // CLIENTE
+  // ==============================
+
   let cliente = {};
 
   if(venda.cliente_id){
@@ -1375,7 +1381,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   }
 
 
-  // 3. Buscar itens da venda
+  // ==============================
+  // ITENS
+  // ==============================
+
   const { data: itens, error: itensError } =
     await supabaseClient
       .from('itens_venda')
@@ -1402,7 +1411,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   }
 
 
-  // 4. Buscar os produtos
+  // ==============================
+  // PRODUTOS
+  // ==============================
+
   const produtoIds =
     (itens || [])
       .map(item => item.produtos_id)
@@ -1430,7 +1442,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       );
 
       alert(
-        'Não foi possível carregar os produtos da venda:\n\n' +
+        'Não foi possível carregar os produtos:\n\n' +
         produtosError.message
       );
 
@@ -1442,24 +1454,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   }
 
 
-  // 5. Juntar item + produto
-  const itensComProdutos =
-    (itens || []).map(item => {
+  // ==============================
+  // FORMATADORES
+  // ==============================
 
-      const produto =
-        produtos.find(
-          p => Number(p.id) === Number(item.produtos_id)
-        );
-
-      return {
-        ...item,
-        produto: produto || {}
-      };
-
-    });
-
-
-  // 6. Formatação
   const formatarQuantidade = (quantidade) => {
 
     const numero = Number(quantidade);
@@ -1478,15 +1476,17 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   const formatarUnidade = (unidade) => {
 
     const mapa = {
-      'unidade': 'un.',
-      'dúzia': 'dz.',
-      'duzia': 'dz.',
+
+      'unidade': 'Unidade',
+      'dúzia': 'Dúzia',
+      'duzia': 'Dúzia',
       'm³': 'm³',
-      'kg': 'kg',
-      'milheiro': 'mil.',
-      'carrada': 'carr.',
-      'balde': 'balde',
-      'saco': 'saco'
+      'kg': 'Kg',
+      'milheiro': 'Milheiro',
+      'carrada': 'Carrada',
+      'balde': 'Balde',
+      'saco': 'Saco'
+
     };
 
     return mapa[unidade] || unidade || '';
@@ -1494,12 +1494,17 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   };
 
 
-  // 7. Montar linhas dos produtos
+  // ==============================
+  // LINHAS DOS PRODUTOS
+  // ==============================
+
   const linhasItens =
-    itensComProdutos.map(item => {
+    (itens || []).map(item => {
 
       const produto =
-        item.produto || {};
+        produtos.find(
+          p => Number(p.id) === Number(item.produtos_id)
+        ) || {};
 
       const quantidade =
         formatarQuantidade(item.quantidade);
@@ -1508,14 +1513,16 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         formatarUnidade(produto.unidade);
 
       return `
+
         <tr>
 
-          <td>
+          <td class="material">
             ${produto.nome || 'Produto'}
           </td>
 
           <td class="quantidade">
-            ${quantidade} ${unidade}
+            ${quantidade}
+            <span>${unidade}</span>
           </td>
 
           <td class="valor">
@@ -1523,24 +1530,41 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
           </td>
 
         </tr>
+
       `;
 
     }).join('');
 
 
+  // ==============================
+  // TIPO DE DOCUMENTO
+  // ==============================
+
+  const isOrcamento =
+    tipo === 'orcamento';
+
   const titulo =
-    tipo === 'orcamento'
+    isOrcamento
       ? 'ORÇAMENTO'
       : 'COMPROVANTE DE VENDA';
 
 
   const carimbo =
-    tipo === 'orcamento'
+    isOrcamento
       ? ''
-      : '<div class="carimbo-pago">PAGO</div>';
+      : `
+
+        <div class="carimbo-pago">
+          PAGO
+        </div>
+
+      `;
 
 
-  // 8. Documento de impressão
+  // ==============================
+  // HTML DA IMPRESSÃO
+  // ==============================
+
   const html = `
 
 <!DOCTYPE html>
@@ -1552,205 +1576,437 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 <meta charset="UTF-8">
 
 <title>
-  ${titulo} - Venda #${venda.id}
+  ${titulo} - Venda ${venda.id}
 </title>
+
 
 <style>
 
-  *{
-    box-sizing:border-box;
-  }
+*{
+  box-sizing:border-box;
+}
+
+
+body{
+
+  margin:0;
+
+  padding:15px;
+
+  background:#eee;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  color:#111;
+
+}
+
+
+.folha{
+
+  width:210mm;
+
+  min-height:297mm;
+
+  margin:0 auto;
+
+  background:#fff;
+
+  padding:10mm;
+
+}
+
+
+.via{
+
+  position:relative;
+
+  min-height:125mm;
+
+}
+
+
+.cabecalho{
+
+  position:relative;
+
+  text-align:center;
+
+  border-bottom:1px solid #222;
+
+  padding-bottom:8px;
+
+  margin-bottom:8px;
+
+}
+
+
+.logo{
+
+  width:85px;
+
+  height:auto;
+
+  margin-bottom:5px;
+
+}
+
+
+.empresa{
+
+  font-size:22px;
+
+  font-weight:bold;
+
+}
+
+
+.subtitulo{
+
+  font-size:11px;
+
+  margin-top:3px;
+
+}
+
+
+.dados-empresa{
+
+  font-size:10px;
+
+  margin-top:4px;
+
+}
+
+
+.via-titulo{
+
+  text-align:right;
+
+  font-size:10px;
+
+  font-weight:bold;
+
+  margin-bottom:3px;
+
+}
+
+
+.identificacao{
+
+  display:flex;
+
+  justify-content:space-between;
+
+  gap:10px;
+
+  font-size:11px;
+
+  margin-bottom:8px;
+
+}
+
+
+.cliente{
+
+  font-size:11px;
+
+  margin-bottom:9px;
+
+  border-bottom:1px solid #aaa;
+
+  padding-bottom:6px;
+
+}
+
+
+.tabela{
+
+  width:100%;
+
+  border-collapse:collapse;
+
+  font-size:11px;
+
+}
+
+
+.tabela th{
+
+  border-bottom:1px solid #222;
+
+  padding:4px;
+
+  text-align:left;
+
+}
+
+
+.tabela td{
+
+  padding:5px 4px;
+
+  border-bottom:1px solid #ddd;
+
+}
+
+
+.material{
+
+  width:55%;
+
+  text-transform:uppercase;
+
+  font-weight:600;
+
+}
+
+
+.quantidade{
+
+  width:20%;
+
+  text-align:center;
+
+}
+
+
+.quantidade span{
+
+  font-size:9px;
+
+  display:block;
+
+  color:#555;
+
+}
+
+
+.valor{
+
+  width:25%;
+
+  text-align:right;
+
+  font-weight:bold;
+
+}
+
+
+.total{
+
+  display:flex;
+
+  justify-content:space-between;
+
+  border-top:2px solid #222;
+
+  margin-top:8px;
+
+  padding-top:7px;
+
+  font-size:15px;
+
+  font-weight:bold;
+
+}
+
+
+.abatido{
+
+  display:flex;
+
+  justify-content:space-between;
+
+  margin-top:6px;
+
+  font-size:11px;
+
+}
+
+
+.pagamento{
+
+  margin-top:6px;
+
+  font-size:10px;
+
+}
+
+
+.rodape{
+
+  margin-top:10px;
+
+  text-align:center;
+
+  font-size:9px;
+
+}
+
+
+.linha-corte{
+
+  border-top:2px dashed #555;
+
+  margin:5mm 0;
+
+  padding-top:3px;
+
+  text-align:center;
+
+  font-size:9px;
+
+  color:#555;
+
+}
+
+
+.carimbo-pago{
+
+  position:absolute;
+
+  right:15px;
+
+  top:38px;
+
+  border:4px solid #b00000;
+
+  color:#b00000;
+
+  padding:5px 12px;
+
+  font-size:24px;
+
+  font-weight:900;
+
+  letter-spacing:2px;
+
+  transform:rotate(-10deg);
+
+  opacity:.85;
+
+}
+
+
+.orcamento{
+
+  text-align:center;
+
+  font-size:15px;
+
+  font-weight:bold;
+
+  margin-bottom:7px;
+
+}
+
+
+@media print{
 
   body{
-    margin:0;
-    padding:20px;
-    background:#eee;
-    font-family:Arial,Helvetica,sans-serif;
-    color:#111;
+
+    padding:0;
+
+    background:#fff;
+
   }
+
 
   .folha{
+
     width:210mm;
+
     min-height:297mm;
-    margin:0 auto;
-    background:#fff;
-    padding:12mm;
-  }
 
-  .via{
-    position:relative;
-    min-height:125mm;
-  }
+    margin:0;
 
-  .cabecalho{
-    text-align:center;
-    border-bottom:1px solid #222;
-    padding-bottom:8px;
-    margin-bottom:10px;
-  }
-
-  .empresa{
-    font-size:22px;
-    font-weight:bold;
-  }
-
-  .subtitulo{
-    font-size:12px;
-    margin-top:3px;
-  }
-
-  .identificacao{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    margin-bottom:10px;
-    font-size:12px;
-  }
-
-  .cliente{
-    margin-bottom:10px;
-    font-size:12px;
-  }
-
-  table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:12px;
-  }
-
-  th{
-    border-bottom:1px solid #222;
-    padding:5px 3px;
-    text-align:left;
-  }
-
-  td{
-    padding:6px 3px;
-    border-bottom:1px solid #ddd;
-  }
-
-  .quantidade{
-    width:25%;
-    text-align:center;
-  }
-
-  .valor{
-    width:25%;
-    text-align:right;
-  }
-
-  .total{
-    display:flex;
-    justify-content:space-between;
-    margin-top:12px;
-    padding-top:8px;
-    border-top:2px solid #222;
-    font-size:16px;
-    font-weight:bold;
-  }
-
-  .pagamento{
-    margin-top:8px;
-    font-size:12px;
-  }
-
-  .rodape{
-    margin-top:12px;
-    text-align:center;
-    font-size:10px;
-  }
-
-  .linha-corte{
-    border-top:2px dashed #777;
-    margin:6mm 0;
-    text-align:center;
-    font-size:9px;
-    color:#555;
-    padding-top:3px;
-  }
-
-  .via-titulo{
-    text-align:right;
-    font-size:10px;
-    font-weight:bold;
-    margin-bottom:4px;
-  }
-
-  .carimbo-pago{
-    position:absolute;
-    right:10px;
-    top:42px;
-    border:4px solid #111;
-    padding:5px 12px;
-    font-size:22px;
-    font-weight:bold;
-    transform:rotate(-8deg);
-  }
-
-  .orcamento{
-    text-align:center;
-    font-size:15px;
-    font-weight:bold;
-    margin-bottom:8px;
-  }
-
-  @media print{
-
-    body{
-      padding:0;
-      background:#fff;
-    }
-
-    .folha{
-      width:210mm;
-      min-height:297mm;
-      margin:0;
-      padding:10mm;
-    }
-
-    @page{
-      size:A4;
-      margin:0;
-    }
+    padding:8mm;
 
   }
+
+
+  @page{
+
+    size:A4;
+
+    margin:0;
+
+  }
+
+}
 
 </style>
 
 </head>
 
+
 <body>
+
 
 <div class="folha">
 
 
-  <!-- VIA DO CLIENTE -->
+  <!-- ========================= -->
+  <!-- VIA CLIENTE -->
+  <!-- ========================= -->
 
   <div class="via">
 
+
     <div class="via-titulo">
-      VIA DO CLIENTE
+      VIA CLIENTE
     </div>
+
 
     ${carimbo}
 
+
     <div class="cabecalho">
+
+      <!-- LOGO SERÁ COLOCADA AQUI -->
+
+      <div
+        style="
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:5px;
+        "
+      >
+        PONTO DA CONSTRUÇÃO
+      </div>
+
 
       <div class="empresa">
         PONTO DA CONSTRUÇÃO
       </div>
 
+
       <div class="subtitulo">
         MATERIAIS DE CONSTRUÇÃO
       </div>
 
+
+      <div class="dados-empresa">
+        Atendimento e materiais de construção
+      </div>
+
     </div>
 
+
     ${
-      tipo === 'orcamento'
-        ? '<div class="orcamento">ORÇAMENTO</div>'
+      isOrcamento
+        ? `
+          <div class="orcamento">
+            ORÇAMENTO
+          </div>
+        `
         : ''
     }
+
 
     <div class="identificacao">
 
@@ -1759,46 +2015,71 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         <strong>${venda.id}</strong>
       </div>
 
+
       <div>
-        ${new Date(venda.data).toLocaleDateString('pt-BR')}
+        Data:
+        <strong>
+          ${new Date(venda.data).toLocaleString('pt-BR')}
+        </strong>
       </div>
 
     </div>
+
 
     <div class="cliente">
 
       <strong>Cliente:</strong>
       ${cliente.nome || 'Não informado'}
 
+
       ${
         cliente.telefone
-          ? `<br><strong>Telefone:</strong> ${cliente.telefone}`
+          ? `
+            &nbsp;&nbsp; | &nbsp;&nbsp;
+
+            <strong>Tel.:</strong>
+            ${cliente.telefone}
+          `
+          : ''
+      }
+
+
+      ${
+        cliente.endereço
+          ? `
+            <br>
+
+            <strong>End.:</strong>
+            ${cliente.endereço}
+          `
           : ''
       }
 
     </div>
 
-    <table>
+
+    <table class="tabela">
 
       <thead>
 
         <tr>
 
           <th>
-            Produto
+            MATERIAL
           </th>
 
           <th>
-            Quantidade
+            QUANTIDADE
           </th>
 
           <th style="text-align:right">
-            Valor
+            TOTAL
           </th>
 
         </tr>
 
       </thead>
+
 
       <tbody>
 
@@ -1808,10 +2089,11 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     </table>
 
+
     <div class="total">
 
       <span>
-        TOTAL
+        TOTAL GERAL:
       </span>
 
       <span>
@@ -1820,8 +2102,22 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     </div>
 
+
+    <div class="abatido">
+
+      <span>
+        VALOR ABATIDO:
+      </span>
+
+      <span>
+        R$ 0,00
+      </span>
+
+    </div>
+
+
     ${
-      tipo !== 'orcamento'
+      !isOrcamento
         ? `
           <div class="pagamento">
 
@@ -1836,45 +2132,88 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         : ''
     }
 
+
     <div class="rodape">
+
       Obrigado pela preferência!
+
     </div>
+
 
   </div>
 
+
+  <!-- ========================= -->
+  <!-- CORTE -->
+  <!-- ========================= -->
 
   <div class="linha-corte">
-    ✂ VIA DO CLIENTE / VIA DA EMPRESA ✂
+
+    ✂
+    ------------------------------------------------------------
+    ✂
+
   </div>
 
 
-  <!-- VIA DA EMPRESA -->
+  <!-- ========================= -->
+  <!-- VIA EMPRESA -->
+  <!-- ========================= -->
 
   <div class="via">
 
+
     <div class="via-titulo">
-      VIA DA EMPRESA
+
+      VIA EMPRESA -
+      CONFERÊNCIA / COMPRAS
+
     </div>
+
 
     ${carimbo}
 
+
     <div class="cabecalho">
+
+      <div
+        style="
+          font-size:18px;
+          font-weight:bold;
+          margin-bottom:5px;
+        "
+      >
+        PONTO DA CONSTRUÇÃO
+      </div>
+
 
       <div class="empresa">
         PONTO DA CONSTRUÇÃO
       </div>
 
+
       <div class="subtitulo">
         MATERIAIS DE CONSTRUÇÃO
       </div>
 
+
+      <div class="dados-empresa">
+        Controle interno
+      </div>
+
     </div>
 
+
     ${
-      tipo === 'orcamento'
-        ? '<div class="orcamento">ORÇAMENTO</div>'
+      isOrcamento
+        ? `
+          <div class="orcamento">
+            ORÇAMENTO
+          </div>
+        `
         : ''
     }
+
 
     <div class="identificacao">
 
@@ -1883,46 +2222,71 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         <strong>${venda.id}</strong>
       </div>
 
+
       <div>
-        ${new Date(venda.data).toLocaleDateString('pt-BR')}
+        Data:
+        <strong>
+          ${new Date(venda.data).toLocaleString('pt-BR')}
+        </strong>
       </div>
 
     </div>
+
 
     <div class="cliente">
 
       <strong>Cliente:</strong>
       ${cliente.nome || 'Não informado'}
 
+
       ${
         cliente.telefone
-          ? `<br><strong>Telefone:</strong> ${cliente.telefone}`
+          ? `
+            &nbsp;&nbsp; | &nbsp;&nbsp;
+
+            <strong>Tel.:</strong>
+            ${cliente.telefone}
+          `
+          : ''
+      }
+
+
+      ${
+        cliente.endereço
+          ? `
+            <br>
+
+            <strong>End.:</strong>
+            ${cliente.endereço}
+          `
           : ''
       }
 
     </div>
 
-    <table>
+
+    <table class="tabela">
 
       <thead>
 
         <tr>
 
           <th>
-            Produto
+            MATERIAL
           </th>
 
           <th>
-            Quantidade
+            QUANTIDADE
           </th>
 
           <th style="text-align:right">
-            Valor
+            TOTAL
           </th>
 
         </tr>
 
       </thead>
+
 
       <tbody>
 
@@ -1932,10 +2296,11 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     </table>
 
+
     <div class="total">
 
       <span>
-        TOTAL
+        TOTAL GERAL:
       </span>
 
       <span>
@@ -1944,8 +2309,22 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     </div>
 
+
+    <div class="abatido">
+
+      <span>
+        VALOR ABATIDO:
+      </span>
+
+      <span>
+        R$ 0,00
+      </span>
+
+    </div>
+
+
     ${
-      tipo !== 'orcamento'
+      !isOrcamento
         ? `
           <div class="pagamento">
 
@@ -1960,30 +2339,36 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         : ''
     }
 
+
     <div class="rodape">
+
       Controle interno — Via da empresa
+
     </div>
 
+
   </div>
+
 
 </div>
 
 
 <script>
 
-  window.onload = function(){
+window.onload = function(){
 
-    window.focus();
+  window.focus();
 
-    setTimeout(function(){
+  setTimeout(function(){
 
-      window.print();
+    window.print();
 
-    }, 300);
+  }, 400);
 
-  };
+};
 
 </script>
+
 
 </body>
 
@@ -1992,7 +2377,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   `;
 
 
-  // 9. Abrir impressão
+  // ==============================
+  // ABRIR IMPRESSÃO
+  // ==============================
+
   const janela =
     window.open(
       '',
