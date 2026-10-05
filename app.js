@@ -2164,7 +2164,7 @@ body{
       </span>
 
       <span>
-        R$ 0,00
+       ${money(valorAbatido)}
       </span>
 
     </div>
@@ -2371,7 +2371,7 @@ body{
       </span>
 
       <span>
-        R$ 0,00
+  ${money(valorAbatido)}
       </span>
 
     </div>
