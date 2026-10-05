@@ -325,7 +325,7 @@ async function renderSales(el){
 
       <div class="row">
 
-        <span>Total</span>
+        <span>Total dos materiais</span>
 
         <span class="total">
 
@@ -337,6 +337,37 @@ async function renderSales(el){
           )}
 
         </span>
+
+      </div>
+
+      <div
+        class="field"
+        style="margin-top:15px;"
+      >
+
+        <label>
+          Valor abatido (desconto)
+        </label>
+
+        <input
+          id="saleDiscount"
+          class="search"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="0,00"
+          value="${state.saleDiscount || ''}"
+          oninput="
+            state.saleDiscount = Math.max(
+              0,
+              Number(this.value) || 0
+            );
+
+            renderSales(
+              document.getElementById('content')
+            );
+          "
+        >
 
       </div>
 
