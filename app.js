@@ -1679,60 +1679,21 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
   // HTML DA IMPRESSÃO
   // ==============================
 
-  // ==============================
+// ==============================
 // VALOR ABATIDO
 // ==============================
 
-let valorAbatido = 0;
+const subtotalItens = (itens || []).reduce(
+  (s, item) => s + Number(item.subtotal || 0),
+  0
+);
 
-if(!isOrcamento){
+const totalFinal = Number(venda.valor_total || 0);
 
-  const desconto =
-    prompt(
-      'Digite o valor abatido/desconto:\n\n' +
-      'Exemplo: 150 para R$ 150,00\n\n' +
-      'Deixe 0 se não houver desconto.',
-      '0'
-    );
-
-  if(desconto === null){
-    return;
-  }
-
-  valorAbatido =
-    Number(
-      String(desconto)
-        .replace(',', '.')
-    );
-
-  if(!Number.isFinite(valorAbatido) || valorAbatido < 0){
-
-    alert(
-      'Digite um valor de abatimento válido.'
-    );
-
-    return;
-  }
-
-  const totalOriginal =
-    Number(venda.valor_total || 0);
-
-  if(valorAbatido > totalOriginal){
-
-    alert(
-      'O valor abatido não pode ser maior que o total da venda.'
-    );
-
-    return;
-  }
-
-}
-
-const totalFinal =
-  Math.max(
-    0,
-    Number(venda.valor_total || 0) - valorAbatido
-  );
+const valorAbatido = Math.max(
+  0,
+  subtotalItens - totalFinal
+);
   const html = `
 
 <!DOCTYPE html>
