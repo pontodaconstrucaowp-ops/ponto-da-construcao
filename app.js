@@ -2100,7 +2100,7 @@ body{
   src="https://raw.githubusercontent.com/pontodaconstrucaowp-ops/ponto-da-construcao/main/logo-ponto-construcao.png"
   alt="Ponto da Construção"
   style="
-    width: 170px;
+  width: 100px;
     max-width: 100%;
     height: auto;
     display: block;
