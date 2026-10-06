@@ -12,6 +12,7 @@ const state={
   cart:[],
   selectedClient:null,
   saleDiscount:0,
+  cartOpen:false,
   products:[
     {id:1,name:'Cimento Poty',unit:'saco',price:42.00,stock:120},
     {id:2,name:'Areia',unit:'m³',price:160.00,stock:18},
