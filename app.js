@@ -631,6 +631,91 @@ const { data: adminCheck, error: adminCheckError } =
     `;
   }
 }
+function filterSaleProducts() {
+  const input = document.getElementById('saleProductSearch');
+
+  if (!input) return;
+
+  const termo = input.value
+    .trim()
+    .toLowerCase();
+
+  const filtrados = window.saleProducts.filter(p =>
+    p.nome.toLowerCase().includes(termo)
+  );
+
+  renderSaleProductItems(filtrados);
+}
+
+function renderSaleProductItems(produtos) {
+  const container =
+    document.getElementById('saleProductItems');
+
+  if (!container) return;
+
+  if (!produtos || produtos.length === 0) {
+    container.innerHTML = `
+      <div class="card">
+        <strong>Nenhum material encontrado</strong>
+        <p class="muted">
+          Tente pesquisar por outro nome.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML =
+    produtos.map(p => {
+
+      const controlaEstoque =
+        p.controla_estoque !== false;
+
+      return `
+        <div class="card">
+
+          <div class="row">
+
+            <div>
+
+              <div class="product-name">
+                ${p.nome}
+              </div>
+
+              <span class="muted">
+
+                ${
+                  controlaEstoque
+                    ? `${p.unidade} · estoque ${p.estoque}`
+                    : `${p.unidade} · 🛒 revenda`
+                }
+
+              </span>
+
+            </div>
+
+            <div class="price">
+              ${money(p.preco)}
+            </div>
+
+          </div>
+
+          <div class="actions">
+
+            <button
+              class="secondary"
+              onclick="addToCart(${p.id})"
+            >
+              Adicionar
+            </button>
+
+          </div>
+
+        </div>
+      `;
+
+    }).join('');
+}
 async function searchSaleClients(){
   const input = document.getElementById('saleClient');
   const results = document.getElementById('saleClientResults');
