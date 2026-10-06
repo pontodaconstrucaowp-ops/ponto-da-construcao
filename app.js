@@ -2577,7 +2577,7 @@ async function renderProducts(el){
   const { data, error } = await supabaseClient
     .from('produtos')
     .select('*')
-    .order('id', { ascending: true });
+.order('nome', { ascending: true });
 
   const list = document.getElementById('productList');
 
