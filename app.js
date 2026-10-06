@@ -134,7 +134,7 @@ function deliveryCard(d){
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
 async function renderSales(el){
 
-  el.innerHTML=`
+  el.innerHTML = `
     <div class="card">
 
       <div class="section-title">
@@ -178,19 +178,19 @@ async function renderSales(el){
       </div>
     </div>
 
-<div class="sale-cart">
+    <div class="sale-cart">
 
       <button
         type="button"
         class="cart-toggle"
         onclick="
-state.cartOpen = !state.cartOpen;
+          state.cartOpen = !state.cartOpen;
 
-const cart = document.getElementById('cartItems');
+          const cart = document.getElementById('cartItems');
 
-if (cart) {
-  cart.hidden = !state.cartOpen;
-}
+          if (cart) {
+            cart.hidden = !state.cartOpen;
+          }
         "
       >
 
@@ -202,135 +202,141 @@ if (cart) {
 
       </button>
 
-<div
-  id="cartItems"
-  ${state.cartOpen ? '' : 'hidden'}
->
+      <div
+        id="cartItems"
+        ${state.cartOpen ? '' : 'hidden'}
+      >
+
         ${
           state.cart.length
 
           ? state.cart.map(x => `
 
-<div
-  class="row"
-  style="
-    margin-top:10px;
-    align-items:center;
-    gap:10px;
-  "
->
+            <div
+              class="row"
+              style="
+                margin-top:10px;
+                align-items:center;
+                gap:10px;
+              "
+            >
 
-  <div style="flex:1">
+              <div style="flex:1">
 
-    <strong>
-      ${x.name}
-    </strong>
+                <strong>
+                  ${x.name}
+                </strong>
 
-    ${
-      x.unit === 'milheiro'
+                ${
+                  x.unit === 'milheiro'
 
-      ? `
-        <div class="muted">
-          ${
-            x.milheiroInteiro || 0
-          } milheiro(s)
-          ${
-            x.unidadesAvulsas
-              ? `+ ${x.unidadesAvulsas} unidades`
-              : ''
-          }
-        </div>
-      `
+                  ? `
+                    <div class="muted">
+                      ${x.milheiroInteiro || 0}
+                      milheiro(s)
 
-      : `
-        <div class="muted">
-          ${x.qty} ${x.unit}
-        </div>
-      `
-    }
+                      ${
+                        x.unidadesAvulsas
+                          ? `+ ${x.unidadesAvulsas} unidades`
+                          : ''
+                      }
+                    </div>
+                  `
 
-  </div>
+                  : `
+                    <div class="muted">
+                      ${x.qty} ${x.unit}
+                    </div>
+                  `
+                }
 
-  <div
-    style="
-      display:flex;
-      align-items:center;
-      gap:6px;
-    "
-  >
+              </div>
 
-    <button
-      class="secondary"
-      onclick="changeCartQty(${x.id},-1)"
-    >
-      −
-    </button>
+              <div
+                style="
+                  display:flex;
+                  align-items:center;
+                  gap:6px;
+                "
+              >
 
-    <strong
-      style="
-        min-width:40px;
-        text-align:center;
-      "
-    >
-      ${
-        x.unit === 'milheiro'
-          ? (x.milheiroInteiro || 0)
-          : x.qty
-      }
-    </strong>
+                <button
+                  class="secondary"
+                  onclick="changeCartQty(${x.id},-1)"
+                >
+                  −
+                </button>
 
-    <button
-      class="secondary"
-      onclick="changeCartQty(${x.id},1)"
-    >
-      +
-    </button>
+                <strong
+                  style="
+                    min-width:40px;
+                    text-align:center;
+                  "
+                >
+                  ${
+                    x.unit === 'milheiro'
+                      ? (x.milheiroInteiro || 0)
+                      : x.qty
+                  }
+                </strong>
 
-  </div>
+                <button
+                  class="secondary"
+                  onclick="changeCartQty(${x.id},1)"
+                >
+                  +
+                </button>
 
-  ${
-    x.unit === 'milheiro'
+              </div>
 
-    ? `
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          gap:6px;
-        "
-      >
+              ${
+                x.unit === 'milheiro'
 
-        <label
-          class="muted"
-          style="white-space:nowrap"
-        >
-          Avulsos:
-        </label>
+                ? `
+                  <div
+                    style="
+                      display:flex;
+                      align-items:center;
+                      gap:6px;
+                    "
+                  >
 
-        <input
-          class="search"
-          type="number"
-          min="0"
-          max="999"
-          step="1"
-          value="${x.unidadesAvulsas || 0}"
-          style="width:90px"
-          onchange="updateMilheiroAvulso(${x.id}, this.value)"
-        >
+                    <label
+                      class="muted"
+                      style="white-space:nowrap"
+                    >
+                      Avulsos:
+                    </label>
 
-      </div>
+                    <input
+                      class="search"
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
+                      value="${x.unidadesAvulsas || 0}"
+                      style="width:90px"
+                      onchange="
+                        updateMilheiroAvulso(
+                          ${x.id},
+                          this.value
+                        )
+                      "
+                    >
 
-    `
+                  </div>
+                `
 
-    : ''
-  }
+                : ''
+              }
 
-  <strong>
-    ${money(x.price * x.qty)}
-  </strong>
+              <strong>
+                ${money(x.price * x.qty)}
+              </strong>
 
-</div>
-            `).join('')
+            </div>
+
+          `).join('')
 
           : '<p class="muted">Nenhum produto adicionado.</p>'
         }
@@ -373,74 +379,83 @@ if (cart) {
           step="0.01"
           placeholder="0,00"
           value="${state.saleDiscount || ''}"
-oninput="
-  state.saleDiscount = Math.max(
-    0,
-    Number(this.value) || 0
-  );
 
-  const totalMateriais = state.cart.reduce(
-    (s,x) => s + x.price * x.qty,
-    0
-  );
+          oninput="
+            state.saleDiscount = Math.max(
+              0,
+              Number(this.value) || 0
+            );
 
-  const desconto = Math.min(
-    state.saleDiscount,
-    totalMateriais
-  );
+            const totalMateriais =
+              state.cart.reduce(
+                (s,x) => s + x.price * x.qty,
+                0
+              );
 
-  document.getElementById('saleDiscountValue').textContent =
-    money(desconto);
+            const desconto = Math.min(
+              state.saleDiscount,
+              totalMateriais
+            );
 
-  document.getElementById('saleFinalTotal').textContent =
-    money(totalMateriais - desconto);
-"
+            document.getElementById(
+              'saleDiscountValue'
+            ).textContent = money(desconto);
+
+            document.getElementById(
+              'saleFinalTotal'
+            ).textContent =
+              money(totalMateriais - desconto);
+          "
         >
 
       </div>
 
       <div class="row">
 
-  <span>Valor abatido</span>
+        <span>Valor abatido</span>
 
-  <span id="saleDiscountValue">
-    ${money(
-      Math.min(
-        Number(state.saleDiscount) || 0,
-        state.cart.reduce(
-          (s,x) => s + x.price * x.qty,
-          0
-        )
-      )
-    )}
-  </span>
+        <span id="saleDiscountValue">
 
-</div>
+          ${money(
+            Math.min(
+              Number(state.saleDiscount) || 0,
+              state.cart.reduce(
+                (s,x) => s + x.price * x.qty,
+                0
+              )
+            )
+          )}
 
-<div class="row">
+        </span>
 
-  <strong>Total final</strong>
+      </div>
 
-  <strong
-    id="saleFinalTotal"
-    class="total"
-  >
-    ${money(
-      state.cart.reduce(
-        (s,x) => s + x.price * x.qty,
-        0
-      ) -
-      Math.min(
-        Number(state.saleDiscount) || 0,
-        state.cart.reduce(
-          (s,x) => s + x.price * x.qty,
-          0
-        )
-      )
-    )}
-  </strong>
+      <div class="row">
 
-</div>
+        <strong>Total final</strong>
+
+        <strong
+          id="saleFinalTotal"
+          class="total"
+        >
+
+          ${money(
+            state.cart.reduce(
+              (s,x) => s + x.price * x.qty,
+              0
+            ) -
+            Math.min(
+              Number(state.saleDiscount) || 0,
+              state.cart.reduce(
+                (s,x) => s + x.price * x.qty,
+                0
+              )
+            )
+          )}
+
+        </strong>
+
+      </div>
 
       <div class="actions">
 
@@ -454,7 +469,8 @@ oninput="
         <button
           class="danger"
           onclick="
-            state.cart=[];
+            state.cart = [];
+
             renderSales(
               document.getElementById('content')
             )
@@ -468,6 +484,11 @@ oninput="
     </div>
   `;
 
+
+  /*
+   * CARREGAR MATERIAIS
+   */
+
   const { data, error } =
     await supabaseClient
       .from('produtos')
@@ -477,8 +498,10 @@ oninput="
         ascending: true
       });
 
+
   const productsList =
     document.getElementById('saleProducts');
+
 
   if(error){
 
@@ -487,7 +510,7 @@ oninput="
       error
     );
 
-    productsList.innerHTML=`
+    productsList.innerHTML = `
 
       <div class="card">
 
@@ -506,9 +529,10 @@ oninput="
     return;
   }
 
+
   if(!data || data.length === 0){
 
-    productsList.innerHTML=`
+    productsList.innerHTML = `
 
       <div class="card">
 
@@ -528,23 +552,46 @@ oninput="
     return;
   }
 
-window.saleProducts = data;
 
-productsList.innerHTML = `
-  <div class="field" style="margin-bottom:15px;">
-    <input
-      id="saleProductSearch"
-      class="search"
-      type="text"
-      placeholder="🔎 Buscar material..."
-      oninput="filterSaleProducts()"
+  /*
+   * GUARDAR MATERIAIS
+   */
+
+  window.saleProducts = data;
+
+
+  /*
+   * CAMPO DE BUSCA DOS MATERIAIS
+   */
+
+  productsList.innerHTML = `
+
+    <div
+      class="field"
+      style="margin-bottom:15px;"
     >
-  </div>
 
-  <div id="saleProductItems"></div>
-`;
+      <input
+        id="saleProductSearch"
+        class="search"
+        type="text"
+        placeholder="🔎 Buscar material..."
+        oninput="filterSaleProducts()"
+      >
 
-renderSaleProductItems(data);
+    </div>
+
+    <div id="saleProductItems"></div>
+
+  `;
+
+
+  /*
+   * MOSTRAR TODOS OS MATERIAIS
+   */
+
+  renderSaleProductItems(data);
+
 }
 async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
