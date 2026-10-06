@@ -184,11 +184,13 @@ async function renderSales(el){
         type="button"
         class="cart-toggle"
         onclick="
-          const cart = document.getElementById('cartItems');
+state.cartOpen = !state.cartOpen;
 
-          if (cart) {
-            cart.hidden = !cart.hidden;
-          }
+const cart = document.getElementById('cartItems');
+
+if (cart) {
+  cart.hidden = !state.cartOpen;
+}
         "
       >
 
