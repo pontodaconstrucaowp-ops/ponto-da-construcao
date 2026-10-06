@@ -162,3 +162,15 @@ th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-si
   flex:1;
   min-width:120px;
 }
+
+/* Carrinho compacto na tela de nova venda */
+.sale-cart #cartItems {
+  max-height: 250px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+}
+
+.sale-cart {
+  min-width: 0;
+}
