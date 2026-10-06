@@ -187,3 +187,11 @@ th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-si
 .cart-summary::-webkit-details-marker {
   display: none;
 }
+/* Cabeçalho do carrinho */
+.sale-cart > .row:first-child {
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
