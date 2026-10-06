@@ -175,3 +175,15 @@ th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-si
   overflow-x: hidden;
   padding-right: 8px;
 }
+.cart-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 0;
+}
+
+.cart-summary::-webkit-details-marker {
+  display: none;
+}
