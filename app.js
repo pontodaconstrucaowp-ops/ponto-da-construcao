@@ -202,8 +202,10 @@ if (cart) {
 
       </button>
 
-      <div id="cartItems">
-
+<div
+  id="cartItems"
+  ${state.cartOpen ? '' : 'hidden'}
+>
         ${
           state.cart.length
 
