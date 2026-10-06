@@ -2096,17 +2096,17 @@ body{
 
     <div class="cabecalho">
 
-      <!-- LOGO SERÁ COLOCADA AQUI -->
-
-      <div
-        style="
-          font-size:18px;
-          font-weight:bold;
-          margin-bottom:5px;
-        "
-      >
-        PONTO DA CONSTRUÇÃO
-      </div>
+<img
+  src="https://raw.githubusercontent.com/pontodaconstrucaowp-ops/ponto-da-construcao/main/logo-ponto-construcao.png"
+  alt="Ponto da Construção"
+  style="
+    width: 170px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto 8px auto;
+  "
+>
 
 
       <div class="empresa">
