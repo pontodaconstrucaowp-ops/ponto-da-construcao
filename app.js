@@ -1409,12 +1409,6 @@ const total = totalMateriais - desconto;
     }
   }
 
-alert(
-  window.saleType === 'entrega'
-    ? 'Venda registrada e entrega adicionada à fila!'
-    : 'Venda registrada como retirada no local!'
-);
-
 state.cart = [];
 state.selectedClient = null;
 state.saleDiscount = 0;
