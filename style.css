@@ -163,14 +163,15 @@ th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-si
   min-width:120px;
 }
 
-/* Carrinho compacto na tela de nova venda */
-.sale-cart #cartItems {
-  max-height: 250px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 6px;
-}
-
+/* Carrinho de compras com rolagem própria */
 .sale-cart {
   min-width: 0;
+}
+
+.sale-cart #cartItems {
+  height: 220px;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
 }
