@@ -528,60 +528,23 @@ oninput="
     return;
   }
 
-  window.saleProducts = data;
+window.saleProducts = data;
 
-  productsList.innerHTML =
-    data.map(p => {
+productsList.innerHTML = `
+  <div class="field" style="margin-bottom:15px;">
+    <input
+      id="saleProductSearch"
+      class="search"
+      type="text"
+      placeholder="🔎 Buscar material..."
+      oninput="filterSaleProducts()"
+    >
+  </div>
 
-      const controlaEstoque =
-        p.controla_estoque !== false;
+  <div id="saleProductItems"></div>
+`;
 
-      return `
-
-        <div class="card">
-
-          <div class="row">
-
-            <div>
-
-              <div class="product-name">
-                ${p.nome}
-              </div>
-
-              <span class="muted">
-
-                ${
-                  controlaEstoque
-                    ? `${p.unidade} · estoque ${p.estoque}`
-                    : `${p.unidade} · 🛒 revenda`
-                }
-
-              </span>
-
-            </div>
-
-            <div class="price">
-              ${money(p.preco)}
-            </div>
-
-          </div>
-
-          <div class="actions">
-
-            <button
-              class="secondary"
-              onclick="addToCart(${p.id})"
-            >
-              Adicionar
-            </button>
-
-          </div>
-
-        </div>
-
-      `;
-
-    }).join('');
+renderSaleProductItems(data);
 }
 async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
