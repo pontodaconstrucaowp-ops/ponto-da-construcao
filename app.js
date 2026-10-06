@@ -1409,19 +1409,23 @@ const total = totalMateriais - desconto;
     }
   }
 
-  alert(
-    window.saleType === 'entrega'
-      ? 'Venda registrada e entrega adicionada à fila!'
-      : 'Venda registrada como retirada no local!'
-  );
+alert(
+  window.saleType === 'entrega'
+    ? 'Venda registrada e entrega adicionada à fila!'
+    : 'Venda registrada como retirada no local!'
+);
 
-  state.cart = [];
-  state.selectedClient = null;
+state.cart = [];
+state.selectedClient = null;
+state.saleDiscount = 0;
+state.cartOpen = false;
 
-  window.salePayment = null;
-  window.saleType = null;
+window.salePayment = null;
+window.saleType = null;
 
-  navigate('home');
+abrirImpressaoVenda(vendaId, 'pago');
+
+navigate('home');
 }
 async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
