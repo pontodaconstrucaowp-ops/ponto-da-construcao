@@ -177,17 +177,17 @@ async function renderSales(el){
       </div>
     </div>
 
-<details class="sale-cart">
+<div class="sale-cart">
 
-  <summary class="cart-summary">
+      <div class="row">
 
-    <strong>🛒 Carrinho</strong>
+        <strong>Carrinho</strong>
 
-    <span>
-      ${state.cart.length} item(ns)
-    </span>
+        <span>
+          ${state.cart.length} item(ns)
+        </span>
 
-  </summary>
+      </div>
 
       <div id="cartItems">
 
@@ -450,7 +450,8 @@ oninput="
 
       </div>
 
-</details>
+    </div>
+  `;
 
   const { data, error } =
     await supabaseClient
