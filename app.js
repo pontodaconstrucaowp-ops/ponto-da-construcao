@@ -179,15 +179,25 @@ async function renderSales(el){
 
 <div class="sale-cart">
 
-      <div class="row">
+      <button
+        type="button"
+        class="cart-toggle"
+        onclick="
+          const cart = document.getElementById('cartItems');
 
-        <strong>Carrinho</strong>
+          if (cart) {
+            cart.hidden = !cart.hidden;
+          }
+        "
+      >
+
+        <strong>🛒 Carrinho</strong>
 
         <span>
           ${state.cart.length} item(ns)
         </span>
 
-      </div>
+      </button>
 
       <div id="cartItems">
 
