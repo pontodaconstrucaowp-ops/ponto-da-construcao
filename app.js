@@ -4013,6 +4013,28 @@ async function renderDeliveries(el){
     </div>
   `;
 }
+function abrirMapaEntrega(endereco){
+
+  const enderecoDecodificado =
+    decodeURIComponent(endereco);
+
+  if(
+    !enderecoDecodificado ||
+    enderecoDecodificado === 'Endereço não informado'
+  ){
+    alert('Esta entrega não possui endereço cadastrado.');
+    return;
+  }
+
+  const url =
+    'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent(enderecoDecodificado);
+
+  window.open(url, '_blank');
+}
+
+window.abrirMapaEntrega = abrirMapaEntrega;
+
 async function moveDelivery(id, direction){
 
   const { data, error } = await supabaseClient
