@@ -1966,7 +1966,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
         formatarQuantidade(item.quantidade);
 
       const unidade =
-        formatarUnidade(produto.unidade);
+  formatarUnidade(item.unidade_venda || produto.unidade);
 
       return `
 
