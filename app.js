@@ -784,6 +784,10 @@ function openSaleNewClientForm(){
     nome.focus();
   }
 }
+
+window.openSaleNewClientForm = openSaleNewClientForm;
+
+
 async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
   console.log('USUARIO AUTENTICADO:', user);
