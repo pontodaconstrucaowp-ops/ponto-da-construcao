@@ -1815,17 +1815,68 @@ function selectSaleType(type){
   const el = document.getElementById('selectedSaleType');
 
   if(el){
-    el.innerHTML =
-      'Atendimento selecionado: <strong>' +
-      (type === 'entrega'
-        ? '🚚 Entrega'
-        : '🏪 Retirada') +
-      '</strong>';
+
+    if(type === 'entrega'){
+
+      el.innerHTML = `
+        <div>
+          Atendimento selecionado:
+          <strong>🚚 Entrega</strong>
+        </div>
+
+        <div
+          class="card"
+          style="margin-top:15px;text-align:left"
+        >
+          <label>
+            <strong>📍 Endereço da entrega</strong>
+          </label>
+
+          <input
+            id="saleDeliveryAddress"
+            class="search"
+            placeholder="Rua, número, bairro, referência..."
+            style="margin-top:8px"
+          >
+
+          <p class="muted" style="margin-top:8px">
+            Informe o endereço onde o material deverá ser entregue.
+          </p>
+
+          <button
+            type="button"
+            class="secondary"
+            style="margin-top:8px"
+            onclick="marcarLocalEntrega()"
+          >
+            📍 Marcar local exato no mapa
+          </button>
+
+          <div
+            id="saleDeliveryLocationStatus"
+            class="muted"
+            style="margin-top:10px"
+          >
+            Localização exata ainda não marcada.
+          </div>
+        </div>
+      `;
+
+      window.saleDeliveryLatitude = null;
+      window.saleDeliveryLongitude = null;
+
+    } else {
+
+      el.innerHTML =
+        'Atendimento selecionado: <strong>🏪 Retirada</strong>';
+
+      window.saleDeliveryLatitude = null;
+      window.saleDeliveryLongitude = null;
+    }
   }
 
   updateConfirmSaleButton();
 }
-
 
 function updateConfirmSaleButton(){
 
