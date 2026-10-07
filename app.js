@@ -717,6 +717,73 @@ function pcLimparPedido() {
   pcMostrarProdutos();
   pcAtualizarResumo();
 }
+function openSaleNewClientForm(){
+
+  const results = document.getElementById('saleClientResults');
+
+  if(!results){
+    return;
+  }
+
+  results.innerHTML = `
+    <div class="card">
+
+      <div class="section-title">
+        <h3>Novo cliente</h3>
+      </div>
+
+      <div style="display:grid;gap:12px">
+
+        <input
+          id="newSaleClientName"
+          class="search"
+          placeholder="Nome do cliente"
+        >
+
+        <input
+          id="newSaleClientPhone"
+          class="search"
+          placeholder="Telefone"
+        >
+
+        <textarea
+          id="newSaleClientAddress"
+          class="search"
+          placeholder="Endereço"
+          rows="3"
+        ></textarea>
+
+        <div class="actions">
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="clearSaleClient()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="primary"
+            onclick="saveSaleNewClient()"
+          >
+            Salvar cliente
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+  const nome = document.getElementById('newSaleClientName');
+
+  if(nome){
+    nome.focus();
+  }
+}
 async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
   console.log('USUARIO AUTENTICADO:', user);
