@@ -977,87 +977,79 @@ function clearSaleClient(){
 }
 function addToCart(id){
 
-  const p =
-    (window.saleProducts || [])
-      .find(x => x.id === id);
-
-  if(!p){
-    alert('Produto não encontrado.');
-    return;
-  }
-
-  const controlaEstoque =
-    p.controla_estoque !== false;
-
-  const found =
-    state.cart.find(x => x.id === id);
+  const found = state.cart.find(
+    x => x.id === id
+  );
 
   if(found){
 
-    if(p.unidade === 'milheiro'){
+    const unidade =
+      String(found.unit || '').toLowerCase();
 
-      const atual =
-        Number(found.milheiroInteiro || 0);
+    if(unidade === 'milheiro'){
 
-      const novo =
-        atual + 1;
-
-      if(
-        controlaEstoque &&
-        Number(p.estoque) > 0 &&
-        novo > Number(p.estoque)
-      ){
-        alert('Quantidade maior que o estoque disponível.');
-        return;
-      }
-
-      found.milheiroInteiro = novo;
+      found.milheiroInteiro =
+        Number(found.milheiroInteiro || 0) + 1;
 
       found.qty =
-        novo +
+        found.milheiroInteiro +
         (
-          Number(found.unidadesAvulsas || 0) / 1000
+          Number(found.unidadesAvulsas || 0) /
+          1000
         );
 
-    }else if(
-      p.unidade === 'm³' ||
-      p.unidade === 'kg'
+    } else if(
+      unidade === 'dúzia' ||
+      unidade === 'duzia'
     ){
 
-      const step = 0.5;
+      found.duziaInteira =
+        Number(found.duziaInteira || 0) + 1;
 
-      const novo =
-        Number(found.qty || 0) + step;
+      found.qty =
+        found.duziaInteira +
+        (
+          Number(found.unidadesAvulsas || 0) /
+          12
+        );
 
-      if(
-        controlaEstoque &&
-        Number(p.estoque) > 0 &&
-        novo > Number(p.estoque)
-      ){
-        alert('Quantidade maior que o estoque disponível.');
-        return;
-      }
+    } else if(
+      unidade === 'm³' ||
+      unidade === 'kg'
+    ){
 
-      found.qty = novo;
+      found.qty =
+        Math.round(
+          (Number(found.qty || 0) + 0.5) * 10
+        ) / 10;
 
-    }else{
+    } else {
 
-      const novo =
+      found.qty =
         Number(found.qty || 0) + 1;
-
-      if(
-        controlaEstoque &&
-        Number(p.estoque) > 0 &&
-        novo > Number(p.estoque)
-      ){
-        alert('Quantidade maior que o estoque disponível.');
-        return;
-      }
-
-      found.qty = novo;
     }
 
-  }else{
+  } else {
+
+    const p =
+      state.products.find(
+        x => x.id === id
+      );
+
+    if(!p) return;
+
+    const unidade =
+      String(p.unidade || '').toLowerCase();
+
+    const isMilheiro =
+      unidade === 'milheiro';
+
+    const isDuzia =
+      unidade === 'dúzia' ||
+      unidade === 'duzia';
+
+    const controlaEstoque =
+      p.controla_estoque !== false;
 
     state.cart.push({
 
@@ -1067,23 +1059,29 @@ function addToCart(id){
 
       unit: p.unidade,
 
-      price: Number(p.preco),
+      price: Number(p.preco || 0),
 
-      stock: Number(p.estoque),
+      stock: Number(p.estoque || 0),
 
-      controlaEstoque: controlaEstoque,
+      controlaEstoque,
 
-      qty: 1,
+      qty:
+        isMilheiro || isDuzia
+          ? 1
+          : (
+              unidade === 'm³' ||
+              unidade === 'kg'
+                ? 0.5
+                : 1
+            ),
 
       milheiroInteiro:
-        p.unidade === 'milheiro'
-          ? 1
-          : 0,
+        isMilheiro ? 1 : 0,
 
-      unidadesAvulsas:
-        p.unidade === 'milheiro'
-          ? 0
-          : 0
+      duziaInteira:
+        isDuzia ? 1 : 0,
+
+      unidadesAvulsas: 0
 
     });
 
