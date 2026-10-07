@@ -972,9 +972,15 @@ if(unidade === 'DÚZIA'){
 
               <div class="muted">
 
-                ${preco} / ${unidade}
+${preco} / ${unidade}
 
-                ·
+${
+  precoAvulso
+    ? ` · ${precoAvulso} / unidade`
+    : ''
+}
+
+·
 
                 ${
                   controlaEstoque
