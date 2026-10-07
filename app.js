@@ -189,6 +189,9 @@ function money(v){
     }
   );
 }
+
+function renderHome(el){
+
   el.innerHTML=`
     <div class="grid stats">
       <div class="card stat"><div class="label">Vendas hoje</div><div class="value">${money(3250)}</div></div>
