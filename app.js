@@ -3960,6 +3960,14 @@ async function renderDeliveries(el){
             </div>
 
             <div class="actions">
+            
+<button
+  type="button"
+  class="secondary"
+  onclick="abrirMapaEntrega('${encodeURIComponent(endereco)}')"
+>
+  🗺️ Ver no mapa
+</button>
 
             ${d.status !== 'entregue' ? `
 
