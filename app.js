@@ -78,7 +78,37 @@ async function login(){
     navigate('home');
   }
 }
+function logout(){
+  state.user=null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+function toggleUserMenu(){document.getElementById('userMenu').classList.toggle('hidden')}
+function navigate(page){
+  if(state.user && state.user.tipo === 'entregador'){
+  const permitidas = ['deliveries'];
 
+  if(!permitidas.includes(page)){
+    page = 'deliveries';
+  }
+}
+  state.page=page;
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  const titles={home:'Início',sales:'Nova venda',products:'Estoque',deliveries:'Entregas',more:'Mais opções',clients:'Clientes',cash:'Caixa',reports:'Relatórios',settings:'Configurações'};
+  document.getElementById('pageTitle').textContent=titles[page]||'Ponto da Construção';
+  const content=document.getElementById('content');
+  if(page==='home') renderHome(content);
+  else if(page==='sales') renderSales(content);
+  else if(page==='products') renderProducts(content);
+  else if(page==='deliveries') renderDeliveries(content);
+  else if(page==='more') renderMore(content);
+  else if(page==='clients') renderClients(content);
+  else if(page==='cash') renderCash(content);
+  else if(page==='reports') renderReports(content);
+  else if(page==='settings') renderSettings(content);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function money(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function logout(){
   state.user=null;
   document.getElementById('app').classList.add('hidden');
