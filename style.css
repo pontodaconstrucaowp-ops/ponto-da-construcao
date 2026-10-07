@@ -356,3 +356,109 @@ select:focus-visible {
     flex-wrap: wrap;
   }
 }
+/* Seleção das quantidades no próprio produto */
+
+#saleProductItems {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.pc-produto > strong {
+  display: block;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+.pc-opcoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pc-opcao {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.pc-opcao > strong:first-child {
+  text-transform: capitalize;
+}
+
+.pc-opcao .muted {
+  margin-top: 5px;
+  font-size: 13px;
+}
+
+.pc-controles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.pc-controles button {
+  flex: 0 0 42px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: var(--blue);
+  color: white;
+  font-size: 25px;
+  font-weight: bold;
+}
+
+.pc-controles input {
+  width: 68px;
+  min-width: 0;
+  height: 44px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: white;
+  text-align: center;
+  font-size: 17px;
+  font-weight: bold;
+}
+
+/* Carrinho somente como resumo */
+
+.sale-cart {
+  position: static;
+  inset: auto;
+}
+
+.pc-resumo-linha {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.pc-resumo-linha > div {
+  margin-top: 5px;
+}
+
+#pcResumoItens {
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 12px 0;
+}
+
+.sale-cart .field {
+  margin: 16px 0;
+}
+
+.sale-cart button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .pc-opcoes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
