@@ -1877,7 +1877,31 @@ function selectSaleType(type){
 
   updateConfirmSaleButton();
 }
+function marcarLocalEntrega(){
 
+  const enderecoInput =
+    document.getElementById('saleDeliveryAddress');
+
+  if(!enderecoInput){
+    return;
+  }
+
+  const endereco = enderecoInput.value.trim();
+
+  if(!endereco){
+    alert('Digite primeiro o endereço da entrega.');
+    enderecoInput.focus();
+    return;
+  }
+
+  const url =
+    'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent(endereco);
+
+  window.open(url, '_blank');
+}
+
+window.marcarLocalEntrega = marcarLocalEntrega;
 function updateConfirmSaleButton(){
 
   const button =
