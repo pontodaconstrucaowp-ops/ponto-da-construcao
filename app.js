@@ -948,7 +948,17 @@ function renderSaleProductItems(produtos) {
 
       const preco =
         money(Number(p.preco || 0));
+let precoAvulso = '';
 
+if(unidade === 'MILHEIRO'){
+  precoAvulso =
+    money(Number(p.preco || 0) / 1000);
+}
+
+if(unidade === 'DÚZIA'){
+  precoAvulso =
+    money(Number(p.preco || 0) / 12);
+}
       return `
         <div class="card">
 
