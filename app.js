@@ -369,105 +369,219 @@ function pcTotal() {
   ) / 100;
 }
 
+function pcAgruparMateriais(produtos) {
+  const grupos = new Map();
+
+  for (const produto of produtos) {
+    const nome = String(produto.nome || '').trim();
+
+    // Retira somente a indicação de unidade no final do nome.
+    const nomeBase = nome.replace(
+      /\s+[-–—]\s*(dúzia|duzia|unidade|milheiro)\s*$/i,
+      ''
+    ).trim();
+
+    const chave = nomeBase
+      .normalize('NFC')
+      .toLocaleUpperCase('pt-BR');
+
+    if (!grupos.has(chave)) {
+      grupos.set(chave, {
+        nome: nomeBase,
+        produtos: []
+      });
+    }
+
+    grupos.get(chave).produtos.push(produto);
+  }
+
+  return [...grupos.values()].flatMap(grupo => {
+    const unidade = produto =>
+      String(produto.unidade || '').trim().toLowerCase();
+
+    const pacotes = grupo.produtos.filter(produto =>
+      ['dúzia', 'duzia', 'milheiro'].includes(
+        unidade(produto)
+      )
+    );
+
+    const avulsos = grupo.produtos.filter(produto =>
+      unidade(produto) === 'unidade'
+    );
+
+    // Agrupa quando existe exatamente um cadastro de
+    // dúzia/milheiro e um cadastro de unidade do mesmo material.
+    if (
+      grupo.produtos.length === 2 &&
+      pacotes.length === 1 &&
+      avulsos.length === 1
+    ) {
+      return [{
+        nome: grupo.nome,
+        produtos: grupo.produtos,
+
+        opcoes: [pacotes[0], avulsos[0]].map(produto => ({
+          ...pcOpcoes(produto)[0],
+          id: produto.id
+        }))
+      }];
+    }
+
+    // Produtos sem par continuam aparecendo normalmente.
+    // Cadastros ambíguos não são unidos automaticamente.
+    return grupo.produtos.map(produto => ({
+      nome: produto.nome,
+      produtos: [produto],
+
+      opcoes: pcOpcoes(produto).map(opcao => ({
+        ...opcao,
+        id: produto.id
+      }))
+    }));
+  });
+}
+
 function pcMostrarProdutos() {
   const lista = document.getElementById('saleProductItems');
   if (!lista) return;
 
   const termo = (
     document.getElementById('saleProductSearch')?.value || ''
-  ).toLocaleLowerCase('pt-BR');
+  ).trim().toLocaleLowerCase('pt-BR');
 
-  lista.innerHTML = (window.saleProducts || [])
-    .filter(produto =>
-      String(produto.nome)
+  // Agrupa antes de pesquisar para manter as duas opções juntas.
+  const grupos = pcAgruparMateriais(
+    window.saleProducts || []
+  ).filter(grupo =>
+    [
+      grupo.nome,
+      ...grupo.produtos.map(produto => produto.nome)
+    ].some(nome =>
+      String(nome)
         .toLocaleLowerCase('pt-BR')
         .includes(termo)
     )
-    .map(produto => {
-      const id = Number(produto.id);
-      if (!Number.isSafeInteger(id)) return '';
+  );
 
-      const opcoes = pcOpcoes(produto);
+  lista.innerHTML = grupos.map(grupo => {
+    const total = grupo.opcoes.reduce((soma, opcao) => {
+      const item = pcItem(opcao.id, opcao.tipo);
 
-      const permiteAvulso = ['dúzia', 'duzia', 'milheiro']
-        .includes(
-          String(produto.unidade).trim().toLowerCase()
-        );
+      return soma + (
+        item ? Math.round(pcSubtotal(item) * 100) : 0
+      );
+    }, 0) / 100;
 
-      return `
-        <div class="card pc-produto">
-          <strong>${pcEscapar(produto.nome)}</strong>
+    return `
+      <div class="card pc-produto">
+        <strong>${pcEscapar(grupo.nome)}</strong>
 
-          <div class="pc-opcoes">
-            ${opcoes.map(opcao => {
-              const quantidade =
-                pcItem(id, opcao.tipo)?.qty || 0;
+        <div class="pc-opcoes">
+          ${grupo.opcoes.map(opcao => {
+            const id = Number(opcao.id);
 
-              const subtotal = Math.round(
-                quantidade * opcao.preco * 100
-              ) / 100;
+            if (!Number.isSafeInteger(id)) return '';
 
-              return `
-                <div class="pc-opcao">
-                  <strong>
-                    ${pcEscapar(opcao.unidade)}
-                  </strong>
+            const quantidade =
+              pcItem(id, opcao.tipo)?.qty || 0;
 
-                  <div class="muted">
-                    ${money(opcao.preco)}
-                    por ${pcEscapar(opcao.unidade)}
-                  </div>
+            const subtotal = Math.round(
+              quantidade * opcao.preco * 100
+            ) / 100;
 
-                  <div class="pc-controles">
-                    <button
-                      type="button"
-                      aria-label="Diminuir ${pcEscapar(opcao.unidade)}"
-                      onclick="pcAlterar(${id}, '${opcao.tipo}', -1)"
-                    >−</button>
+            return `
+              <div
+                class="pc-opcao"
+                data-produto="${id}"
+                data-tipo="${opcao.tipo}"
+              >
+                <strong>
+                  ${pcEscapar(opcao.unidade)}
+                </strong>
 
-                    <input
-                      id="pc-q-${id}-${opcao.tipo}"
-                      aria-label="Quantidade em ${pcEscapar(opcao.unidade)}"
-                      type="number"
-                      min="0"
-                      step="${opcao.passo}"
-                      value="${quantidade}"
-                      onchange="pcDefinir(
-                        ${id}, '${opcao.tipo}', this.value
-                      )"
-                    >
-
-                    <button
-                      type="button"
-                      aria-label="Adicionar ${pcEscapar(opcao.unidade)}"
-                      onclick="pcAlterar(${id}, '${opcao.tipo}', 1)"
-                    >+</button>
-                  </div>
-
-                  <strong id="pc-s-${id}-${opcao.tipo}">
-                    ${money(subtotal)}
-                  </strong>
+                <div class="muted">
+                  ${money(opcao.preco)}
+                  por ${pcEscapar(opcao.unidade)}
                 </div>
-              `;
-            }).join('')}
-          </div>
 
-          ${
-            permiteAvulso && opcoes.length === 1
-              ? `<p class="muted">
-                   Preencha preco_avulso no cadastro
-                   para habilitar unidades.
-                 </p>`
-              : ''
-          }
+                <div class="pc-controles">
+                  <button
+                    type="button"
+                    aria-label="Diminuir ${pcEscapar(opcao.unidade)}"
+                    onclick="
+                      pcAlterar(${id}, '${opcao.tipo}', -1);
+                      pcTotalCartao(this);
+                    "
+                  >−</button>
+
+                  <input
+                    id="pc-q-${id}-${opcao.tipo}"
+                    aria-label="Quantidade em ${pcEscapar(opcao.unidade)}"
+                    type="number"
+                    min="0"
+                    step="${opcao.passo}"
+                    value="${quantidade}"
+                    onchange="
+                      pcDefinir(
+                        ${id},
+                        '${opcao.tipo}',
+                        this.value
+                      );
+                      pcTotalCartao(this);
+                    "
+                  >
+
+                  <button
+                    type="button"
+                    aria-label="Adicionar ${pcEscapar(opcao.unidade)}"
+                    onclick="
+                      pcAlterar(${id}, '${opcao.tipo}', 1);
+                      pcTotalCartao(this);
+                    "
+                  >+</button>
+                </div>
+
+                <strong id="pc-s-${id}-${opcao.tipo}">
+                  ${money(subtotal)}
+                </strong>
+              </div>
+            `;
+          }).join('')}
         </div>
-      `;
-    })
-    .join('') || `
-      <div class="card">Nenhum material encontrado.</div>
+
+        <div class="pc-total">
+          Total do material:
+          <strong class="pc-total-material">
+            ${money(total)}
+          </strong>
+        </div>
+      </div>
     `;
+  }).join('') || `
+    <div class="card">Nenhum material encontrado.</div>
+  `;
 }
 
+function pcTotalCartao(elemento) {
+  const cartao = elemento.closest('.pc-produto');
+  if (!cartao) return;
+
+  const centavos = [
+    ...cartao.querySelectorAll('.pc-opcao')
+  ].reduce((soma, opcao) => {
+    const item = pcItem(
+      opcao.dataset.produto,
+      opcao.dataset.tipo
+    );
+
+    return soma + (
+      item ? Math.round(pcSubtotal(item) * 100) : 0
+    );
+  }, 0);
+
+  cartao.querySelector('.pc-total-material').textContent =
+    money(centavos / 100);
+}
 function pcAlterar(id, tipo, delta) {
   const produto = (window.saleProducts || []).find(
     p => String(p.id) === String(id)
