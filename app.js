@@ -309,7 +309,22 @@ async function renderSales(el){
                 <strong>
                   ${x.name}
                 </strong>
+<div class="muted">
 
+  ${money(x.price)} / ${String(x.unit || '').toLowerCase()}
+
+  ${
+    x.unit === 'milheiro'
+      ? ` · ${money(x.price / 1000)} / unidade`
+      : (
+          x.unit === 'dúzia' ||
+          x.unit === 'duzia'
+        )
+        ? ` · ${money(x.price / 12)} / unidade`
+        : ''
+  }
+
+</div>
                 ${
                   x.unit === 'milheiro'
 
