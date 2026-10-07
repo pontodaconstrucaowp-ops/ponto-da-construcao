@@ -1362,7 +1362,6 @@ function changeCartQty(id, delta){
     document.getElementById('content')
   );
 }
-```
 
 function updateMilheiroAvulso(id, value){
 
