@@ -195,3 +195,164 @@ th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-si
   cursor: pointer;
   margin-bottom: 10px;
 }
+/* CORREÇÕES DO LAYOUT — PONTO DA CONSTRUÇÃO */
+
+/* Carrinho sem sobrepor a lista de materiais */
+.sale-cart {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  min-width: 0;
+}
+
+/* Botão para abrir e fechar os itens do carrinho */
+.sale-cart .cart-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #eef3fb;
+  color: var(--blue);
+  text-align: left;
+}
+
+/* Lista do carrinho com altura conforme o conteúdo */
+.sale-cart #cartItems {
+  height: auto;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+}
+
+.sale-cart #cartItems[hidden] {
+  display: none !important;
+}
+
+.sale-cart #cartItems > .row {
+  flex-wrap: wrap;
+}
+
+.sale-cart #cartItems > .row > div:first-child {
+  flex-basis: 100% !important;
+}
+
+.sale-cart strong,
+.sale-cart .muted {
+  overflow-wrap: anywhere;
+}
+
+.sale-cart hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+/* Celular e tablet: cliente, carrinho e materiais */
+#content:has(> #saleProducts) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+#content:has(> #saleProducts) > .card {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#content:has(> #saleProducts) > .sale-cart {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 0;
+}
+
+#content:has(> #saleProducts) > .section-title {
+  grid-column: 1;
+  grid-row: 3;
+  margin: 8px 0 0;
+}
+
+#content:has(> #saleProducts) > #saleProducts {
+  grid-column: 1;
+  grid-row: 4;
+  min-width: 0;
+  align-content: start;
+}
+
+/* Menu Mais: título e descrição em linhas separadas */
+#content > .list > button.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Destaque ao navegar pelo teclado */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--blue-2);
+  outline-offset: 3px;
+}
+
+/* Espaço para o menu inferior */
+.app {
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
+}
+
+/* Computador: materiais à esquerda e carrinho à direita */
+@media (min-width: 1000px) {
+  #content:has(> #saleProducts) {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 390px);
+    column-gap: 20px;
+    align-items: start;
+  }
+
+  #content:has(> #saleProducts) > .card {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  #content:has(> #saleProducts) > .section-title {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  #content:has(> #saleProducts) > #saleProducts {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  #content:has(> #saleProducts) > .sale-cart {
+    grid-column: 2;
+    grid-row: 2 / 4;
+  }
+}
+
+/* Ajustes para telas pequenas */
+@media (max-width: 480px) {
+  .content {
+    padding: 14px;
+  }
+
+  .sale-cart {
+    padding: 12px;
+  }
+
+  .sale-cart .actions > button {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  #saleProducts .row {
+    flex-wrap: wrap;
+  }
+}
