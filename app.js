@@ -978,7 +978,6 @@ function clearSaleClient(){
   }
 }
 
-```javascript
 function addToCart(id){
 
   const p =
