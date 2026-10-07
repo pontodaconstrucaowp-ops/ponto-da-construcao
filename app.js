@@ -1275,28 +1275,33 @@ function changeCartQty(id, delta){
 }
 function updateMilheiroAvulso(id, value){
 
-  const item = state.cart.find(
-    x => x.id === id
-  );
+  const item =
+    state.cart.find(x => x.id === id);
 
   if(!item){
     return;
   }
 
-  if(item.unit !== 'milheiro'){
+  if(
+    String(item.unit || '').toLowerCase() !==
+    'milheiro'
+  ){
     return;
   }
 
-  let unidades = Number(value);
+  let unidades =
+    Number(value);
 
-  if(isNaN(unidades) || unidades < 0){
+  if(
+    isNaN(unidades) ||
+    unidades < 0
+  ){
     unidades = 0;
   }
 
-  unidades = Math.floor(unidades);
+  unidades =
+    Math.floor(unidades);
 
-  // Se passar de 999, transforma automaticamente
-  // em milheiros adicionais.
   if(unidades >= 1000){
 
     const milheirosExtras =
@@ -1306,33 +1311,110 @@ function updateMilheiroAvulso(id, value){
       unidades % 1000;
 
     item.milheiroInteiro =
-      (item.milheiroInteiro || 0) +
+      Number(item.milheiroInteiro || 0) +
       milheirosExtras;
   }
 
   const novaQuantidade =
-    (item.milheiroInteiro || 0) +
-    (unidades / 1000);
-
-  if(novaQuantidade > item.stock){
-
-    alert(
-      'Quantidade maior que o estoque disponível.'
+    Number(item.milheiroInteiro || 0) +
+    (
+      unidades / 1000
     );
 
-    renderSales(
-      document.getElementById('content')
+  if(
+    item.controlaEstoque !== false &&
+    novaQuantidade > Number(item.stock || 0)
+  ){
+
+    alert(
+      `Estoque disponível: ${item.stock} milheiro(s).`
     );
 
     return;
   }
 
-  item.unidadesAvulsas = unidades;
+  item.unidadesAvulsas =
+    unidades;
 
   item.qty =
     Math.round(
       novaQuantidade * 1000
     ) / 1000;
+
+  renderSales(
+    document.getElementById('content')
+  );
+}
+function updateDuziaAvulso(id, value){
+
+  const item =
+    state.cart.find(x => x.id === id);
+
+  if(!item){
+    return;
+  }
+
+  const unidade =
+    String(item.unit || '').toLowerCase();
+
+  if(
+    unidade !== 'dúzia' &&
+    unidade !== 'duzia'
+  ){
+    return;
+  }
+
+  let unidades =
+    Number(value);
+
+  if(
+    isNaN(unidades) ||
+    unidades < 0
+  ){
+    unidades = 0;
+  }
+
+  unidades =
+    Math.floor(unidades);
+
+  if(unidades >= 12){
+
+    const duziasExtras =
+      Math.floor(unidades / 12);
+
+    unidades =
+      unidades % 12;
+
+    item.duziaInteira =
+      Number(item.duziaInteira || 0) +
+      duziasExtras;
+  }
+
+  const novaQuantidade =
+    Number(item.duziaInteira || 0) +
+    (
+      unidades / 12
+    );
+
+  if(
+    item.controlaEstoque !== false &&
+    novaQuantidade > Number(item.stock || 0)
+  ){
+
+    alert(
+      `Estoque disponível: ${item.stock} dúzia(s).`
+    );
+
+    return;
+  }
+
+  item.unidadesAvulsas =
+    unidades;
+
+  item.qty =
+    Math.round(
+      novaQuantidade * 100
+    ) / 100;
 
   renderSales(
     document.getElementById('content')
