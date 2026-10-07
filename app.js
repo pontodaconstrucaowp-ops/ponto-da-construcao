@@ -773,7 +773,6 @@ function filterSaleProducts() {
   renderSaleProductItems(filtrados);
 }
 
-```javascript
 function renderSaleProductItems(produtos) {
   const container =
     document.getElementById('saleProductItems');
