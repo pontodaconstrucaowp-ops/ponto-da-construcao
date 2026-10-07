@@ -900,6 +900,7 @@ function clearSaleClient(){
   }
 }
 
+```javascript
 function addToCart(id){
 
   const p =
@@ -907,19 +908,33 @@ function addToCart(id){
       .find(x => x.id === id);
 
   if(!p){
-    alert('Produto não encontrado.');
+    alert('PRODUTO NÃO ENCONTRADO.');
     return;
   }
 
   const controlaEstoque =
     p.controla_estoque !== false;
 
+  const unidade =
+    String(p.unidade || '').toLowerCase();
+
+  const isMilheiro =
+    unidade === 'milheiro';
+
+  const isDuzia =
+    unidade === 'dúzia' ||
+    unidade === 'duzia';
+
   const found =
     state.cart.find(x => x.id === id);
 
   if(found){
 
-    if(p.unidade === 'milheiro'){
+    // ==============================
+    // MILHEIRO
+    // ==============================
+
+    if(isMilheiro){
 
       const atual =
         Number(found.milheiroInteiro || 0);
@@ -932,7 +947,9 @@ function addToCart(id){
         Number(p.estoque) > 0 &&
         novo > Number(p.estoque)
       ){
-        alert('Quantidade maior que o estoque disponível.');
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
         return;
       }
 
@@ -944,9 +961,44 @@ function addToCart(id){
           Number(found.unidadesAvulsas || 0) / 1000
         );
 
+    // ==============================
+    // DÚZIA
+    // ==============================
+
+    }else if(isDuzia){
+
+      const atual =
+        Number(found.duziaInteira || 0);
+
+      const novo =
+        atual + 1;
+
+      if(
+        controlaEstoque &&
+        Number(p.estoque) > 0 &&
+        novo > Number(p.estoque)
+      ){
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
+        return;
+      }
+
+      found.duziaInteira = novo;
+
+      found.qty =
+        novo +
+        (
+          Number(found.unidadesAvulsas || 0) / 12
+        );
+
+    // ==============================
+    // M³ / KG
+    // ==============================
+
     }else if(
-      p.unidade === 'm³' ||
-      p.unidade === 'kg'
+      unidade === 'm³' ||
+      unidade === 'kg'
     ){
 
       const step = 0.5;
@@ -959,11 +1011,17 @@ function addToCart(id){
         Number(p.estoque) > 0 &&
         novo > Number(p.estoque)
       ){
-        alert('Quantidade maior que o estoque disponível.');
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
         return;
       }
 
       found.qty = novo;
+
+    // ==============================
+    // UNIDADE / OUTROS
+    // ==============================
 
     }else{
 
@@ -975,7 +1033,9 @@ function addToCart(id){
         Number(p.estoque) > 0 &&
         novo > Number(p.estoque)
       ){
-        alert('Quantidade maior que o estoque disponível.');
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
         return;
       }
 
@@ -983,6 +1043,10 @@ function addToCart(id){
     }
 
   }else{
+
+    // ==============================
+    // NOVO ITEM
+    // ==============================
 
     state.cart.push({
 
@@ -1001,14 +1065,16 @@ function addToCart(id){
       qty: 1,
 
       milheiroInteiro:
-        p.unidade === 'milheiro'
+        isMilheiro
           ? 1
           : 0,
 
-      unidadesAvulsas:
-        p.unidade === 'milheiro'
-          ? 0
-          : 0
+      duziaInteira:
+        isDuzia
+          ? 1
+          : 0,
+
+      unidadesAvulsas: 0
 
     });
 
@@ -1018,6 +1084,8 @@ function addToCart(id){
     document.getElementById('content')
   );
 }
+
+
 function changeCartQty(id, delta){
 
   const item =
@@ -1030,7 +1098,21 @@ function changeCartQty(id, delta){
   const controlaEstoque =
     item.controlaEstoque !== false;
 
-  if(item.unit === 'milheiro'){
+  const unidade =
+    String(item.unit || '').toLowerCase();
+
+  const isMilheiro =
+    unidade === 'milheiro';
+
+  const isDuzia =
+    unidade === 'dúzia' ||
+    unidade === 'duzia';
+
+  // ==============================
+  // MILHEIRO
+  // ==============================
+
+  if(isMilheiro){
 
     const atual =
       Number(item.milheiroInteiro || 0);
@@ -1049,7 +1131,9 @@ function changeCartQty(id, delta){
         controlaEstoque &&
         novo > Number(item.stock)
       ){
-        alert('Quantidade maior que o estoque disponível.');
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
         return;
       }
 
@@ -1062,15 +1146,17 @@ function changeCartQty(id, delta){
         );
     }
 
-  }else if(
-    item.unit === 'm³' ||
-    item.unit === 'kg'
-  ){
+  // ==============================
+  // DÚZIA
+  // ==============================
 
-    const step = 0.5;
+  }else if(isDuzia){
+
+    const atual =
+      Number(item.duziaInteira || 0);
 
     const novo =
-      Number(item.qty || 0) + (delta * step);
+      atual + delta;
 
     if(novo <= 0){
 
@@ -1083,12 +1169,59 @@ function changeCartQty(id, delta){
         controlaEstoque &&
         novo > Number(item.stock)
       ){
-        alert('Quantidade maior que o estoque disponível.');
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
+        return;
+      }
+
+      item.duziaInteira = novo;
+
+      item.qty =
+        novo +
+        (
+          Number(item.unidadesAvulsas || 0) / 12
+        );
+    }
+
+  // ==============================
+  // M³ / KG
+  // ==============================
+
+  }else if(
+    unidade === 'm³' ||
+    unidade === 'kg'
+  ){
+
+    const step = 0.5;
+
+    const novo =
+      Number(item.qty || 0) +
+      (delta * step);
+
+    if(novo <= 0){
+
+      state.cart =
+        state.cart.filter(x => x.id !== id);
+
+    }else{
+
+      if(
+        controlaEstoque &&
+        novo > Number(item.stock)
+      ){
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
         return;
       }
 
       item.qty = novo;
     }
+
+  // ==============================
+  // UNIDADE / OUTROS
+  // ==============================
 
   }else{
 
@@ -1106,7 +1239,9 @@ function changeCartQty(id, delta){
         controlaEstoque &&
         novo > Number(item.stock)
       ){
-        alert('Quantidade maior que o estoque disponível.');
+        alert(
+          'QUANTIDADE MAIOR QUE O ESTOQUE DISPONÍVEL.'
+        );
         return;
       }
 
@@ -1118,6 +1253,7 @@ function changeCartQty(id, delta){
     document.getElementById('content')
   );
 }
+```
 
 function updateMilheiroAvulso(id, value){
 
