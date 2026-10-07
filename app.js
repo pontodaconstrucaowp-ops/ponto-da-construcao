@@ -857,7 +857,7 @@ function renderSaleProductItems(produtos) {
 
     }).join('');
 }
-```
+
 
 async function searchSaleClients(){
   const input = document.getElementById('saleClient');
