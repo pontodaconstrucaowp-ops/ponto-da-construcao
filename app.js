@@ -838,9 +838,6 @@ function renderSaleProductItems(produtos) {
 
             </div>
 
-            <div class="price">
-              ${preco}
-            </div>
 
           </div>
 
