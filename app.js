@@ -349,6 +349,33 @@ ${
       </div>
     `
 }
+${
+  x.unit === 'dúzia' || x.unit === 'duzia'
+    ? `
+      <div style="margin-top:8px;">
+
+        <label class="muted">
+          Avulsos:
+        </label>
+
+        <input
+          class="search"
+          type="number"
+          min="0"
+          step="1"
+          value="${x.unidadesAvulsas || 0}"
+          onchange="updateDuziaAvulso(${x.id}, this.value)"
+          style="max-width:120px;"
+        >
+
+        <span class="muted">
+          unidades
+        </span>
+
+      </div>
+    `
+    : ''
+}
               </div>
 
               <div
