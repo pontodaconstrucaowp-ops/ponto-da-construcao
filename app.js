@@ -214,479 +214,65 @@ function deliveryCard(d){
   return `<div class="card"><div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div><p class="muted">${d.address}</p><div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div></div>`
 }
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
-async function renderSales(el){
-
+async function renderSales(el) {
   el.innerHTML = `
     <div class="card">
+      <h2>Cliente</h2>
 
-      <div class="section-title">
-        <h2>Cliente</h2>
-      </div>
-
-      <div class="field">
-
-        <label>Buscar cliente</label>
-
-        <input
-          id="saleClient"
-          class="search"
-          placeholder="Digite nome ou telefone..."
-          oninput="searchSaleClients()"
-        >
-
-      </div>
-
-      <div
-        id="saleClientResults"
-        style="margin-top:10px"
+      <input
+        id="saleClient"
+        class="search"
+        placeholder="Nome ou telefone"
+        oninput="searchSaleClients()"
       >
-        <p class="muted">
-          Digite o nome ou telefone do cliente.
-        </p>
-      </div>
 
+      <div id="saleClientResults"></div>
     </div>
 
     <div class="section-title">
       <h2>Materiais</h2>
     </div>
 
-    <div
-      id="saleProducts"
-      class="list"
-    >
-      <div class="card muted">
+    <div id="saleProducts">
+      <input
+        id="saleProductSearch"
+        class="search"
+        placeholder="Pesquisar material..."
+        oninput="pcMostrarProdutos()"
+      >
+
+      <div id="saleProductItems">
         Carregando materiais...
       </div>
     </div>
 
     <div class="sale-cart">
+      <strong>🛒 Resumo do pedido</strong>
 
-      <button
-        type="button"
-        class="cart-toggle"
-        onclick="
-          state.cartOpen = !state.cartOpen;
+      <div id="pcResumoItens"></div>
 
-          const cart =
-            document.getElementById('cartItems');
-
-          if(cart){
-            cart.hidden = !state.cartOpen;
-          }
-        "
-      >
-
-        <strong>🛒 Carrinho</strong>
-
-        <span>
-          ${state.cart.length} item(ns)
-        </span>
-
-      </button>
-
-      <div
-        id="cartItems"
-        ${state.cartOpen ? '' : 'hidden'}
-      >
-
-        ${
-          state.cart.length
-
-          ? state.cart.map(x => `
-
-            <div
-              class="row"
-              style="
-                margin-top:10px;
-                align-items:center;
-                gap:10px;
-              "
-            >
-
-              <div style="flex:1">
-
-                <strong>
-                  ${x.name}
-                </strong>
-<div class="muted">
-
-  ${money(x.price)} / ${String(x.unit || '').toLowerCase()}
-
-  ${
-    x.unit === 'milheiro'
-      ? ` · ${money(x.price / 1000)} / unidade`
-      : (
-          x.unit === 'dúzia' ||
-          x.unit === 'duzia'
-        )
-        ? ` · ${money(x.price / 12)} / unidade`
-        : ''
-  }
-
-</div>
-                ${
-                  x.unit === 'milheiro'
-
-                  ? `
-                    <div class="muted">
-
-                      ${x.milheiroInteiro || 0}
-                      milheiro(s)
-
-                      ${
-                        x.unidadesAvulsas
-                          ? `+ ${x.unidadesAvulsas} unidades`
-                          : ''
-                      }
-
-                    </div>
-                  `
-
-                  : (
-                      x.unit === 'dúzia' ||
-                      x.unit === 'duzia'
-                    )
-
-                    ? `
-                      <div class="muted">
-
-                        ${x.duziaInteira || 0}
-                        dúzia(s)
-
-                        ${
-                          x.unidadesAvulsas
-                            ? `+ ${x.unidadesAvulsas} unidades`
-                            : ''
-                        }
-
-                      </div>
-                    `
-
-                    : `
-                      <div class="muted">
-                        ${x.qty} ${x.unit}
-                      </div>
-                    `
-                }
-
-                ${
-                  x.unit === 'dúzia' ||
-                  x.unit === 'duzia'
-
-                  ? `
-                    <div
-                      style="
-                        margin-top:8px;
-                      "
-                    >
-
-                      <label class="muted">
-                        Avulsos:
-                      </label>
-
-                      <input
-                        class="search"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value="${x.unidadesAvulsas || 0}"
-                        onchange="
-                          updateDuziaAvulso(
-                            ${x.id},
-                            this.value
-                          )
-                        "
-                        style="
-                          max-width:120px;
-                        "
-                      >
-
-                      <span class="muted">
-                        unidades
-                      </span>
-
-                    </div>
-                  `
-
-                  : ''
-                }
-
-              </div>
-
-              <div
-                style="
-                  display:flex;
-                  align-items:center;
-                  gap:6px;
-                "
-              >
-
-                <button
-                  class="secondary"
-                  onclick="
-                    changeCartQty(
-                      ${x.id},
-                      -1
-                    )
-                  "
-                >
-                  −
-                </button>
-
-                <strong
-                  style="
-                    min-width:40px;
-                    text-align:center;
-                  "
-                >
-
-                  ${
-                    x.unit === 'milheiro'
-
-                      ? (
-                          x.milheiroInteiro || 0
-                        )
-
-                      : (
-                          x.unit === 'dúzia' ||
-                          x.unit === 'duzia'
-                        )
-
-                        ? (
-                            x.duziaInteira || 0
-                          )
-
-                        : x.qty
-                  }
-
-                </strong>
-
-                <button
-                  class="secondary"
-                  onclick="
-                    changeCartQty(
-                      ${x.id},
-                      1
-                    )
-                  "
-                >
-                  +
-                </button>
-
-              </div>
-
-              ${
-                x.unit === 'milheiro'
-
-                ? `
-                  <div
-                    style="
-                      display:flex;
-                      align-items:center;
-                      gap:6px;
-                    "
-                  >
-
-                    <label
-                      class="muted"
-                      style="
-                        white-space:nowrap;
-                      "
-                    >
-                      Avulsos:
-                    </label>
-
-                    <input
-                      class="search"
-                      type="number"
-                      min="0"
-                      max="999"
-                      step="1"
-                      value="${x.unidadesAvulsas || 0}"
-                      style="
-                        width:90px;
-                      "
-                      onchange="
-                        updateMilheiroAvulso(
-                          ${x.id},
-                          this.value
-                        )
-                      "
-                    >
-
-                  </div>
-                `
-
-                : ''
-              }
-
-              <strong>
-                ${money(x.price * x.qty)}
-              </strong>
-
-            </div>
-
-          `).join('')
-
-          : `
-            <p class="muted">
-              Nenhum produto adicionado.
-            </p>
-          `
-        }
-
-      </div>
-
-      <hr>
-
-      <div class="row">
-
-        <span>
-          Total dos materiais
-        </span>
-
-        <span class="total">
-
-          ${money(
-            state.cart.reduce(
-              (s,x) =>
-                s + x.price * x.qty,
-              0
-            )
-          )}
-
-        </span>
-
-      </div>
-
-      <div
-        class="field"
-        style="margin-top:15px;"
-      >
-
-        <label>
-          Valor abatido (desconto)
-        </label>
+      <div class="field">
+        <label for="saleDiscount">Desconto em reais</label>
 
         <input
           id="saleDiscount"
-          class="search"
           type="number"
           min="0"
           step="0.01"
-          placeholder="0,00"
-          value="${state.saleDiscount || ''}"
-
-          oninput="
-
-            state.saleDiscount =
-              Math.max(
-                0,
-                Number(this.value) || 0
-              );
-
-            const totalMateriais =
-              state.cart.reduce(
-                (s,x) =>
-                  s + x.price * x.qty,
-                0
-              );
-
-            const desconto =
-              Math.min(
-                state.saleDiscount,
-                totalMateriais
-              );
-
-            document.getElementById(
-              'saleDiscountValue'
-            ).textContent =
-              money(desconto);
-
-            document.getElementById(
-              'saleFinalTotal'
-            ).textContent =
-              money(
-                totalMateriais -
-                desconto
-              );
-          "
+          value="${Number(state.saleDiscount) || 0}"
+          oninput="pcAtualizarResumo()"
         >
-
       </div>
 
       <div class="row">
-
-        <span>
-          Valor abatido
-        </span>
-
-        <span
-          id="saleDiscountValue"
-        >
-
-          ${money(
-            Math.min(
-              Number(state.saleDiscount) || 0,
-
-              state.cart.reduce(
-                (s,x) =>
-                  s + x.price * x.qty,
-                0
-              )
-            )
-          )}
-
-        </span>
-
-      </div>
-
-      <div class="row">
-
-        <strong>
-          Total final
-        </strong>
-
-        <strong
-          id="saleFinalTotal"
-          class="total"
-        >
-
-          ${money(
-
-            state.cart.reduce(
-              (s,x) =>
-                s + x.price * x.qty,
-              0
-            )
-
-            -
-
-            Math.min(
-
-              Number(
-                state.saleDiscount
-              ) || 0,
-
-              state.cart.reduce(
-                (s,x) =>
-                  s + x.price * x.qty,
-                0
-              )
-
-            )
-
-          )}
-
-        </strong>
-
+        <strong>Total final</strong>
+        <strong id="pcTotalFinal" class="total"></strong>
       </div>
 
       <div class="actions">
-
         <button
           class="primary"
+          id="pcContinuar"
           onclick="finishSale()"
         >
           Continuar
@@ -694,139 +280,328 @@ async function renderSales(el){
 
         <button
           class="danger"
-          onclick="
-            state.cart = [];
-
-            renderSales(
-              document.getElementById(
-                'content'
-              )
-            )
-          "
+          onclick="pcLimparPedido()"
         >
-          Limpar
+          Limpar pedido
         </button>
-
       </div>
-
     </div>
   `;
 
+  if (state.selectedClient) {
+    selectSaleClient(state.selectedClient);
+  }
 
-  /*
-   * CARREGAR MATERIAIS
-   */
+  pcAtualizarResumo();
 
-  const { data, error } =
-    await supabaseClient
-      .from('produtos')
-      .select('*')
-      .eq('ativo', true)
-      .order('nome', {
-        ascending: true
-      });
+  const lista = el.querySelector('#saleProductItems');
 
+  const { data, error } = await supabaseClient
+    .from('produtos')
+    .select('*')
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
 
-  const productsList =
-    document.getElementById(
-      'saleProducts'
-    );
+  if (!lista.isConnected) return;
 
-
-  if(error){
-
-    console.error(
-      'ERRO AO CARREGAR PRODUTOS PARA VENDA:',
-      error
-    );
-
-    productsList.innerHTML = `
-
-      <div class="card">
-
-        <strong>
-          Erro ao carregar materiais
-        </strong>
-
-        <p class="muted">
-          ${error.message}
-        </p>
-
-      </div>
-
-    `;
-
+  if (error) {
+    lista.textContent =
+      'Não foi possível carregar: ' + error.message;
     return;
   }
 
+  window.saleProducts = data || [];
+  pcMostrarProdutos();
+}
 
-  if(!data || data.length === 0){
+function pcEscapar(valor) {
+  return String(valor ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
 
-    productsList.innerHTML = `
+function pcOpcoes(produto) {
+  const unidade = String(
+    produto.unidade || 'unidade'
+  ).trim().toLowerCase();
 
-      <div class="card">
+  const opcoes = [{
+    tipo: 'principal',
+    unidade,
+    preco: Number(produto.preco),
+    passo: ['m³', 'kg'].includes(unidade) ? 0.1 : 1
+  }];
 
-        <strong>
-          Nenhum material cadastrado
-        </strong>
+  if (
+    ['dúzia', 'duzia', 'milheiro'].includes(unidade) &&
+    produto.preco_avulso != null
+  ) {
+    opcoes.push({
+      tipo: 'avulso',
+      unidade: 'unidade',
+      preco: Number(produto.preco_avulso),
+      passo: 1
+    });
+  }
 
-        <p class="muted">
-          Cadastre produtos no Estoque antes
-          de realizar uma venda.
-        </p>
+  return opcoes;
+}
 
-      </div>
+function pcItem(id, tipo) {
+  return state.cart.find(item =>
+    String(item.id) === String(id) &&
+    item.tipoOpcao === tipo
+  );
+}
 
+function pcSubtotal(item) {
+  return Math.round(item.price * item.qty * 100) / 100;
+}
+
+function pcTotal() {
+  return state.cart.reduce(
+    (soma, item) => soma + Math.round(pcSubtotal(item) * 100),
+    0
+  ) / 100;
+}
+
+function pcMostrarProdutos() {
+  const lista = document.getElementById('saleProductItems');
+  if (!lista) return;
+
+  const termo = (
+    document.getElementById('saleProductSearch')?.value || ''
+  ).toLocaleLowerCase('pt-BR');
+
+  lista.innerHTML = (window.saleProducts || [])
+    .filter(produto =>
+      String(produto.nome)
+        .toLocaleLowerCase('pt-BR')
+        .includes(termo)
+    )
+    .map(produto => {
+      const id = Number(produto.id);
+      if (!Number.isSafeInteger(id)) return '';
+
+      const opcoes = pcOpcoes(produto);
+
+      const permiteAvulso = ['dúzia', 'duzia', 'milheiro']
+        .includes(
+          String(produto.unidade).trim().toLowerCase()
+        );
+
+      return `
+        <div class="card pc-produto">
+          <strong>${pcEscapar(produto.nome)}</strong>
+
+          <div class="pc-opcoes">
+            ${opcoes.map(opcao => {
+              const quantidade =
+                pcItem(id, opcao.tipo)?.qty || 0;
+
+              const subtotal = Math.round(
+                quantidade * opcao.preco * 100
+              ) / 100;
+
+              return `
+                <div class="pc-opcao">
+                  <strong>
+                    ${pcEscapar(opcao.unidade)}
+                  </strong>
+
+                  <div class="muted">
+                    ${money(opcao.preco)}
+                    por ${pcEscapar(opcao.unidade)}
+                  </div>
+
+                  <div class="pc-controles">
+                    <button
+                      type="button"
+                      aria-label="Diminuir ${pcEscapar(opcao.unidade)}"
+                      onclick="pcAlterar(${id}, '${opcao.tipo}', -1)"
+                    >−</button>
+
+                    <input
+                      id="pc-q-${id}-${opcao.tipo}"
+                      aria-label="Quantidade em ${pcEscapar(opcao.unidade)}"
+                      type="number"
+                      min="0"
+                      step="${opcao.passo}"
+                      value="${quantidade}"
+                      onchange="pcDefinir(
+                        ${id}, '${opcao.tipo}', this.value
+                      )"
+                    >
+
+                    <button
+                      type="button"
+                      aria-label="Adicionar ${pcEscapar(opcao.unidade)}"
+                      onclick="pcAlterar(${id}, '${opcao.tipo}', 1)"
+                    >+</button>
+                  </div>
+
+                  <strong id="pc-s-${id}-${opcao.tipo}">
+                    ${money(subtotal)}
+                  </strong>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${
+            permiteAvulso && opcoes.length === 1
+              ? `<p class="muted">
+                   Preencha preco_avulso no cadastro
+                   para habilitar unidades.
+                 </p>`
+              : ''
+          }
+        </div>
+      `;
+    })
+    .join('') || `
+      <div class="card">Nenhum material encontrado.</div>
     `;
+}
 
+function pcAlterar(id, tipo, delta) {
+  const produto = (window.saleProducts || []).find(
+    p => String(p.id) === String(id)
+  );
+
+  const opcao = produto &&
+    pcOpcoes(produto).find(o => o.tipo === tipo);
+
+  if (!opcao) return;
+
+  const atual = pcItem(id, tipo)?.qty || 0;
+
+  const nova = Math.max(
+    0,
+    Math.round((atual + delta * opcao.passo) * 1000) / 1000
+  );
+
+  pcDefinir(id, tipo, nova);
+}
+
+function pcDefinir(id, tipo, valor) {
+  const produto = (window.saleProducts || []).find(
+    p => String(p.id) === String(id)
+  );
+
+  const opcao = produto &&
+    pcOpcoes(produto).find(o => o.tipo === tipo);
+
+  if (!opcao) return;
+
+  const quantidade = Number(
+    String(valor).replace(',', '.')
+  );
+
+  if (
+    !Number.isFinite(quantidade) ||
+    quantidade < 0 ||
+    (opcao.passo === 1 && !Number.isInteger(quantidade))
+  ) {
+    alert('Informe uma quantidade válida.');
+
+    const input = document.getElementById(
+      `pc-q-${id}-${tipo}`
+    );
+
+    if (input) input.value = pcItem(id, tipo)?.qty || 0;
     return;
   }
 
+  const qty = Math.round(quantidade * 1000) / 1000;
 
-  /*
-   * GUARDAR MATERIAIS
-   */
+  state.cart = state.cart.filter(item =>
+    !(
+      String(item.id) === String(id) &&
+      item.tipoOpcao === tipo
+    )
+  );
 
-  window.saleProducts = data;
+  if (qty > 0) {
+    state.cart.push({
+      id: produto.id,
+      name: produto.nome,
+      unit: opcao.unidade,
+      price: opcao.preco,
+      qty,
+      tipoOpcao: tipo
+    });
+  }
 
-  // IMPORTANTE:
-  // Os produtos reais do Supabase também
-  // ficam disponíveis para o addToCart().
-  state.products = data;
+  const input = document.getElementById(
+    `pc-q-${id}-${tipo}`
+  );
 
+  const subtotal = document.getElementById(
+    `pc-s-${id}-${tipo}`
+  );
 
-  /*
-   * CAMPO DE BUSCA DOS MATERIAIS
-   */
+  if (input) input.value = qty;
 
-  productsList.innerHTML = `
+  if (subtotal) {
+    subtotal.textContent = money(
+      Math.round(qty * opcao.preco * 100) / 100
+    );
+  }
 
-    <div
-      class="field"
-      style="margin-bottom:15px;"
-    >
+  pcAtualizarResumo();
+}
 
-      <input
-        id="saleProductSearch"
-        class="search"
-        type="text"
-        placeholder="🔎 Buscar material..."
-        oninput="filterSaleProducts()"
-      >
+function pcAtualizarResumo() {
+  const lista = document.getElementById('pcResumoItens');
+  if (!lista) return;
 
+  lista.innerHTML = state.cart.map(item => `
+    <div class="pc-resumo-linha">
+      <strong>${pcEscapar(item.name)}</strong>
+
+      <div>
+        ${item.qty.toLocaleString('pt-BR')}
+        ${pcEscapar(item.unit)}
+        — ${money(pcSubtotal(item))}
+      </div>
     </div>
-
-    <div id="saleProductItems"></div>
-
+  `).join('') || `
+    <p class="muted">
+      Escolha as quantidades nos materiais.
+    </p>
   `;
 
+  const total = pcTotal();
+  const input = document.getElementById('saleDiscount');
+  const valor = Number(input.value);
 
-  /*
-   * MOSTRAR TODOS OS MATERIAIS
-   */
+  state.saleDiscount = Math.round(
+    Math.min(
+      total,
+      Math.max(0, Number.isFinite(valor) ? valor : 0)
+    ) * 100
+  ) / 100;
 
-  renderSaleProductItems(data);
+  document.getElementById('pcTotalFinal').textContent =
+    money(total - state.saleDiscount);
 
+  document.getElementById('pcContinuar').disabled =
+    !state.cart.length;
+}
+
+function pcLimparPedido() {
+  state.cart = [];
+  state.saleDiscount = 0;
+
+  document.getElementById('saleDiscount').value = 0;
+
+  pcMostrarProdutos();
+  pcAtualizarResumo();
 }
 async function saveSaleNewClient(){
   const { data: { user } } = await supabaseClient.auth.getUser();
