@@ -1779,9 +1779,9 @@ abrirImpressaoVenda(vendaId, 'pago');
 
 navigate('home');
 }
-async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
+async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
-  if(!vendaId){
+  if (!vendaId) {
     alert('Venda não encontrada.');
     return;
   }
@@ -1804,12 +1804,8 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       .eq('id', vendaId)
       .maybeSingle();
 
-  if(vendaError){
-
-    console.error(
-      'ERRO AO CARREGAR VENDA:',
-      vendaError
-    );
+  if (vendaError) {
+    console.error('ERRO AO CARREGAR VENDA:', vendaError);
 
     alert(
       'Não foi possível carregar a venda:\n\n' +
@@ -1819,17 +1815,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     return;
   }
 
-  if(!venda){
-
-    alert(
-      'A venda nº ' +
-      vendaId +
-      ' não foi encontrada.'
-    );
-
+  if (!venda) {
+    alert('A venda nº ' + vendaId + ' não foi encontrada.');
     return;
   }
-
 
   // ==============================
   // CLIENTE
@@ -1837,8 +1826,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
   let cliente = {};
 
-  if(venda.cliente_id){
-
+  if (venda.cliente_id) {
     const { data: clienteData, error: clienteError } =
       await supabaseClient
         .from('clientes')
@@ -1850,24 +1838,18 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         .eq('id', venda.cliente_id)
         .maybeSingle();
 
-    if(clienteError){
-
+    if (clienteError) {
       console.error(
         'ERRO AO CARREGAR CLIENTE:',
         clienteError
       );
-
-    }else if(clienteData){
-
+    } else if (clienteData) {
       cliente = clienteData;
-
     }
-
   }
 
-
   // ==============================
-  // ITENS
+  // ITENS — INCLUI A UNIDADE VENDIDA
   // ==============================
 
   const { data: itens, error: itensError } =
@@ -1876,16 +1858,13 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
       .select(`
         quantidade,
         subtotal,
-        produtos_id
+        produtos_id,
+        unidade_venda
       `)
       .eq('vendas_id', vendaId);
 
-  if(itensError){
-
-    console.error(
-      'ERRO AO CARREGAR ITENS:',
-      itensError
-    );
+  if (itensError) {
+    console.error('ERRO AO CARREGAR ITENS:', itensError);
 
     alert(
       'Não foi possível carregar os itens da venda:\n\n' +
@@ -1894,7 +1873,6 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
     return;
   }
-
 
   // ==============================
   // PRODUTOS
@@ -1907,8 +1885,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
 
   let produtos = [];
 
-  if(produtoIds.length){
-
+  if (produtoIds.length) {
     const { data: produtosData, error: produtosError } =
       await supabaseClient
         .from('produtos')
@@ -1919,8 +1896,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
         `)
         .in('id', produtoIds);
 
-    if(produtosError){
-
+    if (produtosError) {
       console.error(
         'ERRO AO CARREGAR PRODUTOS:',
         produtosError
@@ -1935,28 +1911,23 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago'){
     }
 
     produtos = produtosData || [];
-
   }
-
 
   // ==============================
   // FORMATADORES
   // ==============================
 
   const formatarQuantidade = (quantidade) => {
-
     const numero = Number(quantidade);
 
-    if(Number.isInteger(numero)){
+    if (Number.isInteger(numero)) {
       return String(numero);
     }
 
     return numero
       .toFixed(3)
       .replace(/\.?0+$/, '');
-
   };
-
 
   const formatarUnidade = (unidade) => {
 
