@@ -3057,7 +3057,8 @@ async function renderProducts(el){
 
     return;
   }
-
+state.products = data || [];
+  
   if(!data || data.length === 0){
     list.innerHTML = `
       <div class="card">
