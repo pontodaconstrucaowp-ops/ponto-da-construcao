@@ -309,29 +309,46 @@ async function renderSales(el){
                   ${x.name}
                 </strong>
 
-                ${
-                  x.unit === 'milheiro'
+${ 
+  x.unit === 'milheiro'
+  
+  ? `
+    <div class="muted">
+      ${x.milheiroInteiro || 0}
+      milheiro(s)
 
-                  ? `
-                    <div class="muted">
-                      ${x.milheiroInteiro || 0}
-                      milheiro(s)
+      ${
+        x.unidadesAvulsas
+          ? `+ ${x.unidadesAvulsas} unidades`
+          : ''
+      }
+    </div>
+  `
 
-                      ${
-                        x.unidadesAvulsas
-                          ? `+ ${x.unidadesAvulsas} unidades`
-                          : ''
-                      }
-                    </div>
-                  `
+  : (
+      x.unit === 'dúzia' ||
+      x.unit === 'duzia'
+    )
 
-                  : `
-                    <div class="muted">
-                      ${x.qty} ${x.unit}
-                    </div>
-                  `
-                }
+    ? `
+      <div class="muted">
+        ${x.duziaInteira || 0}
+        dúzia(s)
 
+        ${
+          x.unidadesAvulsas
+            ? `+ ${x.unidadesAvulsas} unidades`
+            : ''
+        }
+      </div>
+    `
+
+    : `
+      <div class="muted">
+        ${x.qty} ${x.unit}
+      </div>
+    `
+}
               </div>
 
               <div
