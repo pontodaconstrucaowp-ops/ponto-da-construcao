@@ -753,10 +753,10 @@ function renderSaleProductItems(produtos) {
   if (!produtos || produtos.length === 0) {
     container.innerHTML = `
       <div class="card">
-        <strong>NENHUM MATERIAL ENCONTRADO</strong>
+        <strong>Nenhum material encontrado</strong>
 
         <p class="muted">
-          TENTE PESQUISAR POR OUTRO NOME.
+          Tente pesquisar por outro nome.
         </p>
       </div>
     `;
@@ -770,15 +770,6 @@ function renderSaleProductItems(produtos) {
       const controlaEstoque =
         p.controla_estoque !== false;
 
-      const nome =
-        String(p.nome || '').toUpperCase();
-
-      const unidade =
-        String(p.unidade || '').toUpperCase();
-
-      const preco =
-        money(Number(p.preco || 0));
-
       return `
         <div class="card">
 
@@ -787,19 +778,21 @@ function renderSaleProductItems(produtos) {
             <div>
 
               <div class="product-name">
-                ${nome}
+                ${p.nome}
               </div>
 
               <div class="muted">
 
-                ${preco} / ${unidade}
+                ${money(Number(p.preco || 0))}
+
+                / ${p.unidade}
 
                 ·
 
                 ${
                   controlaEstoque
-                    ? `ESTOQUE ${p.estoque}`
-                    : `🛒 REVENDA`
+                    ? `Estoque ${p.estoque}`
+                    : `🛒 Revenda`
                 }
 
               </div>
@@ -807,7 +800,7 @@ function renderSaleProductItems(produtos) {
             </div>
 
             <div class="price">
-              ${preco}
+              ${money(Number(p.preco || 0))}
             </div>
 
           </div>
@@ -818,7 +811,7 @@ function renderSaleProductItems(produtos) {
               class="secondary"
               onclick="addToCart(${p.id})"
             >
-              ADICIONAR
+              Adicionar
             </button>
 
           </div>
@@ -828,8 +821,6 @@ function renderSaleProductItems(produtos) {
 
     }).join('');
 }
-```
-
 async function searchSaleClients(){
   const input = document.getElementById('saleClient');
   const results = document.getElementById('saleClientResults');
