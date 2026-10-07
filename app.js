@@ -975,7 +975,6 @@ function clearSaleClient(){
     `;
   }
 }
-
 function addToCart(id){
 
   const p =
