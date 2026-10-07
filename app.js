@@ -268,9 +268,10 @@ async function renderSales(el){
         onclick="
           state.cartOpen = !state.cartOpen;
 
-          const cart = document.getElementById('cartItems');
+          const cart =
+            document.getElementById('cartItems');
 
-          if (cart) {
+          if(cart){
             cart.hidden = !state.cartOpen;
           }
         "
@@ -309,73 +310,93 @@ async function renderSales(el){
                   ${x.name}
                 </strong>
 
-${ 
-  x.unit === 'milheiro'
-  
-  ? `
-    <div class="muted">
-      ${x.milheiroInteiro || 0}
-      milheiro(s)
+                ${
+                  x.unit === 'milheiro'
 
-      ${
-        x.unidadesAvulsas
-          ? `+ ${x.unidadesAvulsas} unidades`
-          : ''
-      }
-    </div>
-  `
+                  ? `
+                    <div class="muted">
 
-  : (
-      x.unit === 'dúzia' ||
-      x.unit === 'duzia'
-    )
+                      ${x.milheiroInteiro || 0}
+                      milheiro(s)
 
-    ? `
-      <div class="muted">
-        ${x.duziaInteira || 0}
-        dúzia(s)
+                      ${
+                        x.unidadesAvulsas
+                          ? `+ ${x.unidadesAvulsas} unidades`
+                          : ''
+                      }
 
-        ${
-          x.unidadesAvulsas
-            ? `+ ${x.unidadesAvulsas} unidades`
-            : ''
-        }
-      </div>
-    `
+                    </div>
+                  `
 
-    : `
-      <div class="muted">
-        ${x.qty} ${x.unit}
-      </div>
-    `
-}
-${
-  x.unit === 'dúzia' || x.unit === 'duzia'
-    ? `
-      <div style="margin-top:8px;">
+                  : (
+                      x.unit === 'dúzia' ||
+                      x.unit === 'duzia'
+                    )
 
-        <label class="muted">
-          Avulsos:
-        </label>
+                    ? `
+                      <div class="muted">
 
-        <input
-          class="search"
-          type="number"
-          min="0"
-          step="1"
-          value="${x.unidadesAvulsas || 0}"
-          onchange="updateDuziaAvulso(${x.id}, this.value)"
-          style="max-width:120px;"
-        >
+                        ${x.duziaInteira || 0}
+                        dúzia(s)
 
-        <span class="muted">
-          unidades
-        </span>
+                        ${
+                          x.unidadesAvulsas
+                            ? `+ ${x.unidadesAvulsas} unidades`
+                            : ''
+                        }
 
-      </div>
-    `
-    : ''
-}
+                      </div>
+                    `
+
+                    : `
+                      <div class="muted">
+                        ${x.qty} ${x.unit}
+                      </div>
+                    `
+                }
+
+                ${
+                  x.unit === 'dúzia' ||
+                  x.unit === 'duzia'
+
+                  ? `
+                    <div
+                      style="
+                        margin-top:8px;
+                      "
+                    >
+
+                      <label class="muted">
+                        Avulsos:
+                      </label>
+
+                      <input
+                        class="search"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value="${x.unidadesAvulsas || 0}"
+                        onchange="
+                          updateDuziaAvulso(
+                            ${x.id},
+                            this.value
+                          )
+                        "
+                        style="
+                          max-width:120px;
+                        "
+                      >
+
+                      <span class="muted">
+                        unidades
+                      </span>
+
+                    </div>
+                  `
+
+                  : ''
+                }
+
               </div>
 
               <div
@@ -388,7 +409,12 @@ ${
 
                 <button
                   class="secondary"
-                  onclick="changeCartQty(${x.id},-1)"
+                  onclick="
+                    changeCartQty(
+                      ${x.id},
+                      -1
+                    )
+                  "
                 >
                   −
                 </button>
@@ -399,16 +425,36 @@ ${
                     text-align:center;
                   "
                 >
+
                   ${
                     x.unit === 'milheiro'
-                      ? (x.milheiroInteiro || 0)
-                      : x.qty
+
+                      ? (
+                          x.milheiroInteiro || 0
+                        )
+
+                      : (
+                          x.unit === 'dúzia' ||
+                          x.unit === 'duzia'
+                        )
+
+                        ? (
+                            x.duziaInteira || 0
+                          )
+
+                        : x.qty
                   }
+
                 </strong>
 
                 <button
                   class="secondary"
-                  onclick="changeCartQty(${x.id},1)"
+                  onclick="
+                    changeCartQty(
+                      ${x.id},
+                      1
+                    )
+                  "
                 >
                   +
                 </button>
@@ -429,7 +475,9 @@ ${
 
                     <label
                       class="muted"
-                      style="white-space:nowrap"
+                      style="
+                        white-space:nowrap;
+                      "
                     >
                       Avulsos:
                     </label>
@@ -441,7 +489,9 @@ ${
                       max="999"
                       step="1"
                       value="${x.unidadesAvulsas || 0}"
-                      style="width:90px"
+                      style="
+                        width:90px;
+                      "
                       onchange="
                         updateMilheiroAvulso(
                           ${x.id},
@@ -464,7 +514,11 @@ ${
 
           `).join('')
 
-          : '<p class="muted">Nenhum produto adicionado.</p>'
+          : `
+            <p class="muted">
+              Nenhum produto adicionado.
+            </p>
+          `
         }
 
       </div>
@@ -473,13 +527,16 @@ ${
 
       <div class="row">
 
-        <span>Total dos materiais</span>
+        <span>
+          Total dos materiais
+        </span>
 
         <span class="total">
 
           ${money(
             state.cart.reduce(
-              (s,x) => s + x.price * x.qty,
+              (s,x) =>
+                s + x.price * x.qty,
               0
             )
           )}
@@ -507,30 +564,38 @@ ${
           value="${state.saleDiscount || ''}"
 
           oninput="
-            state.saleDiscount = Math.max(
-              0,
-              Number(this.value) || 0
-            );
+
+            state.saleDiscount =
+              Math.max(
+                0,
+                Number(this.value) || 0
+              );
 
             const totalMateriais =
               state.cart.reduce(
-                (s,x) => s + x.price * x.qty,
+                (s,x) =>
+                  s + x.price * x.qty,
                 0
               );
 
-            const desconto = Math.min(
-              state.saleDiscount,
-              totalMateriais
-            );
+            const desconto =
+              Math.min(
+                state.saleDiscount,
+                totalMateriais
+              );
 
             document.getElementById(
               'saleDiscountValue'
-            ).textContent = money(desconto);
+            ).textContent =
+              money(desconto);
 
             document.getElementById(
               'saleFinalTotal'
             ).textContent =
-              money(totalMateriais - desconto);
+              money(
+                totalMateriais -
+                desconto
+              );
           "
         >
 
@@ -538,15 +603,21 @@ ${
 
       <div class="row">
 
-        <span>Valor abatido</span>
+        <span>
+          Valor abatido
+        </span>
 
-        <span id="saleDiscountValue">
+        <span
+          id="saleDiscountValue"
+        >
 
           ${money(
             Math.min(
               Number(state.saleDiscount) || 0,
+
               state.cart.reduce(
-                (s,x) => s + x.price * x.qty,
+                (s,x) =>
+                  s + x.price * x.qty,
                 0
               )
             )
@@ -558,7 +629,9 @@ ${
 
       <div class="row">
 
-        <strong>Total final</strong>
+        <strong>
+          Total final
+        </strong>
 
         <strong
           id="saleFinalTotal"
@@ -566,17 +639,29 @@ ${
         >
 
           ${money(
+
             state.cart.reduce(
-              (s,x) => s + x.price * x.qty,
+              (s,x) =>
+                s + x.price * x.qty,
               0
-            ) -
+            )
+
+            -
+
             Math.min(
-              Number(state.saleDiscount) || 0,
+
+              Number(
+                state.saleDiscount
+              ) || 0,
+
               state.cart.reduce(
-                (s,x) => s + x.price * x.qty,
+                (s,x) =>
+                  s + x.price * x.qty,
                 0
               )
+
             )
+
           )}
 
         </strong>
@@ -598,7 +683,9 @@ ${
             state.cart = [];
 
             renderSales(
-              document.getElementById('content')
+              document.getElementById(
+                'content'
+              )
             )
           "
         >
@@ -626,7 +713,9 @@ ${
 
 
   const productsList =
-    document.getElementById('saleProducts');
+    document.getElementById(
+      'saleProducts'
+    );
 
 
   if(error){
@@ -684,6 +773,11 @@ ${
    */
 
   window.saleProducts = data;
+
+  // IMPORTANTE:
+  // Os produtos reais do Supabase também
+  // ficam disponíveis para o addToCart().
+  state.products = data;
 
 
   /*
