@@ -1447,10 +1447,7 @@ async function finishSale(){
     return;
   }
 
-const totalMateriais = state.cart.reduce(
-  (s,x) => s + (x.price * x.qty),
-  0
-);
+const totalMateriais = pcTotal();
 
 const desconto = Math.min(
   Math.max(0, Number(state.saleDiscount) || 0),
@@ -1670,10 +1667,7 @@ async function confirmSale(){
     return;
   }
 
-const totalMateriais = state.cart.reduce(
-  (s,x) => s + (x.price * x.qty),
-  0
-);
+const totalMateriais = pcTotal();
 
 const desconto = Math.min(
   Math.max(0, Number(state.saleDiscount) || 0),
