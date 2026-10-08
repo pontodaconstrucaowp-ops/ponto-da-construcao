@@ -4068,6 +4068,8 @@ async function renderDeliveries(el){
       posicao_fila,
       status,
       endereço,
+      latitude,
+      longitude,
       entregador_id,
       vendas (
         id,
