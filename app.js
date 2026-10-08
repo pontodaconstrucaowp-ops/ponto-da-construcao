@@ -5169,6 +5169,7 @@ async function carregarRelatorio(){
 function renderMore(el){
  el.innerHTML=`<div class="list">
  <button class="card" onclick="navigate('clients')"><strong>Clientes</strong><span class="muted">Cadastro e histórico</span></button>
+ <button class="card" onclick="navigate('pending')"><strong>Materiais Pendentes</strong><span class="muted">Materiais faltantes e atendimento de pedidos</span></button>
  <button class="card" onclick="navigate('cash')"><strong>Caixa / Financeiro</strong><span class="muted">Entradas, saídas e saldo</span></button>
  <button class="card" onclick="navigate('reports')"><strong>Relatórios</strong><span class="muted">Resumo de vendas e operação</span></button>
  <button class="card" onclick="navigate('settings')"><strong>Configurações</strong><span class="muted">Usuários e preferências</span></button>
