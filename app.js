@@ -4239,16 +4239,36 @@ async function renderDeliveries(el){
     </div>
   `;
 }
-function abrirMapaEntrega(endereco){
+function abrirMapaEntrega(endereco, latitude, longitude){
 
+  // Prioriza o ponto exato marcado no cadastro.
+  if(
+    latitude != null &&
+    longitude != null &&
+    Number.isFinite(Number(latitude)) &&
+    Number.isFinite(Number(longitude))
+  ){
+
+    const destino = `${latitude},${longitude}`;
+
+    const url =
+      'https://www.google.com/maps/dir/?api=1&destination=' +
+      encodeURIComponent(destino);
+
+    window.open(url, '_blank');
+    return;
+  }
+
+  // Entregas antigas sem coordenadas:
+  // utiliza o endereço cadastrado.
   const enderecoDecodificado =
-    decodeURIComponent(endereco);
+    decodeURIComponent(endereco || '');
 
   if(
     !enderecoDecodificado ||
     enderecoDecodificado === 'Endereço não informado'
   ){
-    alert('Esta entrega não possui endereço cadastrado.');
+    alert('Esta entrega não possui localização cadastrada.');
     return;
   }
 
@@ -4258,8 +4278,6 @@ function abrirMapaEntrega(endereco){
 
   window.open(url, '_blank');
 }
-
-window.abrirMapaEntrega = abrirMapaEntrega;
 
 async function moveDelivery(id, direction){
 
