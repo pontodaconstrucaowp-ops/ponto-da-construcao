@@ -78,46 +78,6 @@ async function login(){
     navigate('home');
   }
 }
-async function testarAtendimentoPendencia() {
-
-  if (!state.user) {
-    alert('Faça login antes de testar.');
-    return;
-  }
-
-  if (state.user.tipo !== 'admin') {
-    alert('Somente administradores podem atender pendências.');
-    return;
-  }
-
-  const confirmar = confirm(
-    'TESTE: confirmar atendimento de 1 unidade da venda nº 35?\n\n' +
-    'A quantidade pendente passará de 2 para 1.'
-  );
-
-  if (!confirmar) return;
-
-  const { data, error } = await supabaseClient.rpc(
-    'atender_pendencia',
-    {
-      p_item_venda_id: '8f57dac3-45cd-4cd9-9bb9-da8655ec5b0c',
-      p_quantidade: 1,
-      p_observacao: 'Teste de atendimento parcial - venda 35'
-    }
-  );
-
-  if (error) {
-    console.error('Erro ao atender pendência:', error);
-    alert('Erro: ' + error.message);
-    return;
-  }
-
-  alert(
-    'Atendimento registrado com sucesso!\n' +
-    'Quantidade ainda pendente: ' + data
-  );
-
-}
 
 function logout(){
   state.user=null;
