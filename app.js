@@ -493,11 +493,10 @@ function pcMostrarProdutos() {
         <div class="pc-opcoes">
           ${grupo.opcoes.map(opcao => {
             const id = Number(opcao.id);
-
             if (!Number.isSafeInteger(id)) return '';
 
-            const quantidade =
-              pcItem(id, opcao.tipo)?.qty || 0;
+            const item = pcItem(id, opcao.tipo);
+            const quantidade = item?.qty || 0;
 
             const subtotal = Math.round(
               quantidade * opcao.preco * 100
@@ -565,18 +564,6 @@ function pcMostrarProdutos() {
                       background:#fff;
                       color:#222;
                     "
-                    onchange="
-                      const aviso = document.getElementById(
-                        'pc-aviso-${chave}'
-                      );
-
-                      if (aviso) {
-                        aviso.style.display =
-                          this.value === 'revenda'
-                            ? 'block'
-                            : 'none';
-                      }
-                    "
                   >
                     <option value="proprio">
                       📦 Estoque próprio
@@ -587,17 +574,78 @@ function pcMostrarProdutos() {
                     </option>
                   </select>
 
+                  <!-- Prévia dos campos internos -->
                   <div
-                    id="pc-aviso-${chave}"
-                    class="muted"
                     style="
-                      display:none;
-                      margin-top:8px;
-                      font-size:12px;
+                      margin-top:10px;
+                      padding:10px;
+                      background:#f5f5f5;
+                      border-radius:7px;
+                      opacity:0.7;
                     "
                   >
-                    Revenda sem baixa no estoque próprio.
-                    Os custos serão registrados internamente.
+                    <div
+                      style="
+                        font-size:12px;
+                        font-weight:700;
+                        margin-bottom:8px;
+                      "
+                    >
+                      💰 Custos da revenda
+                      (em preparação)
+                    </div>
+
+                    <label
+                      for="pc-custo-${chave}"
+                      style="font-size:12px"
+                    >
+                      Custo unitário do fornecedor (R$)
+                    </label>
+
+                    <input
+                      id="pc-custo-${chave}"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      disabled
+                      style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:8px;
+                        margin:5px 0 10px;
+                      "
+                    >
+
+                    <label
+                      for="pc-transporte-${chave}"
+                      style="font-size:12px"
+                    >
+                      Custo total do transporte (R$)
+                    </label>
+
+                    <input
+                      id="pc-transporte-${chave}"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      disabled
+                      style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:8px;
+                        margin:5px 0 10px;
+                      "
+                    >
+
+                    <div
+                      class="muted"
+                      style="font-size:12px"
+                    >
+                      Esses valores serão internos e
+                      não aparecerão no comprovante.
+                    </div>
                   </div>
                 </div>
 
