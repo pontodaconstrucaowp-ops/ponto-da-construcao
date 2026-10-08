@@ -174,16 +174,21 @@ async function renderPending(content) {
 
   const { data, error } = await supabaseClient
     .from('itens_venda')
-    .select(`
-      id,
-      vendas_id,
-      quantidade,
-      quantidade_pendente,
-      unidade_venda,
-      produtos (
-        nome
-      )
-    `)
+.select(`
+  id,
+  vendas_id,
+  quantidade,
+  quantidade_pendente,
+  unidade_venda,
+  produtos (
+    nome
+  ),
+  vendas (
+    clientes (
+      nome
+    )
+  )
+`)
     .eq('origem_material', 'proprio')
     .gt('quantidade_pendente', 0)
     .order('created_at', { ascending: true });
