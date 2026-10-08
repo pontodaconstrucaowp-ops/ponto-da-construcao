@@ -1946,11 +1946,11 @@ function marcarLocalEntrega(){
 
   enderecoInput.parentElement.appendChild(area);
 
-  // Centro inicial aproximado: Nova Timboteua - PA
-  const mapa = L.map('mapaEntrega').setView(
-    [-1.208, -47.392],
-    13
-  );
+// Centro inicial: Vigia de Nazaré - PA
+const mapa = L.map('mapaEntrega').setView(
+  [-0.858, -48.141],
+  15
+);
 
   L.tileLayer(
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
