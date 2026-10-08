@@ -1869,7 +1869,7 @@ function selectPayment(payment){
 }
 
 
-function selectSaleType(type){
+ffunction selectSaleType(type){
 
   window.saleType = type;
 
@@ -1889,50 +1889,24 @@ function selectSaleType(type){
           class="card"
           style="margin-top:15px;text-align:left"
         >
-          <label>
-            <strong>📍 Endereço da entrega</strong>
-          </label>
-
-          <input
-            id="saleDeliveryAddress"
-            class="search"
-            placeholder="Rua, número, bairro, referência..."
-            style="margin-top:8px"
-          >
+          <div style="font-weight:600">
+            📍 Endereço e localização do cliente
+          </div>
 
           <p class="muted" style="margin-top:8px">
-            Informe o endereço onde o material deverá ser entregue.
+            A entrega utilizará o endereço e a localização
+            registrados no cadastro do cliente.
           </p>
-
-          <button
-            type="button"
-            class="secondary"
-            style="margin-top:8px"
-            onclick="marcarLocalEntrega()"
-          >
-            📍 Marcar local exato no mapa
-          </button>
-
-          <div
-            id="saleDeliveryLocationStatus"
-            class="muted"
-            style="margin-top:10px"
-          >
-            Localização exata ainda não marcada.
-          </div>
         </div>
       `;
 
-      window.saleDeliveryLatitude = null;
-      window.saleDeliveryLongitude = null;
-
     } else {
 
-      el.innerHTML =
-        'Atendimento selecionado: <strong>🏪 Retirada</strong>';
+      el.innerHTML = `
+        Atendimento selecionado:
+        <strong>🏪 Retirada</strong>
+      `;
 
-      window.saleDeliveryLatitude = null;
-      window.saleDeliveryLongitude = null;
     }
   }
 
