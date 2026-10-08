@@ -719,6 +719,9 @@ function pcLimparPedido() {
 }
 function openSaleNewClientForm(){
 
+  window.clienteVendaLatitude = null;
+window.clienteVendaLongitude = null;
+  
   const results = document.getElementById('saleClientResults');
 
   if(!results){
