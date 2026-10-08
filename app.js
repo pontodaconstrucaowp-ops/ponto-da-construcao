@@ -504,6 +504,25 @@ function pcMostrarProdutos() {
 
             const chave = `${id}-${opcao.tipo}`;
 
+            const origem =
+              item?.origemMaterial === 'revenda'
+                ? 'revenda'
+                : 'proprio';
+
+            const custoUnitario =
+              Number(item?.custoUnitario) || 0;
+
+            const custoTransporte =
+              Number(item?.custoTransporte) || 0;
+
+            const lucroEstimado = Math.round(
+              (
+                subtotal -
+                quantidade * custoUnitario -
+                custoTransporte
+              ) * 100
+            ) / 100;
+
             return `
               <div
                 class="pc-opcao"
@@ -534,7 +553,7 @@ function pcMostrarProdutos() {
                   }
                 </div>
 
-                <!-- Origem do material -->
+                <!-- ORIGEM DO MATERIAL -->
                 <div
                   style="
                     margin-top:12px;
@@ -564,24 +583,48 @@ function pcMostrarProdutos() {
                       background:#fff;
                       color:#222;
                     "
+                    onchange="
+                      const painel = document.getElementById(
+                        'pc-custos-${chave}'
+                      );
+
+                      if (painel) {
+                        painel.style.display =
+                          this.value === 'revenda'
+                            ? 'block'
+                            : 'none';
+                      }
+
+                      pcAtualizarRevenda(
+                        ${id},
+                        '${opcao.tipo}'
+                      );
+                    "
                   >
-                    <option value="proprio">
+                    <option
+                      value="proprio"
+                      ${origem === 'proprio' ? 'selected' : ''}
+                    >
                       📦 Estoque próprio
                     </option>
 
-                    <option value="revenda" disabled>
-                      🚚 Revenda de fornecedor (em preparação)
+                    <option
+                      value="revenda"
+                      ${origem === 'revenda' ? 'selected' : ''}
+                    >
+                      🚚 Revenda de fornecedor
                     </option>
                   </select>
 
-                  <!-- Prévia dos campos internos -->
+                  <!-- CUSTOS INTERNOS DA REVENDA -->
                   <div
+                    id="pc-custos-${chave}"
                     style="
+                      display:${origem === 'revenda' ? 'block' : 'none'};
                       margin-top:10px;
                       padding:10px;
                       background:#f5f5f5;
                       border-radius:7px;
-                      opacity:0.7;
                     "
                   >
                     <div
@@ -592,7 +635,6 @@ function pcMostrarProdutos() {
                       "
                     >
                       💰 Custos da revenda
-                      (em preparação)
                     </div>
 
                     <label
@@ -607,8 +649,13 @@ function pcMostrarProdutos() {
                       type="number"
                       min="0"
                       step="0.01"
-                      placeholder="0,00"
-                      disabled
+                      value="${custoUnitario}"
+                      oninput="
+                        pcAtualizarRevenda(
+                          ${id},
+                          '${opcao.tipo}'
+                        );
+                      "
                       style="
                         width:100%;
                         box-sizing:border-box;
@@ -629,8 +676,13 @@ function pcMostrarProdutos() {
                       type="number"
                       min="0"
                       step="0.01"
-                      placeholder="0,00"
-                      disabled
+                      value="${custoTransporte}"
+                      oninput="
+                        pcAtualizarRevenda(
+                          ${id},
+                          '${opcao.tipo}'
+                        );
+                      "
                       style="
                         width:100%;
                         box-sizing:border-box;
@@ -640,15 +692,29 @@ function pcMostrarProdutos() {
                     >
 
                     <div
-                      class="muted"
-                      style="font-size:12px"
+                      style="
+                        font-size:12px;
+                        font-weight:700;
+                        margin-top:8px;
+                      "
                     >
-                      Esses valores serão internos e
-                      não aparecerão no comprovante.
+                      Lucro bruto estimado:
+                      <strong id="pc-lucro-${chave}">
+                        ${money(lucroEstimado)}
+                      </strong>
+                    </div>
+
+                    <div
+                      class="muted"
+                      style="font-size:12px;margin-top:8px"
+                    >
+                      Informações internas.
+                      Não aparecem no comprovante.
                     </div>
                   </div>
                 </div>
 
+                <!-- CONTROLE DE QUANTIDADE -->
                 <div class="pc-controles">
                   <button
                     type="button"
