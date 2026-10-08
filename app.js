@@ -4655,6 +4655,81 @@ function renderMore(el){
  <button class="card" onclick="navigate('settings')"><strong>Configurações</strong><span class="muted">Usuários e preferências</span></button>
  </div>`;
 }
+function abrirMapaCliente(origem = 'cadastro') {
+
+  const venda = origem === 'venda';
+
+  const mapaId = venda ? 'mapaClienteVenda' : 'mapaCliente';
+
+  const statusId = venda
+    ? 'localizacaoClienteVendaStatus'
+    : 'localizacaoClienteStatus';
+
+  const mapaDiv = document.getElementById(mapaId);
+  const status = document.getElementById(statusId);
+
+  if (!mapaDiv) {
+    alert('Área do mapa não encontrada.');
+    return;
+  }
+
+  if (typeof L === 'undefined') {
+    alert('Não foi possível carregar o mapa.');
+    return;
+  }
+
+  mapaDiv.style.display = 'block';
+
+  // Evita criar o mesmo mapa duas vezes
+  if (mapaDiv._leaflet_id) {
+    return;
+  }
+
+  // Centro inicial aproximado de Nova Timboteua - PA
+  const mapa = L.map(mapaId).setView(
+    [-1.208, -47.392],
+    13
+  );
+
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }
+  ).addTo(mapa);
+
+  let marcador = null;
+
+  mapa.on('click', function(evento) {
+
+    const latitude = evento.latlng.lat;
+    const longitude = evento.latlng.lng;
+
+    if (marcador) {
+      marcador.setLatLng(evento.latlng);
+    } else {
+      marcador = L.marker(evento.latlng).addTo(mapa);
+    }
+
+    if (venda) {
+      window.clienteVendaLatitude = latitude;
+      window.clienteVendaLongitude = longitude;
+    } else {
+      window.clienteLatitude = latitude;
+      window.clienteLongitude = longitude;
+    }
+
+    status.textContent =
+      '✅ Localização marcada com sucesso!';
+  });
+
+  setTimeout(() => {
+    mapa.invalidateSize();
+  }, 200);
+}
+
+window.abrirMapaCliente = abrirMapaCliente;
 function openClientForm(){
   const content = document.getElementById('content');
 
