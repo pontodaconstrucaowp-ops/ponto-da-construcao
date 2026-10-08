@@ -2196,6 +2196,63 @@ async function confirmSale(){
     return;
   }
 
+  if(!state.cart || state.cart.length === 0){
+    alert('Adicione pelo menos um material à venda.');
+    return;
+  }
+
+  // ====================================
+  // VALIDAR ORIGEM E CUSTOS DOS MATERIAIS
+  // ====================================
+
+  const itens = [];
+
+  for(const item of state.cart){
+
+    const origem = item.origemMaterial || 'proprio';
+
+    if(!['proprio', 'revenda'].includes(origem)){
+      alert(`Origem inválida para ${item.name}.`);
+      return;
+    }
+
+    const custoUnitario = Number(item.custoUnitario ?? 0);
+    const custoTransporte = Number(item.custoTransporte ?? 0);
+
+    if(
+      !Number.isFinite(custoUnitario) ||
+      !Number.isFinite(custoTransporte) ||
+      custoUnitario < 0 ||
+      custoTransporte < 0
+    ){
+      alert(`Confira os custos do material: ${item.name}.`);
+      return;
+    }
+
+    if(origem === 'revenda' && custoUnitario <= 0){
+      alert(
+        `Informe o custo do fornecedor para ${item.name}.`
+      );
+      return;
+    }
+
+    itens.push({
+      produtos_id: item.id,
+      quantidade: item.qty,
+      preco_unitario: item.price,
+      tipo_opcao: item.tipoOpcao || 'principal',
+
+      // Informações internas
+      origem_material: origem,
+      custo_unitario: origem === 'revenda'
+        ? custoUnitario
+        : 0,
+      custo_transporte: origem === 'revenda'
+        ? custoTransporte
+        : 0
+    });
+  }
+
   // ====================================
   // BUSCAR LOCALIZAÇÃO DO CLIENTE
   // ====================================
@@ -2258,12 +2315,6 @@ async function confirmSale(){
 
   const total = totalMateriais - desconto;
 
-  const itens = state.cart.map(item => ({
-    produtos_id: item.id,
-    quantidade: item.qty,
-    preco_unitario: item.price
-  }));
-
   // ====================================
   // REGISTRAR VENDA
   // ====================================
@@ -2312,7 +2363,12 @@ async function confirmSale(){
 
     if(filaError){
       console.error('ERRO AO VERIFICAR FILA:', filaError);
-      alert('A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' + filaError.message);
+
+      alert(
+        'A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' +
+        filaError.message
+      );
+
       return;
     }
 
@@ -2334,22 +2390,35 @@ async function confirmSale(){
 
     if(entregaError){
       console.error('ERRO AO CRIAR ENTREGA:', entregaError);
-      alert('A venda foi registrada, mas não foi possível criar a entrega:\n\n' + entregaError.message);
+
+      alert(
+        'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
+        entregaError.message
+      );
+
       return;
     }
   }
+
+  // ====================================
+  // LIMPAR VENDA
+  // ====================================
 
   state.cart = [];
   state.selectedClient = null;
   state.saleDiscount = 0;
   state.cartOpen = false;
+
   window.salePayment = null;
   window.saleType = null;
+
+  // ====================================
+  // IMPRESSÃO E NAVEGAÇÃO
+  // ====================================
 
   abrirImpressaoVenda(vendaId, 'pago');
   navigate('home');
 }
-
 async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
   if (!vendaId) {
