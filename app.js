@@ -4920,8 +4920,11 @@ async function saveClient(){
   const telefone = document.getElementById('clientPhone')?.value.trim();
   const endereco = document.getElementById('clientAddress')?.value.trim();
 
-  if(!nome){
+  // Localização marcada no mapa
+  const latitude = window.clienteLatitude ?? null;
+  const longitude = window.clienteLongitude ?? null;
 
+  if(!nome){
     alert('Informe o nome do cliente.');
     return;
   }
@@ -4931,7 +4934,9 @@ async function saveClient(){
     .insert({
       nome: nome,
       telefone: telefone || null,
-      endereço: endereco || null
+      endereço: endereco || null,
+      latitude: latitude,
+      longitude: longitude
     });
 
   if(error){
@@ -4948,6 +4953,10 @@ async function saveClient(){
 
     return;
   }
+
+  // Limpa a localização para o próximo cadastro
+  window.clienteLatitude = null;
+  window.clienteLongitude = null;
 
   alert('Cliente cadastrado com sucesso!');
 
