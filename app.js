@@ -811,20 +811,31 @@ window.openSaleNewClientForm = openSaleNewClientForm;
 
 
 async function saveSaleNewClient(){
+
   const { data: { user } } = await supabaseClient.auth.getUser();
+
+  if(!user){
+    alert('Usuário não autenticado.');
+    return;
+  }
+
   console.log('USUARIO AUTENTICADO:', user);
-  
-const { data: adminCheck, error: adminCheckError } =
-  await supabaseClient.rpc('usuario_e_admin', {
-    uid: user.id
-  });
+
+  const { data: adminCheck, error: adminCheckError } =
+    await supabaseClient.rpc('usuario_e_admin', {
+      uid: user.id
+    });
 
   console.log('USUARIO É ADMIN:', adminCheck);
   console.log('ERRO AO VERIFICAR ADMIN:', adminCheckError);
-  
+
   const nome = document.getElementById('newSaleClientName').value.trim();
   const telefone = document.getElementById('newSaleClientPhone').value.trim();
   const endereco = document.getElementById('newSaleClientAddress').value.trim();
+
+  // Localização marcada no mapa
+  const latitude = window.clienteVendaLatitude ?? null;
+  const longitude = window.clienteVendaLongitude ?? null;
 
   if(!nome){
     alert('Informe o nome do cliente.');
@@ -846,16 +857,29 @@ const { data: adminCheck, error: adminCheckError } =
     .insert({
       nome: nome,
       telefone: telefone,
-      endereço: endereco
+      endereço: endereco,
+      latitude: latitude,
+      longitude: longitude
     })
-    .select('id,nome,telefone,endereço')
+    .select('id,nome,telefone,endereço,latitude,longitude')
     .single();
 
   if(error){
-    alert('Não foi possível cadastrar o cliente: ' + error.message);
+    console.error('ERRO AO CADASTRAR CLIENTE:', error);
+
+    alert(
+      'Não foi possível cadastrar o cliente:\n\n' +
+      error.message
+    );
+
     return;
   }
 
+  // Limpa a localização após salvar
+  window.clienteVendaLatitude = null;
+  window.clienteVendaLongitude = null;
+
+  // Seleciona automaticamente o novo cliente na venda
   state.selectedClient = data.id;
 
   const input = document.getElementById('saleClient');
@@ -870,6 +894,7 @@ const { data: adminCheck, error: adminCheckError } =
   if(results){
     results.innerHTML = `
       <div class="card">
+
         <div class="product-name">${data.nome}</div>
 
         <div class="muted">
@@ -879,6 +904,16 @@ const { data: adminCheck, error: adminCheckError } =
         <div class="muted">
           ${data.endereço}
         </div>
+
+        ${
+          data.latitude != null && data.longitude != null
+            ? `
+              <div class="muted" style="margin-top:8px">
+                📍 Localização registrada no mapa
+              </div>
+            `
+            : ''
+        }
 
         <div class="badge done" style="margin-top:10px">
           Cliente cadastrado
@@ -891,6 +926,7 @@ const { data: adminCheck, error: adminCheckError } =
         >
           Trocar cliente
         </button>
+
       </div>
     `;
   }
