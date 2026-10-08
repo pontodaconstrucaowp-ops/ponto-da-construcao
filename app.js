@@ -431,10 +431,14 @@ function pcAgruparMateriais(produtos) {
         nome: grupo.nome,
         produtos: grupo.produtos,
 
-        opcoes: [pacotes[0], avulsos[0]].map(produto => ({
-          ...pcOpcoes(produto)[0],
-          id: produto.id
-        }))
+opcoes: [pacotes[0], avulsos[0]].map(produto => ({
+  ...pcOpcoes(produto)[0],
+  id: produto.id,
+  estoque: produto.estoque == null
+    ? null
+    : Number(produto.estoque),
+  controlaEstoque: produto.controla_estoque !== false
+}))
       }];
     }
 
