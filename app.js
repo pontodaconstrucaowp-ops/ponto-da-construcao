@@ -160,7 +160,15 @@ window.logout = logout;
 window.toggleUserMenu = toggleUserMenu;
 window.navigate = navigate;
 
+let atendimentoPendenciaEmAndamento = false;
+
 async function atenderPendencia(itemId, quantidadePendente) {
+
+  // Impedir duas operações simultâneas nesta tela
+  if (atendimentoPendenciaEmAndamento) {
+    alert('Já existe um atendimento sendo processado. Aguarde.');
+    return;
+  }
 
   if (!state.user || state.user.tipo !== 'admin') {
     alert('Somente administradores podem atender pendências.');
@@ -169,9 +177,14 @@ async function atenderPendencia(itemId, quantidadePendente) {
 
   const pendente = Number(quantidadePendente);
 
+  if (!Number.isFinite(pendente) || pendente <= 0) {
+    alert('Esta pendência não possui quantidade válida.');
+    return;
+  }
+
   const resposta = prompt(
     `Quantidade pendente: ${pendente}\n\n` +
-    'Quantas unidades deseja atender?',
+    'Quanto material deseja atender?',
     String(pendente)
   );
 
@@ -198,28 +211,70 @@ async function atenderPendencia(itemId, quantidadePendente) {
 
   if (!confirmar) return;
 
-  const { data, error } = await supabaseClient.rpc(
-    'atender_pendencia',
-    {
-      p_item_venda_id: itemId,
-      p_quantidade: quantidade,
-      p_observacao: 'Atendimento manual pelo aplicativo'
+  // Bloquear novas tentativas antes de enviar ao Supabase
+  atendimentoPendenciaEmAndamento = true;
+
+  // Desabilitar os botões enquanto processa
+  const botoes = document.querySelectorAll(
+    '#listaMateriaisPendentes button'
+  );
+
+  botoes.forEach(botao => {
+    botao.disabled = true;
+    botao.style.opacity = '0.5';
+    botao.style.cursor = 'wait';
+  });
+
+  try {
+
+    const { data, error } = await supabaseClient.rpc(
+      'atender_pendencia',
+      {
+        p_item_venda_id: itemId,
+        p_quantidade: quantidade,
+        p_observacao: 'Atendimento manual pelo aplicativo'
+      }
+    );
+
+    if (error) {
+      console.error('Erro ao atender pendência:', error);
+      alert('Erro: ' + error.message);
+      return;
     }
-  );
 
-  if (error) {
-    console.error('Erro ao atender pendência:', error);
-    alert('Erro: ' + error.message);
-    return;
-  }
+    alert(
+      'Atendimento registrado com sucesso!\n' +
+      'Quantidade ainda pendente: ' + data
+    );
 
-  alert(
-    'Atendimento registrado com sucesso!\n' +
-    'Quantidade ainda pendente: ' + data
-  );
+    if (state.page === 'pending') {
+      await renderPending(
+        document.getElementById('content')
+      );
+    }
 
-  if (state.page === 'pending') {
-    await renderPending(document.getElementById('content'));
+  } catch (erro) {
+
+    console.error('Falha no atendimento:', erro);
+
+    alert(
+      'Não foi possível confirmar o resultado do atendimento.\n' +
+      'Confira o histórico antes de tentar novamente.'
+    );
+
+  } finally {
+
+    atendimentoPendenciaEmAndamento = false;
+
+    // Reabilitar apenas os botões que ainda estiverem na tela
+    botoes.forEach(botao => {
+      if (botao.isConnected) {
+        botao.disabled = false;
+        botao.style.opacity = '';
+        botao.style.cursor = '';
+      }
+    });
+
   }
 }
 async function renderPending(content, aba = 'pendentes') {
