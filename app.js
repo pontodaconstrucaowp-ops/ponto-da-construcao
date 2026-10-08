@@ -160,6 +160,91 @@ window.logout = logout;
 window.toggleUserMenu = toggleUserMenu;
 window.navigate = navigate;
 
+async function renderPending(content) {
+
+  content.innerHTML = `
+    <div style="padding:16px">
+      <h2>Materiais Pendentes</h2>
+      <p>Materiais vendidos que ainda precisam ser atendidos.</p>
+      <div id="listaMateriaisPendentes">
+        Carregando pendências...
+      </div>
+    </div>
+  `;
+
+  const { data, error } = await supabaseClient
+    .from('itens_venda')
+    .select(`
+      id,
+      vendas_id,
+      quantidade,
+      quantidade_pendente,
+      unidade_venda,
+      produtos (
+        nome
+      )
+    `)
+    .eq('origem_material', 'proprio')
+    .gt('quantidade_pendente', 0)
+    .order('created_at', { ascending: true });
+
+  const lista = document.getElementById('listaMateriaisPendentes');
+
+  if (!lista || state.page !== 'pending') return;
+
+  if (error) {
+    console.error('Erro ao carregar pendências:', error);
+    lista.textContent = 'Não foi possível carregar as pendências.';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    lista.textContent = 'Nenhum material pendente no momento.';
+    return;
+  }
+
+  const formatarQuantidade = valor =>
+    Number(valor).toLocaleString('pt-BR');
+
+  const escaparHTML = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[caractere]);
+
+  lista.innerHTML = data.map(item => `
+    <div style="
+      border:1px solid #ddd;
+      border-radius:10px;
+      padding:15px;
+      margin-bottom:12px;
+      background:#fff;
+      color:#222;
+    ">
+      <strong>Venda nº ${item.vendas_id}</strong>
+
+      <div style="margin-top:8px">
+        ${escaparHTML(item.produtos?.nome || 'Produto não encontrado')}
+      </div>
+
+      <div style="margin-top:8px">
+        Quantidade vendida:
+        ${formatarQuantidade(item.quantidade)}
+      </div>
+
+      <div style="margin-top:5px">
+        <strong>
+          Pendente:
+          ${formatarQuantidade(item.quantidade_pendente)}
+          ${escaparHTML(item.unidade_venda || '')}
+        </strong>
+      </div>
+    </div>
+  `).join('');
+}
 function money(v){
   return v.toLocaleString(
     'pt-BR',
