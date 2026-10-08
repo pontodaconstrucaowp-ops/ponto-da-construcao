@@ -229,7 +229,12 @@ async function renderPending(content) {
       background:#fff;
       color:#222;
     ">
-      <strong>Venda nº ${item.vendas_id}</strong>
+ <strong>Venda nº ${item.vendas_id}</strong>
+
+<div style="margin-top:8px">
+  <strong>Cliente:</strong>
+  ${escaparHTML(item.vendas?.clientes?.nome || 'Não informado')}
+</div>
 
       <div style="margin-top:8px">
         ${escaparHTML(item.produtos?.nome || 'Produto não encontrado')}
