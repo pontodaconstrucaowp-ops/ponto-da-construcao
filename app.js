@@ -4186,7 +4186,11 @@ async function renderDeliveries(el){
 <button
   type="button"
   class="secondary"
-  onclick="abrirMapaEntrega('${encodeURIComponent(endereco)}')"
+ onclick="abrirMapaEntrega(
+  '${encodeURIComponent(endereco)}',
+  ${d.latitude ?? 'null'},
+  ${d.longitude ?? 'null'}
+)"
 >
   🗺️ Ver no mapa
 </button>
