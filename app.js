@@ -835,6 +835,49 @@ function pcDefinir(id, tipo, valor) {
 
   pcAtualizarResumo();
 }
+function pcAtualizarRevenda(id, tipo) {
+  const item = pcItem(id, tipo);
+
+  const chave = `${id}-${tipo}`;
+
+  const origemInput = document.getElementById(
+    `pc-origem-${chave}`
+  );
+
+  const custoInput = document.getElementById(
+    `pc-custo-${chave}`
+  );
+
+  const transporteInput = document.getElementById(
+    `pc-transporte-${chave}`
+  );
+
+  const origem = origemInput?.value === 'revenda'
+    ? 'revenda'
+    : 'proprio';
+
+  const custo = Number(custoInput?.value || 0);
+  const transporte = Number(transporteInput?.value || 0);
+
+  if (
+    !Number.isFinite(custo) ||
+    !Number.isFinite(transporte) ||
+    custo < 0 ||
+    transporte < 0
+  ) {
+    alert('Informe valores válidos para os custos.');
+    return;
+  }
+
+  // Somente atualiza um material já adicionado à venda.
+  if (item) {
+    item.origemMaterial = origem;
+    item.custoUnitario = origem === 'revenda' ? custo : 0;
+    item.custoTransporte = origem === 'revenda' ? transporte : 0;
+  }
+
+  pcAtualizarResumo();
+}
 
 function pcAtualizarResumo() {
   const lista = document.getElementById('pcResumoItens');
