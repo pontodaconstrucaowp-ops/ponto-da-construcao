@@ -514,10 +514,27 @@ function pcMostrarProdutos() {
                   ${pcEscapar(opcao.unidade)}
                 </strong>
 
-                <div class="muted">
-                  ${money(opcao.preco)}
-                  por ${pcEscapar(opcao.unidade)}
-                </div>
+<div class="muted">
+  ${money(opcao.preco)}
+  por ${pcEscapar(opcao.unidade)}
+</div>
+
+<div
+  class="muted"
+  style="margin-top:6px;font-weight:600"
+>
+  ${
+    !opcao.controlaEstoque
+      ? '🛒 Produto sem controle de estoque'
+      : opcao.estoque == null
+        ? '📦 Estoque não informado'
+        : opcao.estoque <= 0
+          ? '🔴 ESGOTADO'
+          : opcao.estoque <= 5
+            ? `🟠 Estoque baixo: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
+            : `🟢 Disponível: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
+  }
+</div>
 
                 <div class="pc-controles">
                   <button
