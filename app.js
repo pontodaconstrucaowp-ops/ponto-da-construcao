@@ -4648,6 +4648,28 @@ function openClientForm(){
         <input id="clientPhone" class="search" placeholder="Telefone">
 
         <textarea id="clientAddress" class="search" placeholder="Endereço" rows="3"></textarea>
+        <button
+  type="button"
+  class="secondary"
+  onclick="abrirMapaCliente()"
+>
+  📍 Marcar localização no mapa
+</button>
+
+<div
+  id="mapaCliente"
+  style="
+    display:none;
+    height:350px;
+    width:100%;
+    border-radius:12px;
+    overflow:hidden;
+  "
+></div>
+
+<p id="localizacaoClienteStatus" class="muted">
+  Nenhuma localização marcada.
+</p>
 
         <div class="row">
           <button class="secondary" onclick="navigate('clients')">
