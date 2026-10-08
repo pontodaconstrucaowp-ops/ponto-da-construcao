@@ -899,8 +899,36 @@ function pcDefinir(id, tipo, valor) {
     );
   }
 
+  // Atualizar o lucro quando mudar a quantidade
+  const lucroElemento = document.getElementById(
+    `pc-lucro-${id}-${tipo}`
+  );
+
+  if (lucroElemento) {
+    const itemAtual = pcItem(id, tipo);
+
+    const quantidade = Number(itemAtual?.qty || 0);
+    const preco = Number(itemAtual?.price || 0);
+
+    const custoUnitario =
+      Number(itemAtual?.custoUnitario || 0);
+
+    const custoTransporte =
+      Number(itemAtual?.custoTransporte || 0);
+
+    const lucro =
+      quantidade * preco -
+      quantidade * custoUnitario -
+      custoTransporte;
+
+    lucroElemento.textContent = money(
+      Math.round(lucro * 100) / 100
+    );
+  }
+
   pcAtualizarResumo();
 }
+
 function pcAtualizarRevenda(id, tipo) {
   const item = pcItem(id, tipo);
   const chave = `${id}-${tipo}`;
