@@ -4685,11 +4685,11 @@ function abrirMapaCliente(origem = 'cadastro') {
     return;
   }
 
-  // Centro inicial aproximado de Nova Timboteua - PA
-  const mapa = L.map(mapaId).setView(
-    [-1.208, -47.392],
-    13
-  );
+// Centro inicial aproximado de Vigia de Nazaré - PA
+const mapa = L.map(mapaId).setView(
+  [-0.858, -48.141],
+  15
+);
 
   L.tileLayer(
     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
