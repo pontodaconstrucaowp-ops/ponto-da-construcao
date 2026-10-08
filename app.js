@@ -160,6 +160,68 @@ window.logout = logout;
 window.toggleUserMenu = toggleUserMenu;
 window.navigate = navigate;
 
+async function atenderPendencia(itemId, quantidadePendente) {
+
+  if (!state.user || state.user.tipo !== 'admin') {
+    alert('Somente administradores podem atender pendências.');
+    return;
+  }
+
+  const pendente = Number(quantidadePendente);
+
+  const resposta = prompt(
+    `Quantidade pendente: ${pendente}\n\n` +
+    'Quantas unidades deseja atender?',
+    String(pendente)
+  );
+
+  if (resposta === null) return;
+
+  const quantidade = Number(
+    resposta.trim().replace(',', '.')
+  );
+
+  if (!Number.isFinite(quantidade) || quantidade <= 0) {
+    alert('Informe uma quantidade válida.');
+    return;
+  }
+
+  if (quantidade > pendente) {
+    alert('A quantidade não pode ultrapassar a pendência.');
+    return;
+  }
+
+  const confirmar = confirm(
+    `Confirmar atendimento de ${quantidade}?\n\n` +
+    `Restante previsto: ${pendente - quantidade}`
+  );
+
+  if (!confirmar) return;
+
+  const { data, error } = await supabaseClient.rpc(
+    'atender_pendencia',
+    {
+      p_item_venda_id: itemId,
+      p_quantidade: quantidade,
+      p_observacao: 'Atendimento manual pelo aplicativo'
+    }
+  );
+
+  if (error) {
+    console.error('Erro ao atender pendência:', error);
+    alert('Erro: ' + error.message);
+    return;
+  }
+
+  alert(
+    'Atendimento registrado com sucesso!\n' +
+    'Quantidade ainda pendente: ' + data
+  );
+
+  if (state.page === 'pending') {
+    await renderPending(document.getElementById('content'));
+  }
+}
 async function renderPending(content) {
 
   content.innerHTML = `
