@@ -1886,19 +1886,82 @@ function marcarLocalEntrega(){
     return;
   }
 
-  const endereco = enderecoInput.value.trim();
-
-  if(!endereco){
-    alert('Digite primeiro o endereço da entrega.');
-    enderecoInput.focus();
+  // Evita abrir dois mapas
+  if(document.getElementById('mapaEntrega')){
     return;
   }
 
-  const url =
-    'https://www.google.com/maps/search/?api=1&query=' +
-    encodeURIComponent(endereco);
+  const area = document.createElement('div');
 
-  window.open(url, '_blank');
+  area.innerHTML = `
+    <div class="card" style="margin-top:15px">
+
+      <strong>📍 Escolha o local da entrega</strong>
+
+      <p class="muted">
+        Arraste o mapa e clique no ponto exato da entrega.
+      </p>
+
+      <div
+        id="mapaEntrega"
+        style="height:320px;width:100%;border-radius:12px;margin-top:12px"
+      ></div>
+
+      <p id="coordenadasEntrega" class="muted">
+        Nenhum ponto selecionado.
+      </p>
+
+      <button
+        type="button"
+        class="secondary"
+        onclick="document.getElementById('mapaEntrega').parentElement.parentElement.remove()"
+      >
+        Fechar mapa
+      </button>
+
+    </div>
+  `;
+
+  enderecoInput.parentElement.appendChild(area);
+
+  // Centro inicial aproximado: Nova Timboteua - PA
+  const mapa = L.map('mapaEntrega').setView(
+    [-1.208, -47.392],
+    13
+  );
+
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }
+  ).addTo(mapa);
+
+  let marcador = null;
+
+  mapa.on('click', function(e){
+
+    const latitude = e.latlng.lat;
+    const longitude = e.latlng.lng;
+
+    if(marcador){
+      marcador.setLatLng(e.latlng);
+    } else {
+      marcador = L.marker(e.latlng).addTo(mapa);
+    }
+
+    window.saleDeliveryLatitude = latitude;
+    window.saleDeliveryLongitude = longitude;
+
+    document.getElementById('coordenadasEntrega').textContent =
+      '📍 Local selecionado com sucesso!';
+
+    document.getElementById('saleDeliveryLocationStatus').textContent =
+      '✅ Localização marcada no mapa.';
+  });
+
+  setTimeout(() => mapa.invalidateSize(), 200);
 }
 
 window.marcarLocalEntrega = marcarLocalEntrega;
