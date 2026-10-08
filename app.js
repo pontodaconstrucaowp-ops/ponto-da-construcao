@@ -314,6 +314,20 @@ async function renderPending(content) {
           ${escaparHTML(item.unidade_venda || '')}
         </strong>
       </div>
+<div style="margin-top:14px">
+  <button
+    type="button"
+    class="btn primary"
+    style="width:100%;padding:12px"
+    onclick="atenderPendencia(
+      '${item.id}',
+      ${Number(item.quantidade_pendente)}
+    )"
+  >
+    ✓ Atender pendência
+  </button>
+</div>
+
     </div>
   `).join('');
 }
