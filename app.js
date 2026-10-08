@@ -752,6 +752,28 @@ function openSaleNewClientForm(){
           placeholder="Endereço"
           rows="3"
         ></textarea>
+        <button
+  type="button"
+  class="secondary"
+  onclick="abrirMapaCliente('venda')"
+>
+  📍 Marcar localização no mapa
+</button>
+
+<div
+  id="mapaClienteVenda"
+  style="
+    display:none;
+    height:350px;
+    width:100%;
+    border-radius:12px;
+    overflow:hidden;
+  "
+></div>
+
+<p id="localizacaoClienteVendaStatus" class="muted">
+  Nenhuma localização marcada.
+</p>
 
         <div class="actions">
 
