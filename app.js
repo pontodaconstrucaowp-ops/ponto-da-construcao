@@ -2025,19 +2025,82 @@ async function confirmSale(){
     return;
   }
 
-const totalMateriais = pcTotal();
+  if(!state.selectedClient){
+    alert('Selecione um cliente.');
+    return;
+  }
 
-const desconto = Math.min(
-  Math.max(0, Number(state.saleDiscount) || 0),
-  totalMateriais
-);
+  // ====================================
+  // BUSCAR LOCALIZAÇÃO DO CLIENTE
+  // ====================================
 
-const total = totalMateriais - desconto;
+  let dadosEntrega = null;
+
+  if(window.saleType === 'entrega'){
+
+    const { data: cliente, error: clienteError } =
+      await supabaseClient
+        .from('clientes')
+        .select('id,nome,endereço,latitude,longitude')
+        .eq('id', state.selectedClient)
+        .single();
+
+    if(clienteError || !cliente){
+
+      console.error(
+        'ERRO AO BUSCAR CLIENTE:',
+        clienteError
+      );
+
+      alert(
+        'Não foi possível consultar o endereço do cliente.'
+      );
+
+      return;
+    }
+
+    if(
+      cliente.latitude == null ||
+      cliente.longitude == null
+    ){
+
+      alert(
+        'Este cliente ainda não possui uma localização marcada no mapa.\n\n' +
+        'Abra o cadastro do cliente e marque o local da entrega antes de continuar.'
+      );
+
+      return;
+    }
+
+    dadosEntrega = {
+      endereco: cliente.endereço || null,
+      latitude: cliente.latitude,
+      longitude: cliente.longitude
+    };
+  }
+
+  // ====================================
+  // CALCULAR TOTAL
+  // ====================================
+
+  const totalMateriais = pcTotal();
+
+  const desconto = Math.min(
+    Math.max(0, Number(state.saleDiscount) || 0),
+    totalMateriais
+  );
+
+  const total = totalMateriais - desconto;
+
   const itens = state.cart.map(item => ({
     produtos_id: item.id,
     quantidade: item.qty,
     preco_unitario: item.price
   }));
+
+  // ====================================
+  // REGISTRAR VENDA
+  // ====================================
 
   const { data: vendaId, error } =
     await supabaseClient.rpc('registrar_venda', {
@@ -2067,76 +2130,11 @@ const total = totalMateriais - desconto;
     vendaId
   );
 
-  if(window.saleType === 'entrega'){
+  // ====================================
+  // REGISTRAR ENTREGA
+  // ====================================
 
-    const { data: ultimaEntrega, error: filaError } =
-      await supabaseClient
-        .from('entregas')
-        .select('posicao_fila')
-        .neq('status', 'entregue')
-        .order('posicao_fila', { ascending: false })
-        .limit(1);
-
-    if(filaError){
-
-      console.error(
-        'ERRO AO VERIFICAR FILA:',
-        filaError
-      );
-
-      alert(
-        'A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' +
-        filaError.message
-      );
-
-      return;
-    }
-
-    const ultimaPosicao =
-      ultimaEntrega && ultimaEntrega.length
-        ? Number(ultimaEntrega[0].posicao_fila || 0)
-        : 0;
-
-    const novaPosicao = ultimaPosicao + 1;
-
-    const { error: entregaError } =
-      await supabaseClient
-        .from('entregas')
-        .insert({
-          venda_id: vendaId,
-          prioridade: false,
-          posicao_fila: novaPosicao,
-          status: 'pendente'
-        });
-
-    if(entregaError){
-
-      console.error(
-        'ERRO AO CRIAR ENTREGA:',
-        entregaError
-      );
-
-      alert(
-        'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
-        entregaError.message
-      );
-
-      return;
-    }
-  }
-
-state.cart = [];
-state.selectedClient = null;
-state.saleDiscount = 0;
-state.cartOpen = false;
-
-window.salePayment = null;
-window.saleType = null;
-
-abrirImpressaoVenda(vendaId, 'pago');
-
-navigate('home');
-}
+  if(window.saleType === 'entrega
 async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
   if (!vendaId) {
