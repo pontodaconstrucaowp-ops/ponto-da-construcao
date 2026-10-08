@@ -708,8 +708,14 @@ function pcDefinir(id, tipo, valor) {
 
   if (!opcao) return;
 
+  const itemAnterior = pcItem(id, tipo);
+
   const quantidade = Number(
     String(valor).replace(',', '.')
+  );
+
+  const input = document.getElementById(
+    `pc-q-${id}-${tipo}`
   );
 
   if (
@@ -719,15 +725,28 @@ function pcDefinir(id, tipo, valor) {
   ) {
     alert('Informe uma quantidade válida.');
 
-    const input = document.getElementById(
-      `pc-q-${id}-${tipo}`
-    );
+    if (input) {
+      input.value = itemAnterior?.qty || 0;
+    }
 
-    if (input) input.value = pcItem(id, tipo)?.qty || 0;
     return;
   }
 
   const qty = Math.round(quantidade * 1000) / 1000;
+
+  // Preserva os dados internos do material.
+  // Enquanto a revenda estiver desabilitada na tela,
+  // novos itens continuam como estoque próprio.
+  const origemMaterial =
+    itemAnterior?.origemMaterial === 'revenda'
+      ? 'revenda'
+      : 'proprio';
+
+  const custoUnitario =
+    Number(itemAnterior?.custoUnitario) || 0;
+
+  const custoTransporte =
+    Number(itemAnterior?.custoTransporte) || 0;
 
   state.cart = state.cart.filter(item =>
     !(
@@ -743,19 +762,22 @@ function pcDefinir(id, tipo, valor) {
       unit: opcao.unidade,
       price: opcao.preco,
       qty,
-      tipoOpcao: tipo
+      tipoOpcao: tipo,
+
+      // Informações internas da operação
+      origemMaterial,
+      custoUnitario,
+      custoTransporte
     });
   }
-
-  const input = document.getElementById(
-    `pc-q-${id}-${tipo}`
-  );
 
   const subtotal = document.getElementById(
     `pc-s-${id}-${tipo}`
   );
 
-  if (input) input.value = qty;
+  if (input) {
+    input.value = qty;
+  }
 
   if (subtotal) {
     subtotal.textContent = money(
