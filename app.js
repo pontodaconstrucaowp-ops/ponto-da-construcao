@@ -325,6 +325,7 @@ function pcEscapar(valor) {
 }
 
 function pcOpcoes(produto) {
+
   const unidade = String(
     produto.unidade || 'unidade'
   ).trim().toLowerCase();
@@ -333,6 +334,10 @@ function pcOpcoes(produto) {
     tipo: 'principal',
     unidade,
     preco: Number(produto.preco),
+    estoque: produto.estoque == null
+      ? null
+      : Number(produto.estoque),
+    controlaEstoque: produto.controla_estoque !== false,
     passo: ['m³', 'kg'].includes(unidade) ? 0.1 : 1
   }];
 
@@ -340,12 +345,18 @@ function pcOpcoes(produto) {
     ['dúzia', 'duzia', 'milheiro'].includes(unidade) &&
     produto.preco_avulso != null
   ) {
+
     opcoes.push({
       tipo: 'avulso',
       unidade: 'unidade',
       preco: Number(produto.preco_avulso),
+      estoque: produto.estoque == null
+        ? null
+        : Number(produto.estoque),
+      controlaEstoque: produto.controla_estoque !== false,
       passo: 1
     });
+
   }
 
   return opcoes;
