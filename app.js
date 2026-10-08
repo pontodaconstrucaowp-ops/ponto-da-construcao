@@ -464,7 +464,6 @@ function pcMostrarProdutos() {
     document.getElementById('saleProductSearch')?.value || ''
   ).trim().toLocaleLowerCase('pt-BR');
 
-  // Agrupa antes de pesquisar para manter as duas opções juntas.
   const grupos = pcAgruparMateriais(
     window.saleProducts || []
   ).filter(grupo =>
@@ -504,37 +503,103 @@ function pcMostrarProdutos() {
               quantidade * opcao.preco * 100
             ) / 100;
 
+            const chave = `${id}-${opcao.tipo}`;
+
             return `
               <div
                 class="pc-opcao"
                 data-produto="${id}"
                 data-tipo="${opcao.tipo}"
               >
-                <strong>
-                  ${pcEscapar(opcao.unidade)}
-                </strong>
+                <strong>${pcEscapar(opcao.unidade)}</strong>
 
-<div class="muted">
-  ${money(opcao.preco)}
-  por ${pcEscapar(opcao.unidade)}
-</div>
+                <div class="muted">
+                  ${money(opcao.preco)}
+                  por ${pcEscapar(opcao.unidade)}
+                </div>
 
-<div
-  class="muted"
-  style="margin-top:6px;font-weight:600"
->
-  ${
-    !opcao.controlaEstoque
-      ? '🛒 Produto sem controle de estoque'
-      : opcao.estoque == null
-        ? '📦 Estoque não informado'
-        : opcao.estoque <= 0
-          ? '🔴 ESGOTADO'
-          : opcao.estoque <= 5
-            ? `🟠 Estoque baixo: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
-            : `🟢 Disponível: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
-  }
-</div>
+                <div
+                  class="muted"
+                  style="margin-top:6px;font-weight:600"
+                >
+                  ${
+                    !opcao.controlaEstoque
+                      ? '🛒 Produto sem controle de estoque'
+                      : opcao.estoque == null
+                        ? '📦 Estoque não informado'
+                        : opcao.estoque <= 0
+                          ? '🔴 ESGOTADO'
+                          : opcao.estoque <= 5
+                            ? `🟠 Estoque baixo: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
+                            : `🟢 Disponível: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
+                  }
+                </div>
+
+                <!-- Origem do material -->
+                <div
+                  style="
+                    margin-top:12px;
+                    padding:10px;
+                    border:1px solid #ddd;
+                    border-radius:8px;
+                  "
+                >
+                  <div
+                    style="
+                      font-size:12px;
+                      font-weight:700;
+                      margin-bottom:7px;
+                    "
+                  >
+                    Origem do material
+                  </div>
+
+                  <select
+                    id="pc-origem-${chave}"
+                    aria-label="Origem do material"
+                    style="
+                      width:100%;
+                      padding:9px;
+                      border:1px solid #ccc;
+                      border-radius:6px;
+                      background:#fff;
+                      color:#222;
+                    "
+                    onchange="
+                      const aviso = document.getElementById(
+                        'pc-aviso-${chave}'
+                      );
+
+                      if (aviso) {
+                        aviso.style.display =
+                          this.value === 'revenda'
+                            ? 'block'
+                            : 'none';
+                      }
+                    "
+                  >
+                    <option value="proprio">
+                      📦 Estoque próprio
+                    </option>
+
+                    <option value="revenda" disabled>
+                      🚚 Revenda de fornecedor (em preparação)
+                    </option>
+                  </select>
+
+                  <div
+                    id="pc-aviso-${chave}"
+                    class="muted"
+                    style="
+                      display:none;
+                      margin-top:8px;
+                      font-size:12px;
+                    "
+                  >
+                    Revenda sem baixa no estoque próprio.
+                    Os custos serão registrados internamente.
+                  </div>
+                </div>
 
                 <div class="pc-controles">
                   <button
@@ -593,7 +658,6 @@ function pcMostrarProdutos() {
     <div class="card">Nenhum material encontrado.</div>
   `;
 }
-
 function pcTotalCartao(elemento) {
   const cartao = elemento.closest('.pc-produto');
   if (!cartao) return;
