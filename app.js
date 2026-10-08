@@ -222,56 +222,22 @@ async function atenderPendencia(itemId, quantidadePendente) {
     await renderPending(document.getElementById('content'));
   }
 }
-async function renderPending(content) {
+async function renderPending(content, aba = 'pendentes') {
 
-  content.innerHTML = `
-    <div style="padding:16px">
-      <h2>Materiais Pendentes</h2>
-      <p>Materiais vendidos que ainda precisam ser atendidos.</p>
-      <div id="listaMateriaisPendentes">
-        Carregando pendências...
+  if (!state.user || state.user.tipo !== 'admin') {
+    content.innerHTML = `
+      <div style="padding:16px">
+        <h2>Acesso não autorizado</h2>
+        <p>Somente administradores podem consultar esta área.</p>
       </div>
-    </div>
-  `;
-
-  const { data, error } = await supabaseClient
-    .from('itens_venda')
-.select(`
-  id,
-  vendas_id,
-  quantidade,
-  quantidade_pendente,
-  unidade_venda,
-  produtos (
-    nome
-  ),
-  vendas (
-    clientes (
-      nome
-    )
-  )
-`)
-    .eq('origem_material', 'proprio')
-    .gt('quantidade_pendente', 0)
-    .order('created_at', { ascending: true });
-
-  const lista = document.getElementById('listaMateriaisPendentes');
-
-  if (!lista || state.page !== 'pending') return;
-
-  if (error) {
-    console.error('Erro ao carregar pendências:', error);
-    lista.textContent = 'Não foi possível carregar as pendências.';
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    lista.textContent = 'Nenhum material pendente no momento.';
+    `;
     return;
   }
 
   const formatarQuantidade = valor =>
-    Number(valor).toLocaleString('pt-BR');
+    Number(valor).toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
 
   const escaparHTML = valor =>
     String(valor ?? '').replace(/[&<>"']/g, caractere => ({
@@ -282,54 +248,276 @@ async function renderPending(content) {
       "'": '&#39;'
     })[caractere]);
 
-  lista.innerHTML = data.map(item => `
-    <div style="
-      border:1px solid #ddd;
-      border-radius:10px;
-      padding:15px;
-      margin-bottom:12px;
-      background:#fff;
-      color:#222;
-    ">
- <strong>Venda nº ${item.vendas_id}</strong>
+  const estiloAtivo = `
+    background:#0d47a1;
+    color:#fff;
+    border:1px solid #0d47a1;
+  `;
 
-<div style="margin-top:8px">
-  <strong>Cliente:</strong>
-  ${escaparHTML(item.vendas?.clientes?.nome || 'Não informado')}
-</div>
+  const estiloInativo = `
+    background:#fff;
+    color:#0d47a1;
+    border:1px solid #ccc;
+  `;
 
-      <div style="margin-top:8px">
-        ${escaparHTML(item.produtos?.nome || 'Produto não encontrado')}
+  content.innerHTML = `
+    <div style="padding:16px">
+
+      <h2>Materiais Pendentes</h2>
+
+      <p>Controle de materiais faltantes e atendimentos realizados.</p>
+
+      <div style="
+        display:flex;
+        gap:10px;
+        margin:18px 0;
+      ">
+
+        <button
+          type="button"
+          style="
+            flex:1;
+            padding:12px;
+            border-radius:8px;
+            cursor:pointer;
+            ${aba === 'pendentes' ? estiloAtivo : estiloInativo}
+          "
+          onclick="renderPending(document.getElementById('content'), 'pendentes')"
+        >
+          Pendentes
+        </button>
+
+        <button
+          type="button"
+          style="
+            flex:1;
+            padding:12px;
+            border-radius:8px;
+            cursor:pointer;
+            ${aba === 'historico' ? estiloAtivo : estiloInativo}
+          "
+          onclick="renderPending(document.getElementById('content'), 'historico')"
+        >
+          Histórico
+        </button>
+
       </div>
 
-      <div style="margin-top:8px">
-        Quantidade vendida:
-        ${formatarQuantidade(item.quantidade)}
+      <div id="listaMateriaisPendentes">
+        Carregando...
       </div>
-
-      <div style="margin-top:5px">
-        <strong>
-          Pendente:
-          ${formatarQuantidade(item.quantidade_pendente)}
-          ${escaparHTML(item.unidade_venda || '')}
-        </strong>
-      </div>
-<div style="margin-top:14px">
-  <button
-    type="button"
-    class="btn primary"
-    style="width:100%;padding:12px"
-    onclick="atenderPendencia(
-      '${item.id}',
-      ${Number(item.quantidade_pendente)}
-    )"
-  >
-    ✓ Atender pendência
-  </button>
-</div>
 
     </div>
-  `).join('');
+  `;
+
+  const lista = document.getElementById('listaMateriaisPendentes');
+
+  // ==========================================
+  // ABA: PENDENTES
+  // ==========================================
+
+  if (aba === 'pendentes') {
+
+    const { data, error } = await supabaseClient
+      .from('itens_venda')
+      .select(`
+        id,
+        vendas_id,
+        quantidade,
+        quantidade_pendente,
+        unidade_venda,
+        produtos (
+          nome
+        ),
+        vendas (
+          clientes (
+            nome
+          )
+        )
+      `)
+      .eq('origem_material', 'proprio')
+      .gt('quantidade_pendente', 0)
+      .order('created_at', { ascending: true });
+
+    if (
+      state.page !== 'pending' ||
+      document.getElementById('listaMateriaisPendentes') !== lista
+    ) return;
+
+    if (error) {
+      console.error('Erro ao carregar pendências:', error);
+      lista.textContent = 'Não foi possível carregar as pendências.';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      lista.textContent = 'Nenhum material pendente no momento.';
+      return;
+    }
+
+    lista.innerHTML = data.map(item => `
+      <div style="
+        border:1px solid #ddd;
+        border-radius:10px;
+        padding:15px;
+        margin-bottom:12px;
+        background:#fff;
+        color:#222;
+      ">
+
+        <strong>Venda nº ${item.vendas_id}</strong>
+
+        <div style="margin-top:8px">
+          <strong>Cliente:</strong>
+          ${escaparHTML(item.vendas?.clientes?.nome || 'Não informado')}
+        </div>
+
+        <div style="margin-top:8px">
+          ${escaparHTML(item.produtos?.nome || 'Produto não encontrado')}
+        </div>
+
+        <div style="margin-top:8px">
+          Quantidade vendida:
+          ${formatarQuantidade(item.quantidade)}
+        </div>
+
+        <div style="margin-top:5px">
+          <strong>
+            Pendente:
+            ${formatarQuantidade(item.quantidade_pendente)}
+            ${escaparHTML(item.unidade_venda || '')}
+          </strong>
+        </div>
+
+        <div style="margin-top:14px">
+          <button
+            type="button"
+            class="btn primary"
+            style="width:100%;padding:12px"
+            onclick="atenderPendencia(
+              '${item.id}',
+              ${Number(item.quantidade_pendente)}
+            )"
+          >
+            ✓ Atender pendência
+          </button>
+        </div>
+
+      </div>
+    `).join('');
+
+    return;
+  }
+
+  // ==========================================
+  // ABA: HISTÓRICO
+  // ==========================================
+
+  if (aba === 'historico') {
+
+    const { data, error } = await supabaseClient
+      .from('atendimentos_pendencias')
+      .select(`
+        id,
+        quantidade,
+        observacao,
+        created_at,
+        itens_venda (
+          vendas_id,
+          unidade_venda,
+          produtos (
+            nome
+          ),
+          vendas (
+            clientes (
+              nome
+            )
+          )
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (
+      state.page !== 'pending' ||
+      document.getElementById('listaMateriaisPendentes') !== lista
+    ) return;
+
+    if (error) {
+      console.error('Erro ao carregar histórico:', error);
+      lista.textContent = 'Não foi possível carregar o histórico.';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      lista.textContent = 'Nenhum atendimento registrado.';
+      return;
+    }
+
+    lista.innerHTML = data.map(registro => {
+
+      const item = registro.itens_venda;
+
+      const dataAtendimento = new Date(
+        registro.created_at
+      ).toLocaleString('pt-BR', {
+        timeZone: 'America/Belem',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      return `
+        <div style="
+          border:1px solid #ddd;
+          border-radius:10px;
+          padding:15px;
+          margin-bottom:12px;
+          background:#fff;
+          color:#222;
+        ">
+
+          <strong>
+            Venda nº ${item?.vendas_id ?? 'Não identificada'}
+          </strong>
+
+          <div style="margin-top:8px">
+            <strong>Cliente:</strong>
+            ${escaparHTML(item?.vendas?.clientes?.nome || 'Não informado')}
+          </div>
+
+          <div style="margin-top:8px">
+            ${escaparHTML(item?.produtos?.nome || 'Produto não encontrado')}
+          </div>
+
+          <div style="margin-top:8px">
+            <strong>Quantidade atendida:</strong>
+            ${formatarQuantidade(registro.quantidade)}
+            ${escaparHTML(item?.unidade_venda || '')}
+          </div>
+
+          <div style="margin-top:8px">
+            <strong>Data:</strong>
+            ${escaparHTML(dataAtendimento)}
+          </div>
+
+          ${
+            registro.observacao
+              ? `
+                <div style="margin-top:8px">
+                  <strong>Observação:</strong>
+                  ${escaparHTML(registro.observacao)}
+                </div>
+              `
+              : ''
+          }
+
+        </div>
+      `;
+
+    }).join('');
+  }
 }
 function money(v){
   return v.toLocaleString(
