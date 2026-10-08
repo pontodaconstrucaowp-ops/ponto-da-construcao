@@ -903,7 +903,6 @@ function pcDefinir(id, tipo, valor) {
 }
 function pcAtualizarRevenda(id, tipo) {
   const item = pcItem(id, tipo);
-
   const chave = `${id}-${tipo}`;
 
   const origemInput = document.getElementById(
@@ -916,6 +915,10 @@ function pcAtualizarRevenda(id, tipo) {
 
   const transporteInput = document.getElementById(
     `pc-transporte-${chave}`
+  );
+
+  const lucroElemento = document.getElementById(
+    `pc-lucro-${chave}`
   );
 
   const origem = origemInput?.value === 'revenda'
@@ -935,11 +938,26 @@ function pcAtualizarRevenda(id, tipo) {
     return;
   }
 
-  // Somente atualiza um material já adicionado à venda.
   if (item) {
     item.origemMaterial = origem;
     item.custoUnitario = origem === 'revenda' ? custo : 0;
     item.custoTransporte = origem === 'revenda' ? transporte : 0;
+  }
+
+  // Atualiza o lucro bruto estimado na tela.
+  if (lucroElemento) {
+    const quantidade = Number(item?.qty || 0);
+    const preco = Number(item?.price || 0);
+
+    const lucro = (
+      quantidade * preco -
+      quantidade * custo -
+      transporte
+    );
+
+    lucroElemento.textContent = money(
+      Math.round(lucro * 100) / 100
+    );
   }
 
   pcAtualizarResumo();
