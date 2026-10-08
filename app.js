@@ -182,6 +182,10 @@ async function atenderPendencia(itemId, quantidadePendente) {
     return;
   }
 
+  // ==============================
+  // QUANTIDADE A ATENDER
+  // ==============================
+
   const resposta = prompt(
     `Quantidade pendente: ${pendente}\n\n` +
     'Quanto material deseja atender?',
@@ -204,17 +208,121 @@ async function atenderPendencia(itemId, quantidadePendente) {
     return;
   }
 
+  // ==============================
+  // ORIGEM DO MATERIAL
+  // ==============================
+
+  const respostaOrigem = prompt(
+    'De onde virá o material?\n\n' +
+    '1 - ESTOQUE PRÓPRIO\n' +
+    '2 - FORNECEDOR\n\n' +
+    'Digite 1 ou 2:',
+    '1'
+  );
+
+  if (respostaOrigem === null) return;
+
+  const opcaoOrigem = respostaOrigem.trim();
+
+  if (opcaoOrigem !== '1' && opcaoOrigem !== '2') {
+    alert('Opção inválida. Digite 1 ou 2.');
+    return;
+  }
+
+  const origem = opcaoOrigem === '1'
+    ? 'proprio'
+    : 'fornecedor';
+
+  let custoUnitario = null;
+  let custoTransporte = null;
+
+  // ==============================
+  // CUSTOS DO FORNECEDOR
+  // ==============================
+
+  if (origem === 'fornecedor') {
+
+    const respostaCusto = prompt(
+      'Qual foi o custo UNITÁRIO do material no fornecedor?\n\n' +
+      'Exemplo: 25,50'
+    );
+
+    if (respostaCusto === null) return;
+
+    custoUnitario = Number(
+      respostaCusto.trim().replace(',', '.')
+    );
+
+    if (
+      !Number.isFinite(custoUnitario) ||
+      custoUnitario <= 0
+    ) {
+      alert('Informe um custo unitário maior que zero.');
+      return;
+    }
+
+    const respostaTransporte = prompt(
+      'Qual foi o custo TOTAL do transporte deste atendimento?\n\n' +
+      'Digite 0 se não houve custo:',
+      '0'
+    );
+
+    if (respostaTransporte === null) return;
+
+    custoTransporte = Number(
+      respostaTransporte.trim().replace(',', '.')
+    );
+
+    if (
+      !Number.isFinite(custoTransporte) ||
+      custoTransporte < 0
+    ) {
+      alert('Informe um custo de transporte válido.');
+      return;
+    }
+
+  }
+
+  // ==============================
+  // CONFIRMAÇÃO
+  // ==============================
+
+  const descricaoOrigem = origem === 'proprio'
+    ? 'ESTOQUE PRÓPRIO'
+    : 'FORNECEDOR';
+
+  let mensagemConfirmacao =
+    `Quantidade a atender: ${quantidade}\n` +
+    `Origem: ${descricaoOrigem}\n` +
+    `Restante previsto: ${pendente - quantidade}`;
+
+  if (origem === 'fornecedor') {
+
+    const custoMaterial = quantidade * custoUnitario;
+
+    const custoTotal = custoMaterial + custoTransporte;
+
+    mensagemConfirmacao +=
+      `\n\nCusto unitário: R$ ${custoUnitario.toFixed(2)}` +
+      `\nCusto do material: R$ ${custoMaterial.toFixed(2)}` +
+      `\nTransporte: R$ ${custoTransporte.toFixed(2)}` +
+      `\nCusto total: R$ ${custoTotal.toFixed(2)}`;
+
+  }
+
   const confirmar = confirm(
-    `Confirmar atendimento de ${quantidade}?\n\n` +
-    `Restante previsto: ${pendente - quantidade}`
+    mensagemConfirmacao +
+    '\n\nConfirmar atendimento?'
   );
 
   if (!confirmar) return;
 
-  // Bloquear novas tentativas antes de enviar ao Supabase
+  // ==============================
+  // BLOQUEIO DE DUPLICIDADE
+  // ==============================
+
   atendimentoPendenciaEmAndamento = true;
 
-  // Desabilitar os botões enquanto processa
   const botoes = document.querySelectorAll(
     '#listaMateriaisPendentes button'
   );
@@ -227,12 +335,19 @@ async function atenderPendencia(itemId, quantidadePendente) {
 
   try {
 
+    // ==============================
+    // REGISTRAR NO SUPABASE
+    // ==============================
+
     const { data, error } = await supabaseClient.rpc(
       'atender_pendencia',
       {
         p_item_venda_id: itemId,
         p_quantidade: quantidade,
-        p_observacao: 'Atendimento manual pelo aplicativo'
+        p_observacao: 'Atendimento manual pelo aplicativo',
+        p_origem: origem,
+        p_custo_unitario: custoUnitario,
+        p_custo_transporte: custoTransporte
       }
     );
 
@@ -243,8 +358,10 @@ async function atenderPendencia(itemId, quantidadePendente) {
     }
 
     alert(
-      'Atendimento registrado com sucesso!\n' +
-      'Quantidade ainda pendente: ' + data
+      'Atendimento registrado com sucesso!\n\n' +
+      `Origem: ${descricaoOrigem}\n` +
+      `Quantidade atendida: ${quantidade}\n` +
+      `Quantidade ainda pendente: ${data}`
     );
 
     if (state.page === 'pending') {
@@ -266,7 +383,6 @@ async function atenderPendencia(itemId, quantidadePendente) {
 
     atendimentoPendenciaEmAndamento = false;
 
-    // Reabilitar apenas os botões que ainda estiverem na tela
     botoes.forEach(botao => {
       if (botao.isConnected) {
         botao.disabled = false;
@@ -276,6 +392,7 @@ async function atenderPendencia(itemId, quantidadePendente) {
     });
 
   }
+
 }
 async function renderPending(content, aba = 'pendentes') {
 
