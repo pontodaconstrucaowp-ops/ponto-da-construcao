@@ -812,6 +812,7 @@ function pcAlterar(id, tipo, delta) {
   pcDefinir(id, tipo, nova);
 }
 
+
 function pcDefinir(id, tipo, valor) {
   const produto = (window.saleProducts || []).find(
     p => String(p.id) === String(id)
@@ -848,19 +849,57 @@ function pcDefinir(id, tipo, valor) {
 
   const qty = Math.round(quantidade * 1000) / 1000;
 
-  // Preserva os dados internos do material.
-  // Enquanto a revenda estiver desabilitada na tela,
-  // novos itens continuam como estoque próprio.
-  const origemMaterial =
-    itemAnterior?.origemMaterial === 'revenda'
-      ? 'revenda'
-      : 'proprio';
+  // ====================================
+  // LER ORIGEM E CUSTOS DIRETAMENTE DA TELA
+  // ====================================
 
-  const custoUnitario =
-    Number(itemAnterior?.custoUnitario) || 0;
+  const chave = `${id}-${tipo}`;
 
-  const custoTransporte =
-    Number(itemAnterior?.custoTransporte) || 0;
+  const origemInput = document.getElementById(
+    `pc-origem-${chave}`
+  );
+
+  const custoInput = document.getElementById(
+    `pc-custo-${chave}`
+  );
+
+  const transporteInput = document.getElementById(
+    `pc-transporte-${chave}`
+  );
+
+  const origemMaterial = origemInput
+    ? (origemInput.value === 'revenda' ? 'revenda' : 'proprio')
+    : (itemAnterior?.origemMaterial === 'revenda' ? 'revenda' : 'proprio');
+
+  const custoUnitario = origemMaterial === 'revenda'
+    ? Number(custoInput?.value ?? itemAnterior?.custoUnitario ?? 0)
+    : 0;
+
+  const custoTransporte = origemMaterial === 'revenda'
+    ? Number(transporteInput?.value ?? itemAnterior?.custoTransporte ?? 0)
+    : 0;
+
+  if (
+    origemMaterial === 'revenda' &&
+    (
+      !Number.isFinite(custoUnitario) ||
+      !Number.isFinite(custoTransporte) ||
+      custoUnitario < 0 ||
+      custoTransporte < 0
+    )
+  ) {
+    alert('Informe valores válidos para os custos da revenda.');
+
+    if (input) {
+      input.value = itemAnterior?.qty || 0;
+    }
+
+    return;
+  }
+
+  // ====================================
+  // ATUALIZAR O CARRINHO
+  // ====================================
 
   state.cart = state.cart.filter(item =>
     !(
@@ -899,7 +938,10 @@ function pcDefinir(id, tipo, valor) {
     );
   }
 
-  // Atualizar o lucro quando mudar a quantidade
+  // ====================================
+  // ATUALIZAR LUCRO ESTIMADO
+  // ====================================
+
   const lucroElemento = document.getElementById(
     `pc-lucro-${id}-${tipo}`
   );
@@ -907,81 +949,19 @@ function pcDefinir(id, tipo, valor) {
   if (lucroElemento) {
     const itemAtual = pcItem(id, tipo);
 
-    const quantidade = Number(itemAtual?.qty || 0);
+    const quantidadeAtual = Number(itemAtual?.qty || 0);
     const preco = Number(itemAtual?.price || 0);
 
-    const custoUnitario =
+    const custoAtual =
       Number(itemAtual?.custoUnitario || 0);
 
-    const custoTransporte =
+    const transporteAtual =
       Number(itemAtual?.custoTransporte || 0);
 
     const lucro =
-      quantidade * preco -
-      quantidade * custoUnitario -
-      custoTransporte;
-
-    lucroElemento.textContent = money(
-      Math.round(lucro * 100) / 100
-    );
-  }
-
-  pcAtualizarResumo();
-}
-
-function pcAtualizarRevenda(id, tipo) {
-  const item = pcItem(id, tipo);
-  const chave = `${id}-${tipo}`;
-
-  const origemInput = document.getElementById(
-    `pc-origem-${chave}`
-  );
-
-  const custoInput = document.getElementById(
-    `pc-custo-${chave}`
-  );
-
-  const transporteInput = document.getElementById(
-    `pc-transporte-${chave}`
-  );
-
-  const lucroElemento = document.getElementById(
-    `pc-lucro-${chave}`
-  );
-
-  const origem = origemInput?.value === 'revenda'
-    ? 'revenda'
-    : 'proprio';
-
-  const custo = Number(custoInput?.value || 0);
-  const transporte = Number(transporteInput?.value || 0);
-
-  if (
-    !Number.isFinite(custo) ||
-    !Number.isFinite(transporte) ||
-    custo < 0 ||
-    transporte < 0
-  ) {
-    alert('Informe valores válidos para os custos.');
-    return;
-  }
-
-  if (item) {
-    item.origemMaterial = origem;
-    item.custoUnitario = origem === 'revenda' ? custo : 0;
-    item.custoTransporte = origem === 'revenda' ? transporte : 0;
-  }
-
-  // Atualiza o lucro bruto estimado na tela.
-  if (lucroElemento) {
-    const quantidade = Number(item?.qty || 0);
-    const preco = Number(item?.price || 0);
-
-    const lucro = (
-      quantidade * preco -
-      quantidade * custo -
-      transporte
-    );
+      quantidadeAtual * preco -
+      quantidadeAtual * custoAtual -
+      transporteAtual;
 
     lucroElemento.textContent = money(
       Math.round(lucro * 100) / 100
