@@ -4731,6 +4731,10 @@ const mapa = L.map(mapaId).setView(
 
 window.abrirMapaCliente = abrirMapaCliente;
 function openClientForm(){
+
+  window.clienteLatitude = null;
+window.clienteLongitude = null;
+  
   const content = document.getElementById('content');
 
   content.innerHTML = `
