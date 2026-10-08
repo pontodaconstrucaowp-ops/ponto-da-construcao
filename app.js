@@ -1869,7 +1869,7 @@ function selectPayment(payment){
 }
 
 
-ffunction selectSaleType(type){
+function selectSaleType(type){
 
   window.saleType = type;
 
