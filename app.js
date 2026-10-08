@@ -2134,7 +2134,56 @@ async function confirmSale(){
   // REGISTRAR ENTREGA
   // ====================================
 
-  if(window.saleType === 'entrega
+  if(window.saleType === 'entrega'){
+
+    const { data: ultimaEntrega, error: filaError } =
+      await supabaseClient
+        .from('entregas')
+        .select('posicao_fila')
+        .neq('status', 'entregue')
+        .order('posicao_fila', { ascending: false })
+        .limit(1);
+
+    if(filaError){
+      console.error('ERRO AO VERIFICAR FILA:', filaError);
+      alert('A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' + filaError.message);
+      return;
+    }
+
+    const ultimaPosicao = ultimaEntrega && ultimaEntrega.length
+      ? Number(ultimaEntrega[0].posicao_fila || 0)
+      : 0;
+
+    const { error: entregaError } = await supabaseClient
+      .from('entregas')
+      .insert({
+        venda_id: vendaId,
+        prioridade: false,
+        posicao_fila: ultimaPosicao + 1,
+        status: 'pendente',
+        endereço: dadosEntrega.endereco,
+        latitude: dadosEntrega.latitude,
+        longitude: dadosEntrega.longitude
+      });
+
+    if(entregaError){
+      console.error('ERRO AO CRIAR ENTREGA:', entregaError);
+      alert('A venda foi registrada, mas não foi possível criar a entrega:\n\n' + entregaError.message);
+      return;
+    }
+  }
+
+  state.cart = [];
+  state.selectedClient = null;
+  state.saleDiscount = 0;
+  state.cartOpen = false;
+  window.salePayment = null;
+  window.saleType = null;
+
+  abrirImpressaoVenda(vendaId, 'pago');
+  navigate('home');
+}
+
 async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
   if (!vendaId) {
