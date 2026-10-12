@@ -190,7 +190,8 @@ function navigate(page) {
   } else if (page === 'clients') {
     renderClients(content);
 
-  } else if (page === 'receivables') {
+} else if (page === 'receivables') {
+  renderReceivables(content);
 
     // Tela provisória até conectarmos as contas
     content.innerHTML = `
