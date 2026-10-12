@@ -191,7 +191,8 @@ function money(v){
 }
 
 
-function renderHome(el) {
+
+async function renderHome(el) {
 
   const ehAdministrador =
     state.user?.tipo === 'admin' ||
@@ -209,27 +210,43 @@ function renderHome(el) {
     return;
   }
 
+  // Datas no horário local do navegador
+  const agora = new Date();
+
+  const ano = agora.getFullYear();
+  const mes = agora.getMonth();
+  const dia = agora.getDate();
+
+  const inicioHoje = new Date(ano, mes, dia);
+  const inicioAmanha = new Date(ano, mes, dia + 1);
+
+  const inicioMes = new Date(ano, mes, 1);
+  const inicioProximoMes = new Date(ano, mes + 1, 1);
+
   el.innerHTML = `
     <div class="section-title">
       <h2>📊 Visão geral</h2>
     </div>
 
     <p class="muted" style="margin-bottom:16px">
-      Painel financeiro em preparação.
-      Os indicadores ainda não estão conectados
-      aos registros reais do sistema.
+      🧪 Sistema em fase de testes.
+      Os valores das vendas são demonstrativos.
     </p>
 
     <div class="grid stats">
 
       <div class="card stat">
         <div class="label">Vendas de hoje</div>
-        <div class="value">${money(0)}</div>
+        <div class="value" id="dashVendasHoje">
+          Carregando...
+        </div>
       </div>
 
       <div class="card stat">
         <div class="label">Vendas do mês</div>
-        <div class="value">${money(0)}</div>
+        <div class="value" id="dashVendasMes">
+          Carregando...
+        </div>
       </div>
 
       <div class="card stat">
@@ -253,6 +270,11 @@ function renderHome(el) {
       </div>
 
     </div>
+
+    <p class="muted" style="font-size:12px;margin-top:10px">
+      Os demais indicadores serão conectados
+      nas próximas etapas.
+    </p>
 
     <div class="section-title">
       <h2>Ações rápidas</h2>
@@ -294,11 +316,114 @@ function renderHome(el) {
 
     <div class="card">
       <p class="muted">
-        As próximas entregas serão exibidas aqui
-        quando integrarmos os registros reais.
+        As próximas entregas serão exibidas
+        aqui quando integrarmos os registros reais.
       </p>
     </div>
   `;
+
+  // Consultar todas as vendas do mês em lotes
+  // para não limitar o cálculo às primeiras 1.000.
+
+  try {
+
+    let vendas = [];
+    let pagina = 0;
+    const tamanhoPagina = 1000;
+
+    while (true) {
+
+      const inicio = pagina * tamanhoPagina;
+      const fim = inicio + tamanhoPagina - 1;
+
+      const { data, error } = await supabaseClient
+        .from('vendas')
+        .select('id,data,valor_total')
+        .gte('data', inicioMes.toISOString())
+        .lt('data', inicioProximoMes.toISOString())
+        .order('data', { ascending: true })
+        .order('id', { ascending: true })
+        .range(inicio, fim);
+
+      if (error) throw error;
+
+      const lote = data || [];
+
+      vendas.push(...lote);
+
+      if (lote.length < tamanhoPagina) break;
+
+      pagina++;
+
+    }
+
+    let totalHoje = 0;
+    let totalMes = 0;
+
+    for (const venda of vendas) {
+
+      const valor = Number(venda.valor_total || 0);
+      const dataVenda = new Date(venda.data);
+
+      if (
+        !Number.isFinite(valor) ||
+        Number.isNaN(dataVenda.getTime())
+      ) {
+        continue;
+      }
+
+      totalMes += valor;
+
+      if (
+        dataVenda >= inicioHoje &&
+        dataVenda < inicioAmanha
+      ) {
+        totalHoje += valor;
+      }
+
+    }
+
+    // Evita atualizar outra página após navegação
+    if (state.page !== 'home') return;
+
+    const campoHoje =
+      document.getElementById('dashVendasHoje');
+
+    const campoMes =
+      document.getElementById('dashVendasMes');
+
+    if (campoHoje) {
+      campoHoje.textContent = money(totalHoje);
+    }
+
+    if (campoMes) {
+      campoMes.textContent = money(totalMes);
+    }
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao carregar Dashboard:',
+      erro
+    );
+
+    if (state.page !== 'home') return;
+
+    const campoHoje =
+      document.getElementById('dashVendasHoje');
+
+    const campoMes =
+      document.getElementById('dashVendasMes');
+
+    if (campoHoje) {
+      campoHoje.textContent = 'Indisponível';
+    }
+
+    if (campoMes) {
+      campoMes.textContent = 'Indisponível';
+    }
+
+  }
 }
 
 function deliveryCard(d){
