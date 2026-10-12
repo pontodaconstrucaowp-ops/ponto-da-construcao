@@ -4717,8 +4717,11 @@ function openProductEdit(id){
 
           </div>
 
-          <!-- INFORMAÇÕES DE REVENDA -->
-          <div style="
+<!-- INFORMAÇÕES DE REVENDA -->
+<div
+  id="editProductResaleSection"
+  style="
+    display:${produto.controla_estoque === false ? 'block' : 'none'};
             margin-top:20px;
             padding:15px;
             border:1px solid #ddd;
