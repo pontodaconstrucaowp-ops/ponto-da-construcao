@@ -5839,14 +5839,49 @@ async function carregarRelatorio(){
 
     }).join('');
 }
-function renderMore(el){
- el.innerHTML=`<div class="list">
- <button class="card" onclick="navigate('clients')"><strong>Clientes</strong><span class="muted">Cadastro e histórico</span></button>
- <button class="card" onclick="navigate('cash')"><strong>Caixa / Financeiro</strong><span class="muted">Entradas, saídas e saldo</span></button>
- <button class="card" onclick="navigate('reports')"><strong>Relatórios</strong><span class="muted">Resumo de vendas e operação</span></button>
- <button class="card" onclick="navigate('settings')"><strong>Configurações</strong><span class="muted">Usuários e preferências</span></button>
- </div>`;
+
+function renderMore(el) {
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  el.innerHTML = `
+    <div class="list">
+
+      <button class="card" onclick="navigate('clients')">
+        <strong>Clientes</strong>
+        <span class="muted">Cadastro e histórico</span>
+      </button>
+
+      ${ehAdministrador ? `
+        <button class="card" onclick="navigate('receivables')">
+          <strong>💰 Contas a receber</strong>
+          <span class="muted">
+            Dívidas dos clientes e registro de pagamentos
+          </span>
+        </button>
+      ` : ''}
+
+      <button class="card" onclick="navigate('cash')">
+        <strong>Caixa / Financeiro</strong>
+        <span class="muted">Entradas, saídas e saldo</span>
+      </button>
+
+      <button class="card" onclick="navigate('reports')">
+        <strong>Relatórios</strong>
+        <span class="muted">Resumo de vendas e operação</span>
+      </button>
+
+      <button class="card" onclick="navigate('settings')">
+        <strong>Configurações</strong>
+        <span class="muted">Usuários e preferências</span>
+      </button>
+
+    </div>
+  `;
 }
+
 function abrirMapaCliente(origem = 'cadastro') {
 
   const venda = origem === 'venda';
