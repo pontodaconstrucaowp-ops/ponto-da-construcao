@@ -6773,11 +6773,11 @@ window.clienteLongitude = null;
 }
 
 
+
 async function renderClients(el) {
 
   el.innerHTML = `
     <div class="row" style="margin-bottom:12px">
-
       <input
         id="clientSearch"
         class="search"
@@ -6791,7 +6791,6 @@ async function renderClients(el) {
       >
         + Cliente
       </button>
-
     </div>
 
     <div id="clientsList" class="list">
@@ -6799,6 +6798,8 @@ async function renderClients(el) {
         Carregando clientes...
       </div>
     </div>
+
+    <div id="pcHistoricoCliente"></div>
   `;
 
   const { data, error } = await supabaseClient
@@ -6806,104 +6807,27 @@ async function renderClients(el) {
     .select('*')
     .order('nome', { ascending: true });
 
-  const list = el.querySelector('#clientsList');
-
-  if (!list || state.page !== 'clients') {
+  if (state.page !== 'clients' || !el.isConnected) {
     return;
   }
 
-  if (error) {
+  const lista = el.querySelector('#clientsList');
 
-    list.innerHTML = `
+  if (error) {
+    lista.innerHTML = `
       <div class="card">
         <strong>Erro ao carregar clientes</strong>
-        <p class="muted">
-          ${pcEscapar(error.message)}
-        </p>
+        <p class="muted">${pcEscapar(error.message)}</p>
       </div>
     `;
-
     return;
   }
 
   window.currentClients = data || [];
 
-  if (!data || data.length === 0) {
+  filterClients();
 
-    list.innerHTML = `
-      <div class="card">
-        <strong>Nenhum cliente cadastrado</strong>
-        <p class="muted">
-          Clique em "+ Cliente" para cadastrar.
-        </p>
-      </div>
-    `;
-
-    return;
-  }
-
-  // =====================================
-  // LISTAGEM COM BOTÃO DE HISTÓRICO
-  // =====================================
-
-  list.innerHTML = data.map(c => {
-
-    const nome = pcEscapar(
-      c.nome || 'Sem nome'
-    );
-
-    const telefone = pcEscapar(
-      c.telefone || 'Sem telefone'
-    );
-
-    const endereco = pcEscapar(
-      c.endereço || 'Sem endereço'
-    );
-
-    const id = String(c.id || '');
-
-    // UUID deve conter somente caracteres esperados.
-    const idValido =
-      /^[0-9a-fA-F-]{36}$/.test(id);
-
-    return `
-      <div class="card">
-
-        <div class="product-name">
-          ${nome}
-        </div>
-
-        <div class="muted">
-          ${telefone}
-        </div>
-
-        <div class="muted">
-          ${endereco}
-        </div>
-
-        ${idValido ? `
-          <div class="actions" style="margin-top:14px">
-
-            <button
-              type="button"
-              class="secondary"
-              data-cliente-historico="${id}"
-            >
-              📋 Histórico de compras
-            </button>
-
-          </div>
-        ` : ''}
-
-      </div>
-    `;
-  }).join('');
-
-  // =====================================
-  // ABRIR HISTÓRICO DO CLIENTE
-  // =====================================
-
-  list.addEventListener('click', evento => {
+  lista.addEventListener('click', async evento => {
 
     const botao = evento.target.closest(
       '[data-cliente-historico]'
@@ -6911,11 +6835,8 @@ async function renderClients(el) {
 
     if (!botao) return;
 
-    const clienteId =
-      botao.dataset.clienteHistorico;
-
     const cliente = window.currentClients.find(
-      c => String(c.id) === clienteId
+      c => String(c.id) === botao.dataset.clienteHistorico
     );
 
     if (!cliente) {
@@ -6923,24 +6844,291 @@ async function renderClients(el) {
       return;
     }
 
-    // Guarda o cliente selecionado para a próxima etapa.
-    window.pcClienteHistoricoSelecionado = {
-      id: cliente.id,
-      nome: cliente.nome
-    };
+    const painel = el.querySelector('#pcHistoricoCliente');
 
-    alert(
-      'Histórico de compras\n\n' +
-      'Cliente: ' + cliente.nome + '\n\n' +
-      'Na próxima etapa, vamos conectar ' +
-      'as compras, dívidas e pagamentos ' +
-      'deste cliente ao Supabase.'
-    );
+    painel.innerHTML = `
+      <div class="card">
+        <strong>Carregando histórico de compras...</strong>
+      </div>
+    `;
+
+    painel.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+
+    try {
+
+      // =====================================
+      // VENDAS DO CLIENTE
+      // =====================================
+
+      const vendas = [];
+      let pagina = 0;
+      const tamanhoPagina = 1000;
+
+      while (true) {
+
+        const inicio = pagina * tamanhoPagina;
+
+        const { data, error } = await supabaseClient
+          .from('vendas')
+          .select(`
+            id,
+            data,
+            valor_total,
+            forma_pagamento,
+            status
+          `)
+          .eq('cliente_id', cliente.id)
+          .order('id', { ascending: false })
+          .range(inicio, inicio + tamanhoPagina - 1);
+
+        if (error) throw error;
+
+        const lote = data || [];
+        vendas.push(...lote);
+
+        if (lote.length < tamanhoPagina) break;
+
+        pagina++;
+      }
+
+      // =====================================
+      // CONTAS A RECEBER DO CLIENTE
+      // =====================================
+
+      const contas = [];
+      pagina = 0;
+
+      while (true) {
+
+        const inicio = pagina * tamanhoPagina;
+
+        const { data, error } = await supabaseClient
+          .from('contas_receber')
+          .select(`
+            id,
+            venda_id,
+            valor_original,
+            valor_recebido,
+            status
+          `)
+          .eq('cliente_id', cliente.id)
+          .order('id', { ascending: false })
+          .range(inicio, inicio + tamanhoPagina - 1);
+
+        if (error) throw error;
+
+        const lote = data || [];
+        contas.push(...lote);
+
+        if (lote.length < tamanhoPagina) break;
+
+        pagina++;
+      }
+
+      if (state.page !== 'clients' || !painel.isConnected) {
+        return;
+      }
+
+      const contasPorVenda = new Map(
+        contas.map(conta => [
+          String(conta.venda_id),
+          conta
+        ])
+      );
+
+      const totalCompras = vendas.reduce(
+        (soma, venda) =>
+          soma + Number(venda.valor_total || 0),
+        0
+      );
+
+      const totalDevedor = contas.reduce(
+        (soma, conta) => soma + Math.max(
+          0,
+          Number(conta.valor_original || 0) -
+          Number(conta.valor_recebido || 0)
+        ),
+        0
+      );
+
+      const formatarData = valor => {
+
+        const data = new Date(valor);
+
+        return Number.isNaN(data.getTime())
+          ? 'Data não informada'
+          : data.toLocaleString('pt-BR');
+      };
+
+      const formas = {
+        dinheiro: 'Dinheiro',
+        pix: 'Pix',
+        'cartão': 'Cartão',
+        prazo: 'A prazo'
+      };
+
+      painel.innerHTML = `
+        <div class="section-title">
+          <h2>
+            📋 Histórico de ${pcEscapar(cliente.nome)}
+          </h2>
+
+          <button
+            type="button"
+            class="secondary"
+            id="pcFecharHistorico"
+          >
+            Fechar
+          </button>
+        </div>
+
+        <div class="grid stats">
+
+          <div class="card stat">
+            <div class="label">Total de compras</div>
+            <div class="value">
+              ${money(totalCompras)}
+            </div>
+          </div>
+
+          <div class="card stat">
+            <div class="label">Saldo devedor</div>
+            <div class="value">
+              ${money(totalDevedor)}
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section-title">
+          <h2>Compras realizadas (${vendas.length})</h2>
+        </div>
+
+        ${
+          vendas.length
+            ? vendas.map(venda => {
+
+                const conta = contasPorVenda.get(
+                  String(venda.id)
+                );
+
+                const saldo = conta
+                  ? Math.max(
+                      0,
+                      Number(conta.valor_original) -
+                      Number(conta.valor_recebido)
+                    )
+                  : 0;
+
+                const situacao = conta
+                  ? saldo === 0
+                    ? 'Quitada'
+                    : Number(conta.valor_recebido) > 0
+                      ? 'Pagamento parcial'
+                      : 'Pendente'
+                  : venda.forma_pagamento === 'prazo'
+                    ? 'Conta não localizada'
+                    : 'Venda sem dívida a prazo';
+
+                return `
+                  <div
+                    class="card"
+                    style="margin-bottom:12px"
+                  >
+                    <div class="row">
+                      <strong>
+                        Venda #${pcEscapar(venda.id)}
+                      </strong>
+
+                      <strong>
+                        ${money(Number(venda.valor_total))}
+                      </strong>
+                    </div>
+
+                    <p class="muted">
+                      ${formatarData(venda.data)}
+                    </p>
+
+                    <p>
+                      Pagamento:
+                      <strong>
+                        ${pcEscapar(
+                          formas[venda.forma_pagamento] ||
+                          venda.forma_pagamento ||
+                          'Não informado'
+                        )}
+                      </strong>
+                    </p>
+
+                    <p>
+                      Situação financeira:
+                      <strong>${situacao}</strong>
+                    </p>
+
+                    ${
+                      conta
+                        ? `
+                          <p>
+                            Valor recebido:
+                            <strong>
+                              ${money(Number(conta.valor_recebido))}
+                            </strong>
+                          </p>
+
+                          <p>
+                            Saldo devedor:
+                            <strong>${money(saldo)}</strong>
+                          </p>
+                        `
+                        : ''
+                    }
+                  </div>
+                `;
+              }).join('')
+            : `
+              <div class="card">
+                <p class="muted">
+                  Este cliente ainda não possui compras
+                  registradas.
+                </p>
+              </div>
+            `
+        }
+      `;
+
+      painel.querySelector('#pcFecharHistorico')
+        .addEventListener('click', () => {
+          painel.innerHTML = '';
+          el.querySelector('#clientSearch')?.focus();
+        });
+
+    } catch (erro) {
+
+      console.error(
+        'Erro ao carregar histórico do cliente:',
+        erro
+      );
+
+      if (painel.isConnected) {
+        painel.innerHTML = `
+          <div class="card">
+            <strong>
+              Não foi possível carregar o histórico.
+            </strong>
+            <p class="muted">
+              ${pcEscapar(erro.message || 'Erro desconhecido')}
+            </p>
+          </div>
+        `;
+      }
+    }
 
   });
 
 }
-
 
 function filterClients(){
 
