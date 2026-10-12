@@ -1221,28 +1221,154 @@ function pcDefinir(id, tipo, valor) {
 }
 
 function pcAtualizarResumo() {
+
   const lista = document.getElementById('pcResumoItens');
   if (!lista) return;
 
-  lista.innerHTML = state.cart.map(item => `
-    <div class="pc-resumo-linha">
-      <strong>${pcEscapar(item.name)}</strong>
+  lista.innerHTML = state.cart.map(item => {
 
-      <div>
-        ${item.qty.toLocaleString('pt-BR')}
-        ${pcEscapar(item.unit)}
-        — ${money(pcSubtotal(item))}
+    const produto = (window.saleProducts || []).find(
+      p => String(p.id) === String(item.id)
+    );
+
+    const opcao = produto
+      ? pcOpcoes(produto).find(
+          o => o.tipo === item.tipoOpcao
+        )
+      : null;
+
+    const passo = opcao?.passo || 1;
+
+    const id = Number(item.id);
+    const tipo = String(item.tipoOpcao || '');
+
+    // Apenas identificadores conhecidos podem ser usados nos controles.
+    const podeEditar =
+      Number.isSafeInteger(id) &&
+      ['principal', 'avulso'].includes(tipo) &&
+      Boolean(opcao);
+
+    return `
+      <div
+        class="pc-resumo-linha"
+        style="
+          padding:14px 0;
+          border-bottom:1px solid #e2e8f0;
+        "
+      >
+
+        <strong style="display:block;margin-bottom:5px">
+          ${pcEscapar(item.name)}
+        </strong>
+
+        <div
+          style="
+            color:#64748b;
+            font-size:13px;
+            margin-bottom:12px;
+          "
+        >
+          ${money(item.price)} por ${pcEscapar(item.unit)}
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:12px;
+          "
+        >
+
+          ${
+            podeEditar
+              ? `
+                <div
+                  style="
+                    display:flex;
+                    align-items:center;
+                    gap:7px;
+                  "
+                >
+
+                  <button
+                    type="button"
+                    onclick="pcAlterar(${id}, '${tipo}', -1)"
+                    style="
+                      width:40px;
+                      height:40px;
+                      padding:0;
+                      border-radius:9px;
+                      background:#0b408e;
+                      color:white;
+                      font-size:24px;
+                      font-weight:bold;
+                    "
+                  >−</button>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="${passo}"
+                    value="${item.qty}"
+                    aria-label="Quantidade de ${pcEscapar(item.name)}"
+                    onchange="pcDefinir(${id}, '${tipo}', this.value)"
+                    style="
+                      width:75px;
+                      height:40px;
+                      text-align:center;
+                      border:1px solid #dbe3ee;
+                      border-radius:9px;
+                      box-sizing:border-box;
+                    "
+                  >
+
+                  <button
+                    type="button"
+                    onclick="pcAlterar(${id}, '${tipo}', 1)"
+                    style="
+                      width:40px;
+                      height:40px;
+                      padding:0;
+                      border-radius:9px;
+                      background:#0b408e;
+                      color:white;
+                      font-size:24px;
+                      font-weight:bold;
+                    "
+                  >+</button>
+
+                </div>
+              `
+              : `
+                <span>
+                  ${Number(item.qty).toLocaleString('pt-BR')}
+                  ${pcEscapar(item.unit)}
+                </span>
+              `
+          }
+
+          <strong style="font-size:17px">
+            ${money(pcSubtotal(item))}
+          </strong>
+
+        </div>
+
       </div>
-    </div>
-  `).join('') || `
+    `;
+
+  }).join('') || `
     <p class="muted">
       Escolha as quantidades nos materiais.
     </p>
   `;
 
   const total = pcTotal();
+
   const input = document.getElementById('saleDiscount');
-  const valor = Number(input.value);
+
+  const valor = Number(input?.value || 0);
 
   state.saleDiscount = Math.round(
     Math.min(
@@ -1251,13 +1377,26 @@ function pcAtualizarResumo() {
     ) * 100
   ) / 100;
 
-  document.getElementById('pcTotalFinal').textContent =
-    money(total - state.saleDiscount);
+  const totalFinal =
+    document.getElementById('pcTotalFinal');
 
-  document.getElementById('pcContinuar').disabled =
-    !state.cart.length;
+  if (totalFinal) {
+    totalFinal.textContent =
+      money(total - state.saleDiscount);
+  }
+
+  const continuar =
+    document.getElementById('pcContinuar');
+
+  if (continuar) {
+    continuar.disabled = !state.cart.length;
+  }
+
+  if (typeof window.pcAtualizarBarraCarrinho === 'function') {
+    window.pcAtualizarBarraCarrinho();
+  }
+
 }
-
 function pcLimparPedido() {
   state.cart = [];
   state.saleDiscount = 0;
