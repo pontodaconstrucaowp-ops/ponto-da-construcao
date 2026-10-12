@@ -1008,20 +1008,16 @@ function pcMostrarProdutos() {
             const revenda =
               produto?.controla_estoque === false;
 
-            const possuiCustos =
-              produto?.custo_referencia != null ||
-              produto?.frete_referencia != null;
+            const possuiCusto =
+              produto?.custo_referencia != null;
 
             const custo = Number(
               produto?.custo_referencia || 0
             );
 
-            const frete = Number(
-              produto?.frete_referencia || 0
-            );
-
-            const custoTotal = custo + frete;
-            const lucro = Number(opcao.preco) - custoTotal;
+            // Lucro bruto sem custo de frete
+            const lucro =
+              Number(opcao.preco) - custo;
 
             return `
               <div
@@ -1040,7 +1036,7 @@ function pcMostrarProdutos() {
                 </div>
 
                 ${
-                  revenda && ehAdministrador && possuiCustos
+                  revenda && ehAdministrador && possuiCusto
                     ? `
                       <div
                         style="
@@ -1057,18 +1053,8 @@ function pcMostrarProdutos() {
                         </strong>
 
                         <div style="margin-top:8px">
-                          Custo do fornecedor:
+                          Custo de compra:
                           <strong>${money(custo)}</strong>
-                        </div>
-
-                        <div style="margin-top:5px">
-                          Frete por unidade:
-                          <strong>${money(frete)}</strong>
-                        </div>
-
-                        <div style="margin-top:5px">
-                          Custo completo:
-                          <strong>${money(custoTotal)}</strong>
                         </div>
 
                         <div style="margin-top:5px">
@@ -1112,7 +1098,10 @@ function pcMostrarProdutos() {
                     type="button"
                     aria-label="Adicionar ${pcEscapar(opcao.unidade)}"
                     onclick="
-                      pcAlterar(${id}, '${opcao.tipo}', 1);
+                      pcAlterar(${id},
+                        '${opcao.tipo}',
+                        1
+                      );
                       pcTotalCartao(this);
                     "
                   >+</button>
