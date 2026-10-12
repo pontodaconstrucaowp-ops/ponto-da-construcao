@@ -216,6 +216,11 @@ function deliveryCard(d){
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
 async function renderSales(el) {
 
+  // Preserva o estado do carrinho quando a tela é atualizada
+  const carrinhoEstavaAberto =
+    document.getElementById('pcCarrinhoPainel')
+      ?.dataset.aberto === 'true';
+
   el.innerHTML = `
     <div class="card">
       <h2>Cliente</h2>
@@ -235,6 +240,7 @@ async function renderSales(el) {
     </div>
 
     <div id="saleProducts">
+
       <input
         id="saleProductSearch"
         class="search"
@@ -245,15 +251,90 @@ async function renderSales(el) {
       <div id="saleProductItems">
         Carregando materiais...
       </div>
+
     </div>
 
-    <div class="sale-cart">
-      <strong>🛒 Resumo do pedido</strong>
+    <!-- Espaço dinâmico para os últimos produtos -->
+    <div
+      id="pcEspacoCarrinho"
+      aria-hidden="true"
+      style="height:100px;pointer-events:none"
+    ></div>
+
+    <!-- Fundo do carrinho aberto -->
+    <div
+      id="pcCarrinhoFundo"
+      onclick="pcAlternarCarrinho(false)"
+      style="
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,0.45);
+        z-index:9990;
+      "
+    ></div>
+
+    <!-- Painel do carrinho -->
+    <div
+      id="pcCarrinhoPainel"
+      data-aberto="false"
+      style="
+        display:none;
+        position:fixed;
+        left:0;
+        right:0;
+        bottom:0;
+        z-index:9992;
+        background:#fff;
+        color:#222;
+        border-radius:18px 18px 0 0;
+        box-shadow:0 -8px 30px rgba(0,0,0,0.18);
+        max-height:60vh;
+        overflow-y:auto;
+        overscroll-behavior:contain;
+        padding:18px;
+        box-sizing:border-box;
+      "
+    >
+
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          margin-bottom:18px;
+        "
+      >
+
+        <h2 style="margin:0;font-size:20px">
+          🛒 Meu carrinho
+        </h2>
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="pcAlternarCarrinho(false)"
+          style="
+            padding:8px 12px;
+            min-width:42px;
+          "
+        >
+          ✕
+        </button>
+
+      </div>
 
       <div id="pcResumoItens"></div>
 
-      <div class="field">
-        <label for="saleDiscount">Desconto em reais</label>
+      <div
+        class="field"
+        style="margin-top:18px"
+      >
+
+        <label for="saleDiscount">
+          Desconto em reais
+        </label>
 
         <input
           id="saleDiscount"
@@ -263,14 +344,29 @@ async function renderSales(el) {
           value="${Number(state.saleDiscount) || 0}"
           oninput="pcAtualizarResumo()"
         >
+
       </div>
 
-      <div class="row">
+      <div
+        class="row"
+        style="
+          margin-top:18px;
+          padding:12px 0;
+          border-top:1px solid #ddd;
+        "
+      >
+
         <strong>Total final</strong>
-        <strong id="pcTotalFinal" class="total"></strong>
+
+        <strong
+          id="pcTotalFinal"
+          class="total"
+        ></strong>
+
       </div>
 
       <div class="actions">
+
         <button
           class="primary"
           id="pcContinuar"
@@ -285,24 +381,357 @@ async function renderSales(el) {
         >
           Limpar pedido
         </button>
+
       </div>
+
+    </div>
+
+    <!-- Barra compacta do carrinho -->
+    <div
+      id="pcCarrinhoBarra"
+      role="button"
+      tabindex="0"
+      aria-label="Abrir ou fechar carrinho"
+      onclick="pcAlternarCarrinho()"
+      onkeydown="
+        if(event.key === 'Enter' || event.key === ' '){
+          event.preventDefault();
+          pcAlternarCarrinho();
+        }
+      "
+      style="
+        position:fixed;
+        left:0;
+        right:0;
+        bottom:0;
+        z-index:9993;
+        background:#166534;
+        color:white;
+        padding:12px 18px;
+        box-shadow:0 -4px 15px rgba(0,0,0,0.16);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        cursor:pointer;
+        box-sizing:border-box;
+      "
+    >
+
+      <div>
+
+        <strong style="font-size:15px">
+          🛒 Meu carrinho
+        </strong>
+
+        <div
+          id="pcCarrinhoQuantidade"
+          style="
+            font-size:12px;
+            opacity:0.9;
+            margin-top:3px;
+          "
+        >
+          Nenhum material
+        </div>
+
+      </div>
+
+      <div style="text-align:right">
+
+        <strong
+          id="pcCarrinhoValor"
+          style="font-size:18px"
+        >
+          R$ 0,00
+        </strong>
+
+        <div
+          id="pcCarrinhoSeta"
+          style="
+            font-size:12px;
+            margin-top:3px;
+          "
+        >
+          ▲ Abrir
+        </div>
+
+      </div>
+
     </div>
   `;
+
+  // ==========================================
+  // POSICIONAMENTO AUTOMÁTICO NO CELULAR
+  // ==========================================
+
+  const barra =
+    document.getElementById('pcCarrinhoBarra');
+
+  const painel =
+    document.getElementById('pcCarrinhoPainel');
+
+  const fundo =
+    document.getElementById('pcCarrinhoFundo');
+
+  const espaco =
+    document.getElementById('pcEspacoCarrinho');
+
+  const seta =
+    document.getElementById('pcCarrinhoSeta');
+
+  const menuInferior =
+    document.querySelector('.bottom-nav');
+
+  function ajustarPosicaoCarrinho() {
+
+    if (!barra?.isConnected) return;
+
+    // Mede o espaço ocupado pelo menu inferior.
+    let alturaMenu = 0;
+
+    if (menuInferior) {
+
+      const estiloMenu =
+        window.getComputedStyle(menuInferior);
+
+      if (
+        estiloMenu.display !== 'none' &&
+        estiloMenu.visibility !== 'hidden'
+      ) {
+
+        const retangulo =
+          menuInferior.getBoundingClientRect();
+
+        if (retangulo.width > 0 && retangulo.height > 0) {
+
+          // Considera a área ocupada pelo menu até o fim da tela.
+          alturaMenu = Math.max(
+            0,
+            window.innerHeight - retangulo.top
+          );
+
+          alturaMenu = Math.min(
+            alturaMenu,
+            window.innerHeight
+          );
+
+        }
+
+      }
+
+    }
+
+    // Mantém o carrinho acima da navegação.
+    barra.style.bottom = alturaMenu + 'px';
+
+    // Painel também fica acima da barra.
+    const alturaBarra =
+      barra.getBoundingClientRect().height;
+
+    painel.style.bottom =
+      (alturaMenu + alturaBarra) + 'px';
+
+    // Impede que o painel ocupe a tela inteira.
+    const alturaDisponivel = Math.max(
+      120,
+      window.innerHeight - alturaMenu - alturaBarra - 24
+    );
+
+    painel.style.maxHeight =
+      Math.min(
+        alturaDisponivel,
+        window.innerHeight * 0.65
+      ) + 'px';
+
+    // Espaço para que o último material possa ser visto.
+    espaco.style.height =
+      (alturaBarra + 24) + 'px';
+
+  }
+
+  window.pcAjustarPosicaoCarrinho =
+    ajustarPosicaoCarrinho;
+
+  // Recalcula ao girar o celular ou alterar a tela.
+  if (window.pcCarrinhoResizeHandler) {
+
+    window.removeEventListener(
+      'resize',
+      window.pcCarrinhoResizeHandler
+    );
+
+  }
+
+  window.pcCarrinhoResizeHandler =
+    ajustarPosicaoCarrinho;
+
+  window.addEventListener(
+    'resize',
+    window.pcCarrinhoResizeHandler
+  );
+
+  // Observa mudanças de tamanho da navegação.
+  if (window.pcCarrinhoResizeObserver) {
+    window.pcCarrinhoResizeObserver.disconnect();
+  }
+
+  if (
+    menuInferior &&
+    typeof ResizeObserver !== 'undefined'
+  ) {
+
+    window.pcCarrinhoResizeObserver =
+      new ResizeObserver(ajustarPosicaoCarrinho);
+
+    window.pcCarrinhoResizeObserver.observe(
+      menuInferior
+    );
+
+  }
+
+  // ==========================================
+  // ABRIR E FECHAR CARRINHO
+  // ==========================================
+
+  window.pcAlternarCarrinho = function(abrir) {
+
+    if (!painel?.isConnected) return;
+
+    const estaAberto =
+      painel.dataset.aberto === 'true';
+
+    const deveAbrir =
+      typeof abrir === 'boolean'
+        ? abrir
+        : !estaAberto;
+
+    painel.dataset.aberto =
+      String(deveAbrir);
+
+    painel.style.display =
+      deveAbrir ? 'block' : 'none';
+
+    fundo.style.display =
+      deveAbrir ? 'block' : 'none';
+
+    if (seta) {
+
+      seta.textContent =
+        deveAbrir ? '▼ Fechar' : '▲ Abrir';
+
+    }
+
+    ajustarPosicaoCarrinho();
+
+  };
+
+  // ==========================================
+  // ATUALIZAR QUANTIDADE E TOTAL
+  // ==========================================
+
+  window.pcAtualizarBarraCarrinho = function() {
+
+    const quantidade =
+      document.getElementById('pcCarrinhoQuantidade');
+
+    const valor =
+      document.getElementById('pcCarrinhoValor');
+
+    if (!quantidade || !valor) return;
+
+    const quantidadeMateriais =
+      state.cart.length;
+
+    quantidade.textContent =
+      quantidadeMateriais === 0
+        ? 'Nenhum material'
+        : quantidadeMateriais === 1
+          ? '1 material no pedido'
+          : `${quantidadeMateriais} materiais no pedido`;
+
+    const total = pcTotal();
+
+    const desconto = Math.min(
+      total,
+      Math.max(0, Number(state.saleDiscount) || 0)
+    );
+
+    valor.textContent =
+      money(total - desconto);
+
+  };
+
+  // Atualiza a barra sempre que o resumo mudar.
+  if (window.pcCarrinhoMutationObserver) {
+    window.pcCarrinhoMutationObserver.disconnect();
+  }
+
+  const resumo =
+    document.getElementById('pcResumoItens');
+
+  if (resumo) {
+
+    window.pcCarrinhoMutationObserver =
+      new MutationObserver(() => {
+
+        if (!resumo.isConnected) return;
+
+        pcAtualizarBarraCarrinho();
+
+      });
+
+    window.pcCarrinhoMutationObserver.observe(
+      resumo,
+      {
+        childList: true,
+        subtree: true
+      }
+    );
+
+  }
+
+  const descontoInput =
+    document.getElementById('saleDiscount');
+
+  if (descontoInput) {
+
+    descontoInput.addEventListener(
+      'input',
+      pcAtualizarBarraCarrinho
+    );
+
+  }
+
+  // ==========================================
+  // CLIENTE E CARRINHO
+  // ==========================================
 
   if (state.selectedClient) {
     selectSaleClient(state.selectedClient);
   }
 
   pcAtualizarResumo();
+  pcAtualizarBarraCarrinho();
 
-  const lista = el.querySelector('#saleProductItems');
+  ajustarPosicaoCarrinho();
 
-  // Verifica o perfil do usuário conectado.
+  // Restaura o carrinho aberto, se necessário.
+  if (carrinhoEstavaAberto) {
+    pcAlternarCarrinho(true);
+  }
+
+  // ==========================================
+  // CONSULTA DOS PRODUTOS
+  // ==========================================
+
+  const lista =
+    el.querySelector('#saleProductItems');
+
   const ehAdministrador =
     state.user?.tipo === 'admin' ||
     state.user?.tipo === 'administrador';
 
-  // Campos necessários para registrar vendas.
   const camposPublicos = [
     'id',
     'nome',
@@ -316,7 +745,6 @@ async function renderSales(el) {
     'ativo'
   ];
 
-  // Informações internas de revenda.
   const camposRevenda = [
     'custo_referencia',
     'frete_referencia',
@@ -325,7 +753,6 @@ async function renderSales(el) {
     'observacoes_revenda'
   ];
 
-  // Apenas o administrador solicita os campos internos.
   const camposConsulta = ehAdministrador
     ? [...camposPublicos, ...camposRevenda]
     : camposPublicos;
@@ -339,17 +766,26 @@ async function renderSales(el) {
   if (!lista.isConnected) return;
 
   if (error) {
-    console.error('Erro ao carregar produtos:', error);
+
+    console.error(
+      'Erro ao carregar produtos:',
+      error
+    );
 
     lista.textContent =
       'Não foi possível carregar: ' + error.message;
 
     return;
+
   }
 
   window.saleProducts = data || [];
 
   pcMostrarProdutos();
+
+  // Ajusta novamente depois de carregar os materiais.
+  ajustarPosicaoCarrinho();
+
 }
 
 function pcEscapar(valor) {
