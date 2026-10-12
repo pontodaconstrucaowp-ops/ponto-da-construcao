@@ -5940,6 +5940,242 @@ function renderMore(el) {
   `;
 }
 
+async function renderReceivables(el) {
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  if (!ehAdministrador) {
+    el.innerHTML = `
+      <div class="card">
+        <h2>Acesso restrito</h2>
+        <p class="muted">
+          Esta área é exclusiva dos administradores.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="section-title">
+      <h2>💰 Contas a receber</h2>
+    </div>
+
+    <p class="muted">
+      🧪 Valores demonstrativos durante os testes.
+    </p>
+
+    <div class="card">
+      <div class="label">Total em aberto</div>
+      <div
+        id="receivablesTotal"
+        class="value"
+        style="font-size:26px;font-weight:bold;margin-top:8px"
+      >
+        Carregando...
+      </div>
+    </div>
+
+    <div class="section-title">
+      <h2>Dívidas dos clientes</h2>
+    </div>
+
+    <div id="receivablesList">
+      <div class="card muted">
+        Carregando contas...
+      </div>
+    </div>
+  `;
+
+  const lista = el.querySelector('#receivablesList');
+  const campoTotal = el.querySelector('#receivablesTotal');
+
+  try {
+
+    const contas = [];
+    const tamanhoPagina = 1000;
+    let pagina = 0;
+
+    while (true) {
+
+      const inicio = pagina * tamanhoPagina;
+
+      const { data, error } = await supabaseClient
+        .from('contas_receber')
+        .select(`
+          id,
+          venda_id,
+          cliente_id,
+          valor_original,
+          valor_recebido,
+          vencimento,
+          status
+        `)
+        .in('status', ['pendente', 'parcial'])
+        .order('id', { ascending: false })
+        .range(inicio, inicio + tamanhoPagina - 1);
+
+      if (error) throw error;
+
+      const lote = data || [];
+      contas.push(...lote);
+
+      if (lote.length < tamanhoPagina) break;
+
+      pagina++;
+    }
+
+    const clientesPorId = new Map();
+
+    const idsClientes = [
+      ...new Set(
+        contas.map(conta => conta.cliente_id).filter(Boolean)
+      )
+    ];
+
+    for (let i = 0; i < idsClientes.length; i += 100) {
+
+      const loteIds = idsClientes.slice(i, i + 100);
+
+      const { data, error } = await supabaseClient
+        .from('clientes')
+        .select('id,nome,telefone')
+        .in('id', loteIds);
+
+      if (error) throw error;
+
+      for (const cliente of data || []) {
+        clientesPorId.set(String(cliente.id), cliente);
+      }
+    }
+
+    if (state.page !== 'receivables' || !el.isConnected) {
+      return;
+    }
+
+    let totalEmAberto = 0;
+
+    const contasValidas = contas.map(conta => {
+
+      const original = Number(conta.valor_original);
+      const recebido = Number(conta.valor_recebido);
+
+      const saldo = (
+        Number.isFinite(original) &&
+        Number.isFinite(recebido)
+      )
+        ? Math.max(0, original - recebido)
+        : 0;
+
+      totalEmAberto += saldo;
+
+      return { ...conta, saldo };
+    });
+
+    campoTotal.textContent = money(totalEmAberto);
+
+    if (!contasValidas.length) {
+      lista.innerHTML = `
+        <div class="card">
+          <p class="muted">
+            Nenhuma dívida em aberto encontrada.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    lista.innerHTML = contasValidas.map(conta => {
+
+      const cliente = clientesPorId.get(
+        String(conta.cliente_id)
+      );
+
+      const nome = pcEscapar(
+        cliente?.nome || 'Cliente não identificado'
+      );
+
+      const telefone = pcEscapar(
+        cliente?.telefone || 'Telefone não informado'
+      );
+
+      const status = conta.status === 'parcial'
+        ? 'Pagamento parcial'
+        : 'Pendente';
+
+      const vencimento = conta.vencimento
+        ? conta.vencimento.split('-').reverse().join('/')
+        : 'Não informado';
+
+      return `
+        <div class="card" style="margin-bottom:12px">
+
+          <div class="row">
+            <strong>${nome}</strong>
+            <span class="badge">
+              ${status}
+            </span>
+          </div>
+
+          <p class="muted">${telefone}</p>
+
+          <p class="muted">
+            Venda #${pcEscapar(conta.venda_id)}
+          </p>
+
+          <div style="margin-top:12px">
+            Valor da compra:
+            <strong>
+              ${money(Number(conta.valor_original))}
+            </strong>
+          </div>
+
+          <div style="margin-top:6px">
+            Valor recebido:
+            <strong>
+              ${money(Number(conta.valor_recebido))}
+            </strong>
+          </div>
+
+          <div style="margin-top:8px">
+            Saldo devedor:
+            <strong style="font-size:19px">
+              ${money(conta.saldo)}
+            </strong>
+          </div>
+
+          <p class="muted" style="margin-top:10px">
+            Vencimento: ${vencimento}
+          </p>
+
+        </div>
+      `;
+    }).join('');
+
+  } catch (erro) {
+
+    console.error('Erro nas contas a receber:', erro);
+
+    if (state.page !== 'receivables' || !el.isConnected) {
+      return;
+    }
+
+    campoTotal.textContent = 'Indisponível';
+
+    lista.innerHTML = `
+      <div class="card">
+        <strong>Não foi possível carregar as contas.</strong>
+        <p class="muted">
+          Confira o console do navegador para mais detalhes.
+        </p>
+      </div>
+    `;
+  }
+}
+
+
 function abrirMapaCliente(origem = 'cadastro') {
 
   const venda = origem === 'venda';
