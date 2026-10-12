@@ -6772,6 +6772,7 @@ window.clienteLongitude = null;
   `;
 }
 
+
 async function renderClients(el) {
 
   el.innerHTML = `
@@ -6939,6 +6940,7 @@ async function renderClients(el) {
   });
 
 }
+
 
 function filterClients(){
 
