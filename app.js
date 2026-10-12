@@ -6771,7 +6771,8 @@ window.clienteLongitude = null;
     </div>
   `;
 }
-async function renderClients(el){
+
+async function renderClients(el) {
 
   el.innerHTML = `
     <div class="row" style="margin-bottom:12px">
@@ -6804,15 +6805,19 @@ async function renderClients(el){
     .select('*')
     .order('nome', { ascending: true });
 
-  const list = document.getElementById('clientsList');
+  const list = el.querySelector('#clientsList');
 
-  if(error){
+  if (!list || state.page !== 'clients') {
+    return;
+  }
+
+  if (error) {
 
     list.innerHTML = `
       <div class="card">
         <strong>Erro ao carregar clientes</strong>
         <p class="muted">
-          ${error.message}
+          ${pcEscapar(error.message)}
         </p>
       </div>
     `;
@@ -6822,7 +6827,7 @@ async function renderClients(el){
 
   window.currentClients = data || [];
 
-  if(!data || data.length === 0){
+  if (!data || data.length === 0) {
 
     list.innerHTML = `
       <div class="card">
@@ -6836,21 +6841,103 @@ async function renderClients(el){
     return;
   }
 
-  list.innerHTML = data.map(c => `
-    <div class="card">
-      <div class="product-name">
-        ${c.nome || 'Sem nome'}
-      </div>
+  // =====================================
+  // LISTAGEM COM BOTÃO DE HISTÓRICO
+  // =====================================
 
-      <div class="muted">
-        ${c.telefone || 'Sem telefone'}
-      </div>
+  list.innerHTML = data.map(c => {
 
-      <div class="muted">
-        ${c.endereço || 'Sem endereço'}
+    const nome = pcEscapar(
+      c.nome || 'Sem nome'
+    );
+
+    const telefone = pcEscapar(
+      c.telefone || 'Sem telefone'
+    );
+
+    const endereco = pcEscapar(
+      c.endereço || 'Sem endereço'
+    );
+
+    const id = String(c.id || '');
+
+    // UUID deve conter somente caracteres esperados.
+    const idValido =
+      /^[0-9a-fA-F-]{36}$/.test(id);
+
+    return `
+      <div class="card">
+
+        <div class="product-name">
+          ${nome}
+        </div>
+
+        <div class="muted">
+          ${telefone}
+        </div>
+
+        <div class="muted">
+          ${endereco}
+        </div>
+
+        ${idValido ? `
+          <div class="actions" style="margin-top:14px">
+
+            <button
+              type="button"
+              class="secondary"
+              data-cliente-historico="${id}"
+            >
+              📋 Histórico de compras
+            </button>
+
+          </div>
+        ` : ''}
+
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+
+  // =====================================
+  // ABRIR HISTÓRICO DO CLIENTE
+  // =====================================
+
+  list.addEventListener('click', evento => {
+
+    const botao = evento.target.closest(
+      '[data-cliente-historico]'
+    );
+
+    if (!botao) return;
+
+    const clienteId =
+      botao.dataset.clienteHistorico;
+
+    const cliente = window.currentClients.find(
+      c => String(c.id) === clienteId
+    );
+
+    if (!cliente) {
+      alert('Cliente não encontrado.');
+      return;
+    }
+
+    // Guarda o cliente selecionado para a próxima etapa.
+    window.pcClienteHistoricoSelecionado = {
+      id: cliente.id,
+      nome: cliente.nome
+    };
+
+    alert(
+      'Histórico de compras\n\n' +
+      'Cliente: ' + cliente.nome + '\n\n' +
+      'Na próxima etapa, vamos conectar ' +
+      'as compras, dívidas e pagamentos ' +
+      'deste cliente ao Supabase.'
+    );
+
+  });
+
 }
 
 function filterClients(){
