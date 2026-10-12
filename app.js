@@ -7130,57 +7130,87 @@ async function renderClients(el) {
 
 }
 
-function filterClients(){
+
+function filterClients() {
 
   const input = document.getElementById('clientSearch');
-  const list = document.getElementById('clientsList');
+  const lista = document.getElementById('clientsList');
 
-  if(!input || !list) return;
+  if (!input || !lista) return;
 
   const busca = input.value
     .trim()
-    .toLowerCase();
+    .toLocaleLowerCase('pt-BR');
 
-  const clientes = window.currentClients || [];
+  const clientes = (window.currentClients || [])
+    .filter(cliente => {
 
-  const filtrados = clientes.filter(c =>
-    String(c.nome || '')
-      .toLowerCase()
-      .includes(busca) ||
+      const nome = String(cliente.nome || '')
+        .toLocaleLowerCase('pt-BR');
 
-    String(c.telefone || '')
-      .toLowerCase()
-      .includes(busca)
-  );
+      const telefone = String(cliente.telefone || '')
+        .toLocaleLowerCase('pt-BR');
 
-  list.innerHTML = filtrados.length
-    ? filtrados.map(c => `
-        <div class="card">
+      return nome.includes(busca) ||
+             telefone.includes(busca);
+    });
 
-          <div class="product-name">
-            ${c.nome || 'Sem nome'}
+  lista.innerHTML = clientes.length
+    ? clientes.map(cliente => {
+
+        const id = String(cliente.id || '');
+
+        const idValido =
+          /^[0-9a-fA-F-]{36}$/.test(id);
+
+        return `
+          <div class="card">
+
+            <div class="product-name">
+              ${pcEscapar(cliente.nome || 'Sem nome')}
+            </div>
+
+            <div class="muted">
+              ${pcEscapar(
+                cliente.telefone || 'Sem telefone'
+              )}
+            </div>
+
+            <div class="muted">
+              ${pcEscapar(
+                cliente.endereço || 'Sem endereço'
+              )}
+            </div>
+
+            ${idValido ? `
+              <div
+                class="actions"
+                style="margin-top:14px"
+              >
+                <button
+                  type="button"
+                  class="secondary"
+                  data-cliente-historico="${id}"
+                >
+                  📋 Histórico de compras
+                </button>
+              </div>
+            ` : ''}
+
           </div>
-
-          <div class="muted">
-            ${c.telefone || 'Sem telefone'}
-          </div>
-
-          <div class="muted">
-            ${c.endereço || 'Sem endereço'}
-          </div>
-
-        </div>
-      `).join('')
-
+        `;
+      }).join('')
     : `
-        <div class="card">
-          <strong>Nenhum cliente encontrado</strong>
-          <p class="muted">
-            Não encontramos nenhum cliente com "${input.value}".
-          </p>
-        </div>
-      `;
+      <div class="card">
+        <strong>Nenhum cliente encontrado</strong>
+        <p class="muted">
+          Tente pesquisar outro nome ou telefone.
+        </p>
+      </div>
+    `;
+
 }
+
 async function saveClient(){
 
   const nome = document.getElementById('clientName')?.value.trim();
