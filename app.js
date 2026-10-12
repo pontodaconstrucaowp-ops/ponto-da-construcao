@@ -4073,154 +4073,93 @@ function openProductEdit(id){
 }
 async function saveProductEdit(id){
 
-  const nome =
-    document
-      .getElementById('editProductName')
-      .value
-      .trim();
+  const campo = nome =>
+    document.getElementById(nome);
 
-  const categoria =
-    document
-      .getElementById('editProductCategory')
-      .value
-      .trim();
+  const numero = nome =>
+    Number(campo(nome)?.value);
 
-  const unidade =
-    document
-      .getElementById('editProductUnit')
-      .value;
-
-  const preco =
-    Number(
-      document
-        .getElementById('editProductPrice')
-        .value
-    );
-
-  const tipoProduto =
-    document
-      .getElementById('editProductStockType')
-      .value;
+  const nome = campo('editProductName').value.trim();
+  const categoria = campo('editProductCategory').value.trim();
+  const unidade = campo('editProductUnit').value;
+  const preco = numero('editProductPrice');
 
   const controlaEstoque =
-    tipoProduto === 'estoque';
+    campo('editProductStockType').value === 'estoque';
 
-  const estoque =
-    controlaEstoque
-      ? Number(
-          document
-            .getElementById('editProductStock')
-            .value
-        )
-      : 0;
+  const estoque = controlaEstoque
+    ? numero('editProductStock')
+    : 0;
 
-  const estoqueMinimo =
-    controlaEstoque
-      ? Number(
-          document
-            .getElementById('editProductMinStock')
-            .value
-        )
-      : 0;
+  const estoqueMinimo = controlaEstoque
+    ? numero('editProductMinStock')
+    : 0;
 
-  if(!nome){
-    alert('Informe o nome do produto.');
+  // Informações de revenda
+
+  const custoReferencia = numero('editProductCost');
+  const freteReferencia = numero('editProductFreight');
+  const margemDesejada = numero('editProductMargin');
+
+  const fornecedorReferencia =
+    campo('editProductSupplier').value.trim();
+
+  const observacoesRevenda =
+    campo('editProductResaleNotes').value.trim();
+
+  if(!nome || !categoria || !unidade){
+    alert('Preencha nome, categoria e unidade.');
     return;
   }
 
-  if(!categoria){
-    alert('Informe a categoria.');
+  const valores = [
+    preco,
+    estoque,
+    estoqueMinimo,
+    custoReferencia,
+    freteReferencia,
+    margemDesejada
+  ];
+
+  if(valores.some(v => !Number.isFinite(v) || v < 0)){
+    alert('Verifique os valores informados.');
     return;
   }
 
-  if(!unidade){
-    alert('Informe a unidade.');
+  if(margemDesejada >= 100){
+    alert('A margem desejada deve ser menor que 100%.');
     return;
   }
 
-  if(!Number.isFinite(preco) || preco < 0){
-    alert('Informe um preço válido.');
-    return;
-  }
-
-  if(!Number.isFinite(estoque) || estoque < 0){
-    alert('Informe um estoque válido.');
-    return;
-  }
-
-  if(!Number.isFinite(estoqueMinimo) || estoqueMinimo < 0){
-    alert('Informe um estoque mínimo válido.');
-    return;
-  }
-
-  const { error } =
-    await supabaseClient
-      .from('produtos')
-      .update({
-        nome: nome,
-        categoria: categoria,
-        unidade: unidade,
-        preco: preco,
-        estoque: estoque,
-        estoque_minimo: estoqueMinimo,
-        controla_estoque: controlaEstoque
-      })
-      .eq('id', id);
+  const { error } = await supabaseClient
+    .from('produtos')
+    .update({
+      nome,
+      categoria,
+      unidade,
+      preco,
+      estoque,
+      estoque_minimo: estoqueMinimo,
+      controla_estoque: controlaEstoque,
+      custo_referencia: custoReferencia,
+      frete_referencia: freteReferencia,
+      margem_desejada: margemDesejada,
+      fornecedor_referencia: fornecedorReferencia,
+      observacoes_revenda: observacoesRevenda
+    })
+    .eq('id', id);
 
   if(error){
-
-    console.error(
-      'Erro ao atualizar produto:',
-      error
-    );
-
-    alert(
-      'Não foi possível atualizar o produto:\n\n' +
-      error.message
-    );
-
+    console.error('Erro ao atualizar produto:', error);
+    alert('Erro ao salvar:\n\n' + error.message);
     return;
   }
 
   alert('Produto atualizado com sucesso!');
 
-  document
-    .getElementById('productModal')
-    ?.remove();
+  document.getElementById('productModal')?.remove();
 
-  renderProducts(
-    document.getElementById('content')
-  );
-}
-function filterProducts(){
-
-  const input = document.getElementById('productSearch');
-  const list = document.getElementById('productList');
-
-  if(!input || !list) return;
-
-  const busca = input.value
-    .trim()
-    .toLowerCase();
-
-  const produtos = window.currentProducts || [];
-
-  const filtrados = produtos.filter(p =>
-    String(p.nome || '')
-      .toLowerCase()
-      .includes(busca)
-  );
-
-  list.innerHTML = filtrados.length
-    ? productRows(filtrados)
-    : `
-      <div class="card">
-        <strong>Nenhum produto encontrado</strong>
-        <p class="muted">
-          Não encontramos nenhum material com "${input.value}".
-        </p>
-      </div>
-    `;
+  renderProducts(document.getElementById('content'));
 }
 async function renderDeliveries(el){
 
