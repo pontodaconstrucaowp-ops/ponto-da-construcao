@@ -480,6 +480,7 @@ function pcAgruparMateriais(produtos) {
 }
 
 function pcMostrarProdutos() {
+
   const lista = document.getElementById('saleProductItems');
   if (!lista) return;
 
@@ -487,7 +488,10 @@ function pcMostrarProdutos() {
     document.getElementById('saleProductSearch')?.value || ''
   ).trim().toLocaleLowerCase('pt-BR');
 
-  // Agrupa antes de pesquisar para manter as duas opções juntas.
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
   const grupos = pcAgruparMateriais(
     window.saleProducts || []
   ).filter(grupo =>
@@ -502,6 +506,7 @@ function pcMostrarProdutos() {
   );
 
   lista.innerHTML = grupos.map(grupo => {
+
     const total = grupo.opcoes.reduce((soma, opcao) => {
       const item = pcItem(opcao.id, opcao.tipo);
 
@@ -512,13 +517,20 @@ function pcMostrarProdutos() {
 
     return `
       <div class="card pc-produto">
+
         <strong>${pcEscapar(grupo.nome)}</strong>
 
         <div class="pc-opcoes">
+
           ${grupo.opcoes.map(opcao => {
+
             const id = Number(opcao.id);
 
             if (!Number.isSafeInteger(id)) return '';
+
+            const produto = grupo.produtos.find(
+              p => String(p.id) === String(id)
+            );
 
             const quantidade =
               pcItem(id, opcao.tipo)?.qty || 0;
@@ -527,12 +539,31 @@ function pcMostrarProdutos() {
               quantidade * opcao.preco * 100
             ) / 100;
 
+            const revenda =
+              produto?.controla_estoque === false;
+
+            const possuiCustos =
+              produto?.custo_referencia != null ||
+              produto?.frete_referencia != null;
+
+            const custo = Number(
+              produto?.custo_referencia || 0
+            );
+
+            const frete = Number(
+              produto?.frete_referencia || 0
+            );
+
+            const custoTotal = custo + frete;
+            const lucro = Number(opcao.preco) - custoTotal;
+
             return `
               <div
                 class="pc-opcao"
                 data-produto="${id}"
                 data-tipo="${opcao.tipo}"
               >
+
                 <strong>
                   ${pcEscapar(opcao.unidade)}
                 </strong>
@@ -542,7 +573,49 @@ function pcMostrarProdutos() {
                   por ${pcEscapar(opcao.unidade)}
                 </div>
 
+                ${
+                  revenda && ehAdministrador && possuiCustos
+                    ? `
+                      <div
+                        style="
+                          margin:10px 0;
+                          padding:12px;
+                          border:1px solid #dbe5ee;
+                          border-radius:10px;
+                          background:#f8fafc;
+                          font-size:13px;
+                        "
+                      >
+                        <strong>
+                          🔒 Informações internas de revenda
+                        </strong>
+
+                        <div style="margin-top:8px">
+                          Custo do fornecedor:
+                          <strong>${money(custo)}</strong>
+                        </div>
+
+                        <div style="margin-top:5px">
+                          Frete por unidade:
+                          <strong>${money(frete)}</strong>
+                        </div>
+
+                        <div style="margin-top:5px">
+                          Custo completo:
+                          <strong>${money(custoTotal)}</strong>
+                        </div>
+
+                        <div style="margin-top:5px">
+                          Lucro bruto estimado:
+                          <strong>${money(lucro)}</strong>
+                        </div>
+                      </div>
+                    `
+                    : ''
+                }
+
                 <div class="pc-controles">
+
                   <button
                     type="button"
                     aria-label="Diminuir ${pcEscapar(opcao.unidade)}"
@@ -577,14 +650,17 @@ function pcMostrarProdutos() {
                       pcTotalCartao(this);
                     "
                   >+</button>
+
                 </div>
 
                 <strong id="pc-s-${id}-${opcao.tipo}">
                   ${money(subtotal)}
                 </strong>
+
               </div>
             `;
           }).join('')}
+
         </div>
 
         <div class="pc-total">
@@ -593,13 +669,13 @@ function pcMostrarProdutos() {
             ${money(total)}
           </strong>
         </div>
+
       </div>
     `;
   }).join('') || `
     <div class="card">Nenhum material encontrado.</div>
   `;
 }
-
 function pcTotalCartao(elemento) {
   const cartao = elemento.closest('.pc-produto');
   if (!cartao) return;
