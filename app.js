@@ -190,26 +190,117 @@ function money(v){
   );
 }
 
-function renderHome(el){
 
-  el.innerHTML=`
+function renderHome(el) {
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  if (!ehAdministrador) {
+    el.innerHTML = `
+      <div class="card">
+        <h2>Acesso restrito</h2>
+        <p class="muted">
+          O Dashboard é exclusivo dos administradores.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="section-title">
+      <h2>📊 Visão geral</h2>
+    </div>
+
+    <p class="muted" style="margin-bottom:16px">
+      Painel financeiro em preparação.
+      Os indicadores ainda não estão conectados
+      aos registros reais do sistema.
+    </p>
+
     <div class="grid stats">
-      <div class="card stat"><div class="label">Vendas hoje</div><div class="value">${money(3250)}</div></div>
-      <div class="card stat"><div class="label">Receber</div><div class="value">${money(1840)}</div></div>
-      <div class="card stat"><div class="label">Entregas hoje</div><div class="value">${state.deliveries.length}</div></div>
-      <div class="card stat"><div class="label">Estoque baixo</div><div class="value">${state.products.filter(p=>p.stock<10).length}</div></div>
+
+      <div class="card stat">
+        <div class="label">Vendas de hoje</div>
+        <div class="value">${money(0)}</div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">Vendas do mês</div>
+        <div class="value">${money(0)}</div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">A receber</div>
+        <div class="value">${money(0)}</div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">Lucro bruto estimado</div>
+        <div class="value">${money(0)}</div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">Entregas pendentes</div>
+        <div class="value">0</div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">Estoque baixo</div>
+        <div class="value">0</div>
+      </div>
+
     </div>
-    <div class="section-title"><h2>Ações rápidas</h2></div>
+
+    <div class="section-title">
+      <h2>Ações rápidas</h2>
+    </div>
+
     <div class="grid quick">
-      <button onclick="navigate('sales')"><strong>＋ Nova venda</strong><span class="muted">Registrar um pedido</span></button>
-      <button onclick="navigate('clients')"><strong>👤 Clientes</strong><span class="muted">Cadastrar e consultar</span></button>
-      <button onclick="navigate('deliveries')"><strong>⇢ Entregas</strong><span class="muted">Organizar a fila</span></button>
-      <button onclick="navigate('products')"><strong>▦ Estoque</strong><span class="muted">Produtos e preços</span></button>
+
+      <button onclick="navigate('sales')">
+        <strong>＋ Nova venda</strong>
+        <span class="muted">Registrar um pedido</span>
+      </button>
+
+      <button onclick="navigate('clients')">
+        <strong>👤 Clientes</strong>
+        <span class="muted">Cadastrar e consultar</span>
+      </button>
+
+      <button onclick="navigate('deliveries')">
+        <strong>⇢ Entregas</strong>
+        <span class="muted">Organizar a fila</span>
+      </button>
+
+      <button onclick="navigate('products')">
+        <strong>▦ Estoque</strong>
+        <span class="muted">Produtos e preços</span>
+      </button>
+
     </div>
-    <div class="section-title"><h2>Próximas entregas</h2><button class="secondary" onclick="navigate('deliveries')">Ver todas</button></div>
-    <div class="list">${state.deliveries.slice(0,3).map(deliveryCard).join('')}</div>
+
+    <div class="section-title">
+      <h2>Próximas entregas</h2>
+      <button
+        class="secondary"
+        onclick="navigate('deliveries')"
+      >
+        Ver todas
+      </button>
+    </div>
+
+    <div class="card">
+      <p class="muted">
+        As próximas entregas serão exibidas aqui
+        quando integrarmos os registros reais.
+      </p>
+    </div>
   `;
 }
+
 function deliveryCard(d){
   return `<div class="card"><div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div><p class="muted">${d.address}</p><div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div></div>`
 }
