@@ -3704,7 +3704,7 @@ function productRows(items){
 function openProductEdit(id){
 
   const produto = (window.currentProducts || []).find(
-    p => p.id === id
+    p => String(p.id) === String(id)
   );
 
   if(!produto){
@@ -3712,12 +3712,18 @@ function openProductEdit(id){
     return;
   }
 
-  document
-    .getElementById('productModal')
-    ?.remove();
+  document.getElementById('productModal')?.remove();
+
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
 
   const modal = document.createElement('div');
-
   modal.id = 'productModal';
 
   modal.innerHTML = `
@@ -3737,58 +3743,56 @@ function openProductEdit(id){
 
         <div class="modal-body">
 
-          <label>
-            Nome do produto
-          </label>
+          <label>Nome do produto</label>
 
           <input
             id="editProductName"
             type="text"
-            value="${produto.nome || ''}"
+            value="${escapar(produto.nome)}"
           >
 
-          <label>
-            Categoria
-          </label>
+          <label>Categoria</label>
 
           <input
             id="editProductCategory"
             type="text"
-            value="${produto.categoria || ''}"
+            value="${escapar(produto.categoria)}"
           >
 
-          <label>
-            Unidade
-          </label>
+          <label>Unidade</label>
 
           <select id="editProductUnit">
-
-            <option value="m³" ${produto.unidade === 'm³' ? 'selected' : ''}>m³</option>
-            <option value="kg" ${produto.unidade === 'kg' ? 'selected' : ''}>kg</option>
-            <option value="carrada" ${produto.unidade === 'carrada' ? 'selected' : ''}>carrada</option>
-            <option value="balde" ${produto.unidade === 'balde' ? 'selected' : ''}>balde</option>
-            <option value="lata" ${produto.unidade === 'lata' ? 'selected' : ''}>lata</option>
-            <option value="saco" ${produto.unidade === 'saco' ? 'selected' : ''}>saco</option>
-            <option value="unidade" ${produto.unidade === 'unidade' ? 'selected' : ''}>unidade</option>
-            <option value="milheiro" ${produto.unidade === 'milheiro' ? 'selected' : ''}>milheiro</option>
-
+            ${[
+              'm³',
+              'kg',
+              'carrada',
+              'balde',
+              'lata',
+              'saco',
+              'unidade',
+              'dúzia',
+              'milheiro'
+            ].map(unidade => `
+              <option
+                value="${unidade}"
+                ${produto.unidade === unidade ? 'selected' : ''}
+              >
+                ${unidade}
+              </option>
+            `).join('')}
           </select>
 
-          <label>
-            Preço
-          </label>
+          <label>Preço</label>
 
           <input
             id="editProductPrice"
             type="number"
             min="0"
             step="0.01"
-            value="${Number(produto.preco || 0)}"
+            value="${Number(produto.preco ?? 0)}"
           >
 
-          <label>
-            Tipo de produto
-          </label>
+          <label>Tipo de produto</label>
 
           <select id="editProductStockType">
 
@@ -3808,33 +3812,141 @@ function openProductEdit(id){
 
           </select>
 
+          <!-- CAMPOS DE ESTOQUE -->
+
           <div id="editStockFields">
 
-            <label>
-              Estoque atual
-            </label>
+            <label>Estoque atual</label>
 
             <input
               id="editProductStock"
               type="number"
               min="0"
               step="0.01"
-              value="${Number(produto.estoque || 0)}"
+              value="${Number(produto.estoque ?? 0)}"
             >
 
-            <label>
-              Estoque mínimo
-            </label>
+            <label>Estoque mínimo</label>
 
             <input
               id="editProductMinStock"
               type="number"
               min="0"
               step="0.01"
-              value="${Number(produto.estoque_minimo || 0)}"
+              value="${Number(produto.estoque_minimo ?? 0)}"
             >
 
           </div>
+
+          <!-- INFORMAÇÕES DE REVENDA -->
+
+          <div
+            id="editProductResaleSection"
+            style="
+              margin-top:20px;
+              padding:15px;
+              border:1px solid #ddd;
+              border-radius:12px;
+              background:#f8fafc;
+            "
+          >
+
+            <h3 style="margin:0 0 15px">
+              💰 Informações de Revenda
+            </h3>
+
+            <label>Custo do fornecedor (R$)</label>
+
+            <input
+              id="editProductCost"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(produto.custo_referencia ?? 0)}"
+            >
+
+            <label>Frete por unidade (R$)</label>
+
+            <input
+              id="editProductFreight"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(produto.frete_referencia ?? 0)}"
+            >
+
+            <label>Margem desejada (%)</label>
+
+            <input
+              id="editProductMargin"
+              type="number"
+              min="0"
+              max="99.99"
+              step="0.01"
+              value="${Number(produto.margem_desejada ?? 0)}"
+            >
+
+            <label>Fornecedor habitual</label>
+
+            <input
+              id="editProductSupplier"
+              type="text"
+              value="${escapar(produto.fornecedor_referencia)}"
+              placeholder="Nome do fornecedor"
+            >
+
+            <label>Observações</label>
+
+            <textarea
+              id="editProductResaleNotes"
+              rows="3"
+              style="
+                width:100%;
+                box-sizing:border-box;
+                padding:12px;
+                border:1px solid #ddd;
+                border-radius:8px;
+                resize:vertical;
+              "
+              placeholder="Informações sobre a revenda..."
+            >${escapar(produto.observacoes_revenda)}</textarea>
+
+            <div
+              style="
+                margin-top:15px;
+                padding:14px;
+                border-radius:10px;
+                background:#e8f5e9;
+                color:#1b5e20;
+              "
+            >
+
+              <div style="margin-bottom:8px">
+                <strong>Custo completo:</strong>
+                <span id="editProductTotalCost">
+                  R$ 0,00
+                </span>
+              </div>
+
+              <div style="margin-bottom:8px">
+                <strong>Lucro bruto estimado:</strong>
+                <span id="editProductProfit">
+                  R$ 0,00
+                </span>
+              </div>
+
+              <div>
+                <strong>Margem bruta:</strong>
+                <span id="editProductProfitMargin">
+                  0,00%
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- BOTÕES -->
 
           <div class="actions">
 
@@ -3857,12 +3969,13 @@ function openProductEdit(id){
           </div>
 
         </div>
-
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
+
+  // MOSTRAR OS CAMPOS CORRETOS
 
   const stockType =
     document.getElementById('editProductStockType');
@@ -3870,32 +3983,93 @@ function openProductEdit(id){
   const stockFields =
     document.getElementById('editStockFields');
 
-  function updateEditStockFields(){
+  const resaleSection =
+    document.getElementById('editProductResaleSection');
 
-    if(stockType.value === 'revenda'){
+  function atualizarTipoProduto(){
 
-      stockFields.style.display = 'none';
+    const revenda = stockType.value === 'revenda';
 
-    }else{
+    stockFields.style.display =
+      revenda ? 'none' : 'block';
 
-      stockFields.style.display = 'block';
-
-    }
-
+    resaleSection.style.display =
+      revenda ? 'block' : 'none';
   }
 
   stockType.addEventListener(
     'change',
-    updateEditStockFields
+    atualizarTipoProduto
   );
 
-  updateEditStockFields();
+  // CÁLCULO AUTOMÁTICO DA REVENDA
+
+  function calcularLucroRevenda(){
+
+    const preco = Number(
+      document.getElementById('editProductPrice').value
+    );
+
+    const custo = Number(
+      document.getElementById('editProductCost').value
+    );
+
+    const frete = Number(
+      document.getElementById('editProductFreight').value
+    );
+
+    const custoTotal = custo + frete;
+    const lucro = preco - custoTotal;
+
+    const margem = preco > 0
+      ? (lucro / preco) * 100
+      : 0;
+
+    const moeda = valor =>
+      valor.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+
+    document.getElementById(
+      'editProductTotalCost'
+    ).textContent = moeda(custoTotal);
+
+    document.getElementById(
+      'editProductProfit'
+    ).textContent = moeda(lucro);
+
+    document.getElementById(
+      'editProductProfitMargin'
+    ).textContent =
+      margem.toFixed(2).replace('.', ',') + '%';
+  }
+
+  [
+    'editProductPrice',
+    'editProductCost',
+    'editProductFreight'
+  ].forEach(idCampo => {
+
+    document
+      .getElementById(idCampo)
+      .addEventListener('input', calcularLucroRevenda);
+
+  });
+
+  // CONFIGURAÇÃO INICIAL
+
+  atualizarTipoProduto();
+  calcularLucroRevenda();
+
+  // BOTÃO SALVAR
 
   document
     .getElementById('saveProductEditButton')
     .addEventListener('click', () => {
       saveProductEdit(id);
     });
+
 }
 async function saveProductEdit(id){
 
