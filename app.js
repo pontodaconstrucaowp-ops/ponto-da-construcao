@@ -119,66 +119,124 @@ function toggleUserMenu(){
   document.getElementById('userMenu').classList.toggle('hidden');
 }
 
-function navigate(page){
 
-  if(state.user && state.user.tipo === 'entregador'){
+function navigate(page) {
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  // Entregadores acessam somente entregas
+  if (state.user?.tipo === 'entregador') {
 
     const permitidas = ['deliveries'];
 
-    if(!permitidas.includes(page)){
+    if (!permitidas.includes(page)) {
       page = 'deliveries';
     }
+
   }
 
-  state.page=page;
+  // Proteger a área de contas a receber
+  if (page === 'receivables' && !ehAdministrador) {
+    alert('Acesso permitido somente aos administradores.');
+    page = 'more';
+  }
+
+  state.page = page;
 
   document
     .querySelectorAll('.bottom-nav button')
-    .forEach(b =>
+    .forEach(b => {
       b.classList.toggle(
         'active',
-        b.dataset.page===page
-      )
-    );
+        b.dataset.page === page
+      );
+    });
 
-  const titles={
-    home:'Início',
-    sales:'Nova venda',
-    products:'Estoque',
-    deliveries:'Entregas',
-    more:'Mais opções',
-    clients:'Clientes',
-    cash:'Caixa',
-    reports:'Relatórios',
-    settings:'Configurações'
+  const titles = {
+    home: 'Início',
+    sales: 'Nova venda',
+    products: 'Estoque',
+    deliveries: 'Entregas',
+    more: 'Mais opções',
+    clients: 'Clientes',
+    receivables: 'Contas a receber',
+    cash: 'Caixa',
+    reports: 'Relatórios',
+    settings: 'Configurações'
   };
 
   document.getElementById('pageTitle').textContent =
     titles[page] || 'Ponto da Construção';
 
-  const content =
-    document.getElementById('content');
+  const content = document.getElementById('content');
 
-  if(page==='home') renderHome(content);
-  else if(page==='sales') renderSales(content);
-  else if(page==='products') renderProducts(content);
-  else if(page==='deliveries') renderDeliveries(content);
-  else if(page==='more') renderMore(content);
-  else if(page==='clients') renderClients(content);
-  else if(page==='cash') renderCash(content);
-  else if(page==='reports') renderReports(content);
-  else if(page==='settings') renderSettings(content);
+  if (page === 'home') {
+    renderHome(content);
+
+  } else if (page === 'sales') {
+    renderSales(content);
+
+  } else if (page === 'products') {
+    renderProducts(content);
+
+  } else if (page === 'deliveries') {
+    renderDeliveries(content);
+
+  } else if (page === 'more') {
+    renderMore(content);
+
+  } else if (page === 'clients') {
+    renderClients(content);
+
+  } else if (page === 'receivables') {
+
+    // Tela provisória até conectarmos as contas
+    content.innerHTML = `
+      <div class="section-title">
+        <h2>💰 Contas a receber</h2>
+      </div>
+
+      <div class="card">
+        <h3>Controle de dívidas dos clientes</h3>
+
+        <p class="muted">
+          Esta área reunirá as compras a prazo,
+          os saldos devedores e os pagamentos
+          realizados por cada cliente.
+        </p>
+
+        <p class="muted">
+          Estamos preparando a integração
+          com os dados do Supabase.
+        </p>
+
+        <button
+          class="secondary"
+          onclick="navigate('more')"
+        >
+          ← Voltar
+        </button>
+      </div>
+    `;
+
+  } else if (page === 'cash') {
+    renderCash(content);
+
+  } else if (page === 'reports') {
+    renderReports(content);
+
+  } else if (page === 'settings') {
+    renderSettings(content);
+  }
 
   window.scrollTo({
-    top:0,
-    behavior:'smooth'
+    top: 0,
+    behavior: 'smooth'
   });
-}
 
-window.login = login;
-window.logout = logout;
-window.toggleUserMenu = toggleUserMenu;
-window.navigate = navigate;
+}
 
 function money(v){
   return v.toLocaleString(
