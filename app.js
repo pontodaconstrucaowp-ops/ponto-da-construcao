@@ -4585,7 +4585,7 @@ function productRows(items){
 function openProductEdit(id){
 
   const produto = (window.currentProducts || []).find(
-    p => p.id === id
+    p => String(p.id) === String(id)
   );
 
   if(!produto){
@@ -4593,9 +4593,17 @@ function openProductEdit(id){
     return;
   }
 
-  document
-    .getElementById('productModal')
-    ?.remove();
+  document.getElementById('productModal')?.remove();
+
+  // Evita que caracteres especiais quebrem o formulário
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
 
   const modal = document.createElement('div');
 
@@ -4618,29 +4626,23 @@ function openProductEdit(id){
 
         <div class="modal-body">
 
-          <label>
-            Nome do produto
-          </label>
+          <label>Nome do produto</label>
 
           <input
             id="editProductName"
             type="text"
-            value="${produto.nome || ''}"
+            value="${escapar(produto.nome)}"
           >
 
-          <label>
-            Categoria
-          </label>
+          <label>Categoria</label>
 
           <input
             id="editProductCategory"
             type="text"
-            value="${produto.categoria || ''}"
+            value="${escapar(produto.categoria)}"
           >
 
-          <label>
-            Unidade
-          </label>
+          <label>Unidade</label>
 
           <select id="editProductUnit">
 
@@ -4651,25 +4653,22 @@ function openProductEdit(id){
             <option value="lata" ${produto.unidade === 'lata' ? 'selected' : ''}>lata</option>
             <option value="saco" ${produto.unidade === 'saco' ? 'selected' : ''}>saco</option>
             <option value="unidade" ${produto.unidade === 'unidade' ? 'selected' : ''}>unidade</option>
+            <option value="dúzia" ${produto.unidade === 'dúzia' ? 'selected' : ''}>dúzia</option>
             <option value="milheiro" ${produto.unidade === 'milheiro' ? 'selected' : ''}>milheiro</option>
 
           </select>
 
-          <label>
-            Preço
-          </label>
+          <label>Preço de venda (R$)</label>
 
           <input
             id="editProductPrice"
             type="number"
             min="0"
             step="0.01"
-            value="${Number(produto.preco || 0)}"
+            value="${Number(produto.preco ?? 0)}"
           >
 
-          <label>
-            Tipo de produto
-          </label>
+          <label>Tipo de produto</label>
 
           <select id="editProductStockType">
 
@@ -4689,177 +4688,36 @@ function openProductEdit(id){
 
           </select>
 
+          <!-- CAMPOS DE ESTOQUE -->
+
           <div id="editStockFields">
 
-            <label>
-              Estoque atual
-            </label>
+            <label>Estoque atual</label>
 
             <input
               id="editProductStock"
               type="number"
               min="0"
               step="0.01"
-              value="${Number(produto.estoque || 0)}"
+              value="${Number(produto.estoque ?? 0)}"
             >
 
-            <label>
-              Estoque mínimo
-            </label>
+            <label>Estoque mínimo</label>
 
             <input
               id="editProductMinStock"
               type="number"
               min="0"
               step="0.01"
-              value="${Number(produto.estoque_minimo || 0)}"
+              value="${Number(produto.estoque_minimo ?? 0)}"
             >
 
           </div>
 
-<!-- INFORMAÇÕES DE REVENDA -->
-<div
-  id="editProductResaleSection"
-  style="
-    display:${produto.controla_estoque === false ? 'block' : 'none'};
-            margin-top:20px;
-            padding:15px;
-            border:1px solid #ddd;
-            border-radius:12px;
-            background:#f8fafc;
-          ">
+          <!-- INFORMAÇÕES DE REVENDA -->
 
-            <h3 style="margin:0 0 12px">
-              💰 Informações de Revenda
-            </h3>
-
-            <label>Custo do fornecedor (R$)</label>
-            <input
-              id="editProductCost"
-              type="number"
-              min="0"
-              step="0.01"
-              value="${Number(produto.custo_referencia ?? 0)}"
-              oninput="atualizarLucroRevenda()"
-            >
-
-            <label>Frete por unidade (R$)</label>
-            <input
-              id="editProductFreight"
-              type="number"
-              min="0"
-              step="0.01"
-              value="${Number(produto.frete_referencia ?? 0)}"
-              oninput="atualizarLucroRevenda()"
-            >
-
-            <label>Margem desejada (%)</label>
-            <input
-              id="editProductMargin"
-              type="number"
-              min="0"
-              max="99.99"
-              step="0.01"
-              value="${Number(produto.margem_desejada ?? 0)}"
-            >
-
-            <label>Fornecedor habitual</label>
-            <input
-              id="editProductSupplier"
-              type="text"
-              value="${pcEscapar(produto.fornecedor_referencia ?? '')}"
-              placeholder="Nome do fornecedor"
-            >
-
-            <label>Observações</label>
-            <textarea
-              id="editProductResaleNotes"
-              rows="3"
-              placeholder="Informações sobre a revenda..."
-            >${pcEscapar(produto.observacoes_revenda ?? '')}</textarea>
-
-            <div style="
-              margin-top:15px;
-              padding:12px;
-              border-radius:10px;
-              background:#e8f5e9;
-              color:#1b5e20;
-            ">
-
-              <div>
-                <strong>Lucro bruto estimado:</strong>
-                <span id="editProductProfit">R$ 0,00</span>
-              </div>
-
-              <div style="margin-top:8px">
-                <strong>Margem bruta:</strong>
-                <span id="editProductProfitMargin">0,00%</span>
-              </div>
-
-            </div>
-
-          </div>
-          <div class="actions">
-
-            <button
-              type="button"
-              class="secondary"
-              onclick="document.getElementById('productModal')?.remove()"
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="button"
-              id="saveProductEditButton"
-              class="primary"
-            >
-              Salvar alterações
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  const stockType =
-    document.getElementById('editProductStockType');
-
-  const stockFields =
-    document.getElementById('editStockFields');
-
-  function updateEditStockFields(){
-
-    if(stockType.value === 'revenda'){
-
-      stockFields.style.display = 'none';
-
-    }else{
-
-      stockFields.style.display = 'block';
-
-    }
-
-  }
-
-  stockType.addEventListener(
-    'change',
-    updateEditStockFields
-  );
-
-  updateEditStockFields();
-
-  document
-    .getElementById('saveProductEditButton')
-    .addEventListener('click', () => {
-      saveProductEdit(id);
-    });
-}
+          <div
+            id="
 async function saveProductEdit(id){
 
   const nome =
