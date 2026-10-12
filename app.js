@@ -1913,108 +1913,121 @@ window.clienteVendaLongitude = null;
 window.openSaleNewClientForm = openSaleNewClientForm;
 
 
-async function saveSaleNewClient(){
 
-  const { data: { user } } = await supabaseClient.auth.getUser();
+async function saveSaleNewClient() {
 
-  if(!user){
-    alert('Usuário não autenticado.');
-    return;
-  }
+  const nome = document.getElementById('newSaleClientName')?.value.trim();
+  const telefone = document.getElementById('newSaleClientPhone')?.value.trim();
+  const endereco = document.getElementById('newSaleClientAddress')?.value.trim();
 
-  console.log('USUARIO AUTENTICADO:', user);
-
-  const { data: adminCheck, error: adminCheckError } =
-    await supabaseClient.rpc('usuario_e_admin', {
-      uid: user.id
-    });
-
-  console.log('USUARIO É ADMIN:', adminCheck);
-  console.log('ERRO AO VERIFICAR ADMIN:', adminCheckError);
-
-  const nome = document.getElementById('newSaleClientName').value.trim();
-  const telefone = document.getElementById('newSaleClientPhone').value.trim();
-  const endereco = document.getElementById('newSaleClientAddress').value.trim();
-
-  // Localização marcada no mapa
   const latitude = window.clienteVendaLatitude ?? null;
   const longitude = window.clienteVendaLongitude ?? null;
 
-  if(!nome){
+  if (!nome) {
     alert('Informe o nome do cliente.');
     return;
   }
 
-  if(!telefone){
-    alert('Informe o telefone do cliente.');
+  const telefoneNumeros = (telefone || '').replace(/\D/g, '');
+
+  if (telefoneNumeros.length < 10 || telefoneNumeros.length > 11) {
+    alert('Informe um telefone válido com DDD.');
     return;
   }
 
-  if(!endereco){
+  if (!endereco) {
     alert('Informe o endereço do cliente.');
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from('clientes')
-    .insert({
-      nome: nome,
-      telefone: telefone,
-      endereço: endereco,
-      latitude: latitude,
-      longitude: longitude
-    })
-    .select('id,nome,telefone,endereço,latitude,longitude')
-    .single();
+  // =====================================
+  // VERIFICAR CLIENTE EXISTENTE
+  // =====================================
 
-  if(error){
-    console.error('ERRO AO CADASTRAR CLIENTE:', error);
+  const { data: clientes, error: erroConsulta } =
+    await supabaseClient
+      .from('clientes')
+      .select('id,nome,telefone,endereço');
 
-    alert(
-      'Não foi possível cadastrar o cliente:\n\n' +
-      error.message
+  if (erroConsulta) {
+    console.error('Erro ao verificar clientes:', erroConsulta);
+    alert('Não foi possível verificar os clientes existentes. Tente novamente.');
+    return;
+  }
+
+  const clienteExistente = (clientes || []).find(cliente =>
+    String(cliente.telefone || '').replace(/\D/g, '') === telefoneNumeros
+  );
+
+  if (clienteExistente) {
+
+    const usarExistente = confirm(
+      '⚠️ Este telefone já está cadastrado!\n\n' +
+      'Cliente: ' + clienteExistente.nome + '\n' +
+      'Telefone: ' + clienteExistente.telefone + '\n' +
+      'Endereço: ' + (clienteExistente.endereço || 'Não informado') +
+      '\n\nDeseja utilizar este cliente na venda?'
     );
+
+    if (usarExistente) {
+      window.clienteVendaLatitude = null;
+      window.clienteVendaLongitude = null;
+      selectSaleClient(clienteExistente.id);
+    }
 
     return;
   }
 
-  // Limpa a localização após salvar
+  // =====================================
+  // CADASTRAR NOVO CLIENTE
+  // =====================================
+
+  const { data, error } = await supabaseClient
+    .from('clientes')
+    .insert({
+      nome,
+      telefone: telefoneNumeros,
+      endereço: endereco,
+      latitude,
+      longitude
+    })
+    .select('id,nome,telefone,endereço,latitude,longitude')
+    .single();
+
+  if (error) {
+    console.error('Erro ao cadastrar cliente:', error);
+    alert('Não foi possível cadastrar o cliente:\n\n' + error.message);
+    return;
+  }
+
   window.clienteVendaLatitude = null;
   window.clienteVendaLongitude = null;
 
-  // Seleciona automaticamente o novo cliente na venda
+  // =====================================
+  // SELECIONAR CLIENTE NA VENDA
+  // =====================================
+
   state.selectedClient = data.id;
 
   const input = document.getElementById('saleClient');
 
-  if(input){
+  if (input) {
     input.value = data.nome;
     input.disabled = true;
   }
 
   const results = document.getElementById('saleClientResults');
 
-  if(results){
+  if (results) {
     results.innerHTML = `
       <div class="card">
-
-        <div class="product-name">${data.nome}</div>
-
-        <div class="muted">
-          ${data.telefone}
-        </div>
-
-        <div class="muted">
-          ${data.endereço}
-        </div>
+        <div class="product-name">${pcEscapar(data.nome)}</div>
+        <div class="muted">${pcEscapar(data.telefone)}</div>
+        <div class="muted">${pcEscapar(data.endereço)}</div>
 
         ${
           data.latitude != null && data.longitude != null
-            ? `
-              <div class="muted" style="margin-top:8px">
-                📍 Localização registrada no mapa
-              </div>
-            `
+            ? '<div class="muted" style="margin-top:8px">📍 Localização registrada no mapa</div>'
             : ''
         }
 
@@ -2029,11 +2042,11 @@ async function saveSaleNewClient(){
         >
           Trocar cliente
         </button>
-
       </div>
     `;
   }
 }
+
 function filterSaleProducts() {
   const input = document.getElementById('saleProductSearch');
 
