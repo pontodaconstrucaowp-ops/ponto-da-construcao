@@ -216,7 +216,6 @@ function deliveryCard(d){
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
 async function renderSales(el) {
 
-  // Preserva o estado do carrinho quando a tela é atualizada
   const carrinhoEstavaAberto =
     document.getElementById('pcCarrinhoPainel')
       ?.dataset.aberto === 'true';
@@ -235,17 +234,38 @@ async function renderSales(el) {
       <div id="saleClientResults"></div>
     </div>
 
-    <div class="section-title">
-      <h2>Materiais</h2>
+    <!-- TÍTULO E PESQUISA MAIS PRÓXIMOS -->
+    <div
+      class="section-title"
+      style="
+        margin:16px 0 8px !important;
+        padding:0 !important;
+        min-height:0 !important;
+      "
+    >
+      <h2 style="margin:0">
+        Materiais
+      </h2>
     </div>
 
-    <div id="saleProducts">
+    <div
+      id="saleProducts"
+      style="
+        margin:0 !important;
+        padding:0 !important;
+        display:block;
+      "
+    >
 
       <input
         id="saleProductSearch"
         class="search"
         placeholder="Pesquisar material..."
         oninput="pcMostrarProdutos()"
+        style="
+          display:block;
+          margin:0 0 12px !important;
+        "
       >
 
       <div id="saleProductItems">
@@ -254,14 +274,14 @@ async function renderSales(el) {
 
     </div>
 
-    <!-- Espaço dinâmico para os últimos produtos -->
+    <!-- Espaço para os últimos materiais -->
     <div
       id="pcEspacoCarrinho"
       aria-hidden="true"
       style="height:100px;pointer-events:none"
     ></div>
 
-    <!-- Fundo do carrinho aberto -->
+    <!-- Fundo escuro -->
     <div
       id="pcCarrinhoFundo"
       onclick="pcAlternarCarrinho(false)"
@@ -274,7 +294,7 @@ async function renderSales(el) {
       "
     ></div>
 
-    <!-- Painel do carrinho -->
+    <!-- PAINEL DO CARRINHO -->
     <div
       id="pcCarrinhoPainel"
       data-aberto="false"
@@ -386,7 +406,7 @@ async function renderSales(el) {
 
     </div>
 
-    <!-- Barra compacta do carrinho -->
+    <!-- BARRA FIXA DO CARRINHO -->
     <div
       id="pcCarrinhoBarra"
       role="button"
@@ -461,9 +481,9 @@ async function renderSales(el) {
     </div>
   `;
 
-  // ==========================================
-  // POSICIONAMENTO AUTOMÁTICO NO CELULAR
-  // ==========================================
+  // =====================================
+  // POSICIONAMENTO DO CARRINHO
+  // =====================================
 
   const barra =
     document.getElementById('pcCarrinhoBarra');
@@ -487,7 +507,6 @@ async function renderSales(el) {
 
     if (!barra?.isConnected) return;
 
-    // Mede o espaço ocupado pelo menu inferior.
     let alturaMenu = 0;
 
     if (menuInferior) {
@@ -503,9 +522,11 @@ async function renderSales(el) {
         const retangulo =
           menuInferior.getBoundingClientRect();
 
-        if (retangulo.width > 0 && retangulo.height > 0) {
+        if (
+          retangulo.width > 0 &&
+          retangulo.height > 0
+        ) {
 
-          // Considera a área ocupada pelo menu até o fim da tela.
           alturaMenu = Math.max(
             0,
             window.innerHeight - retangulo.top
@@ -522,20 +543,20 @@ async function renderSales(el) {
 
     }
 
-    // Mantém o carrinho acima da navegação.
     barra.style.bottom = alturaMenu + 'px';
 
-    // Painel também fica acima da barra.
     const alturaBarra =
       barra.getBoundingClientRect().height;
 
     painel.style.bottom =
       (alturaMenu + alturaBarra) + 'px';
 
-    // Impede que o painel ocupe a tela inteira.
     const alturaDisponivel = Math.max(
       120,
-      window.innerHeight - alturaMenu - alturaBarra - 24
+      window.innerHeight -
+      alturaMenu -
+      alturaBarra -
+      24
     );
 
     painel.style.maxHeight =
@@ -544,16 +565,16 @@ async function renderSales(el) {
         window.innerHeight * 0.65
       ) + 'px';
 
-    // Espaço para que o último material possa ser visto.
-    espaco.style.height =
-      (alturaBarra + 24) + 'px';
+    if (espaco) {
+      espaco.style.height =
+        (alturaBarra + 24) + 'px';
+    }
 
   }
 
   window.pcAjustarPosicaoCarrinho =
     ajustarPosicaoCarrinho;
 
-  // Recalcula ao girar o celular ou alterar a tela.
   if (window.pcCarrinhoResizeHandler) {
 
     window.removeEventListener(
@@ -571,7 +592,6 @@ async function renderSales(el) {
     window.pcCarrinhoResizeHandler
   );
 
-  // Observa mudanças de tamanho da navegação.
   if (window.pcCarrinhoResizeObserver) {
     window.pcCarrinhoResizeObserver.disconnect();
   }
@@ -582,7 +602,9 @@ async function renderSales(el) {
   ) {
 
     window.pcCarrinhoResizeObserver =
-      new ResizeObserver(ajustarPosicaoCarrinho);
+      new ResizeObserver(
+        ajustarPosicaoCarrinho
+      );
 
     window.pcCarrinhoResizeObserver.observe(
       menuInferior
@@ -590,9 +612,9 @@ async function renderSales(el) {
 
   }
 
-  // ==========================================
-  // ABRIR E FECHAR CARRINHO
-  // ==========================================
+  // =====================================
+  // ABRIR E FECHAR O CARRINHO
+  // =====================================
 
   window.pcAlternarCarrinho = function(abrir) {
 
@@ -626,17 +648,21 @@ async function renderSales(el) {
 
   };
 
-  // ==========================================
-  // ATUALIZAR QUANTIDADE E TOTAL
-  // ==========================================
+  // =====================================
+  // QUANTIDADE E VALOR DO CARRINHO
+  // =====================================
 
   window.pcAtualizarBarraCarrinho = function() {
 
     const quantidade =
-      document.getElementById('pcCarrinhoQuantidade');
+      document.getElementById(
+        'pcCarrinhoQuantidade'
+      );
 
     const valor =
-      document.getElementById('pcCarrinhoValor');
+      document.getElementById(
+        'pcCarrinhoValor'
+      );
 
     if (!quantidade || !valor) return;
 
@@ -654,7 +680,10 @@ async function renderSales(el) {
 
     const desconto = Math.min(
       total,
-      Math.max(0, Number(state.saleDiscount) || 0)
+      Math.max(
+        0,
+        Number(state.saleDiscount) || 0
+      )
     );
 
     valor.textContent =
@@ -662,7 +691,10 @@ async function renderSales(el) {
 
   };
 
-  // Atualiza a barra sempre que o resumo mudar.
+  // =====================================
+  // SINCRONIZAÇÃO DO RESUMO
+  // =====================================
+
   if (window.pcCarrinhoMutationObserver) {
     window.pcCarrinhoMutationObserver.disconnect();
   }
@@ -703,9 +735,9 @@ async function renderSales(el) {
 
   }
 
-  // ==========================================
-  // CLIENTE E CARRINHO
-  // ==========================================
+  // =====================================
+  // CLIENTE E RESUMO
+  // =====================================
 
   if (state.selectedClient) {
     selectSaleClient(state.selectedClient);
@@ -713,17 +745,15 @@ async function renderSales(el) {
 
   pcAtualizarResumo();
   pcAtualizarBarraCarrinho();
-
   ajustarPosicaoCarrinho();
 
-  // Restaura o carrinho aberto, se necessário.
   if (carrinhoEstavaAberto) {
     pcAlternarCarrinho(true);
   }
 
-  // ==========================================
+  // =====================================
   // CONSULTA DOS PRODUTOS
-  // ==========================================
+  // =====================================
 
   const lista =
     el.querySelector('#saleProductItems');
@@ -773,7 +803,8 @@ async function renderSales(el) {
     );
 
     lista.textContent =
-      'Não foi possível carregar: ' + error.message;
+      'Não foi possível carregar: ' +
+      error.message;
 
     return;
 
@@ -783,7 +814,6 @@ async function renderSales(el) {
 
   pcMostrarProdutos();
 
-  // Ajusta novamente depois de carregar os materiais.
   ajustarPosicaoCarrinho();
 
 }
