@@ -215,6 +215,7 @@ function deliveryCard(d){
 }
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
 async function renderSales(el) {
+
   el.innerHTML = `
     <div class="card">
       <h2>Cliente</h2>
@@ -296,21 +297,58 @@ async function renderSales(el) {
 
   const lista = el.querySelector('#saleProductItems');
 
+  // Verifica o perfil do usuário conectado.
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  // Campos necessários para registrar vendas.
+  const camposPublicos = [
+    'id',
+    'nome',
+    'categoria',
+    'unidade',
+    'preco',
+    'preco_avulso',
+    'estoque',
+    'estoque_minimo',
+    'controla_estoque',
+    'ativo'
+  ];
+
+  // Informações internas de revenda.
+  const camposRevenda = [
+    'custo_referencia',
+    'frete_referencia',
+    'margem_desejada',
+    'fornecedor_referencia',
+    'observacoes_revenda'
+  ];
+
+  // Apenas o administrador solicita os campos internos.
+  const camposConsulta = ehAdministrador
+    ? [...camposPublicos, ...camposRevenda]
+    : camposPublicos;
+
   const { data, error } = await supabaseClient
     .from('produtos')
-    .select('*')
+    .select(camposConsulta.join(','))
     .eq('ativo', true)
     .order('nome', { ascending: true });
 
   if (!lista.isConnected) return;
 
   if (error) {
+    console.error('Erro ao carregar produtos:', error);
+
     lista.textContent =
       'Não foi possível carregar: ' + error.message;
+
     return;
   }
 
   window.saleProducts = data || [];
+
   pcMostrarProdutos();
 }
 
