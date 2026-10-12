@@ -78,14 +78,36 @@ async function login(){
     navigate('home');
   }
 }
-
 function logout(){
   state.user=null;
   document.getElementById('app').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
 }
 function toggleUserMenu(){document.getElementById('userMenu').classList.toggle('hidden')}
+function navigate(page){
+  if(state.user && state.user.tipo === 'entregador'){
+  const permitidas = ['deliveries'];
 
+  if(!permitidas.includes(page)){
+    page = 'deliveries';
+  }
+}
+  state.page=page;
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  const titles={home:'Início',sales:'Nova venda',products:'Estoque',deliveries:'Entregas',more:'Mais opções',clients:'Clientes',cash:'Caixa',reports:'Relatórios',settings:'Configurações'};
+  document.getElementById('pageTitle').textContent=titles[page]||'Ponto da Construção';
+  const content=document.getElementById('content');
+  if(page==='home') renderHome(content);
+  else if(page==='sales') renderSales(content);
+  else if(page==='products') renderProducts(content);
+  else if(page==='deliveries') renderDeliveries(content);
+  else if(page==='more') renderMore(content);
+  else if(page==='clients') renderClients(content);
+  else if(page==='cash') renderCash(content);
+  else if(page==='reports') renderReports(content);
+  else if(page==='settings') renderSettings(content);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 function money(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function logout(){
   state.user=null;
@@ -119,18 +141,17 @@ function navigate(page){
       )
     );
 
-const titles={
-  home:'Início',
-  sales:'Nova venda',
-  products:'Estoque',
-  pending:'Materiais Pendentes',
-  deliveries:'Entregas',
-  more:'Mais opções',
-  clients:'Clientes',
-  cash:'Caixa',
-  reports:'Relatórios',
-  settings:'Configurações'
-};
+  const titles={
+    home:'Início',
+    sales:'Nova venda',
+    products:'Estoque',
+    deliveries:'Entregas',
+    more:'Mais opções',
+    clients:'Clientes',
+    cash:'Caixa',
+    reports:'Relatórios',
+    settings:'Configurações'
+  };
 
   document.getElementById('pageTitle').textContent =
     titles[page] || 'Ponto da Construção';
@@ -140,9 +161,8 @@ const titles={
 
   if(page==='home') renderHome(content);
   else if(page==='sales') renderSales(content);
-else if(page==='products') renderProducts(content);
-else if(page==='pending') renderPending(content);
-else if(page==='deliveries') renderDeliveries(content);
+  else if(page==='products') renderProducts(content);
+  else if(page==='deliveries') renderDeliveries(content);
   else if(page==='more') renderMore(content);
   else if(page==='clients') renderClients(content);
   else if(page==='cash') renderCash(content);
@@ -160,537 +180,6 @@ window.logout = logout;
 window.toggleUserMenu = toggleUserMenu;
 window.navigate = navigate;
 
-let atendimentoPendenciaEmAndamento = false;
-
-async function atenderPendencia(itemId, quantidadePendente) {
-
-  // Impedir duas operações simultâneas nesta tela
-  if (atendimentoPendenciaEmAndamento) {
-    alert('Já existe um atendimento sendo processado. Aguarde.');
-    return;
-  }
-
-  if (!state.user || state.user.tipo !== 'admin') {
-    alert('Somente administradores podem atender pendências.');
-    return;
-  }
-
-  const pendente = Number(quantidadePendente);
-
-  if (!Number.isFinite(pendente) || pendente <= 0) {
-    alert('Esta pendência não possui quantidade válida.');
-    return;
-  }
-
-  // ==============================
-  // QUANTIDADE A ATENDER
-  // ==============================
-
-  const resposta = prompt(
-    `Quantidade pendente: ${pendente}\n\n` +
-    'Quanto material deseja atender?',
-    String(pendente)
-  );
-
-  if (resposta === null) return;
-
-  const quantidade = Number(
-    resposta.trim().replace(',', '.')
-  );
-
-  if (!Number.isFinite(quantidade) || quantidade <= 0) {
-    alert('Informe uma quantidade válida.');
-    return;
-  }
-
-  if (quantidade > pendente) {
-    alert('A quantidade não pode ultrapassar a pendência.');
-    return;
-  }
-
-  // ==============================
-  // ORIGEM DO MATERIAL
-  // ==============================
-
-  const respostaOrigem = prompt(
-    'De onde virá o material?\n\n' +
-    '1 - ESTOQUE PRÓPRIO\n' +
-    '2 - FORNECEDOR\n\n' +
-    'Digite 1 ou 2:',
-    '1'
-  );
-
-  if (respostaOrigem === null) return;
-
-  const opcaoOrigem = respostaOrigem.trim();
-
-  if (opcaoOrigem !== '1' && opcaoOrigem !== '2') {
-    alert('Opção inválida. Digite 1 ou 2.');
-    return;
-  }
-
-  const origem = opcaoOrigem === '1'
-    ? 'proprio'
-    : 'fornecedor';
-
-  let custoUnitario = null;
-  let custoTransporte = null;
-
-  // ==============================
-  // CUSTOS DO FORNECEDOR
-  // ==============================
-
-  if (origem === 'fornecedor') {
-
-    const respostaCusto = prompt(
-      'Qual foi o custo UNITÁRIO do material no fornecedor?\n\n' +
-      'Exemplo: 25,50'
-    );
-
-    if (respostaCusto === null) return;
-
-    custoUnitario = Number(
-      respostaCusto.trim().replace(',', '.')
-    );
-
-    if (
-      !Number.isFinite(custoUnitario) ||
-      custoUnitario <= 0
-    ) {
-      alert('Informe um custo unitário maior que zero.');
-      return;
-    }
-
-    const respostaTransporte = prompt(
-      'Qual foi o custo TOTAL do transporte deste atendimento?\n\n' +
-      'Digite 0 se não houve custo:',
-      '0'
-    );
-
-    if (respostaTransporte === null) return;
-
-    custoTransporte = Number(
-      respostaTransporte.trim().replace(',', '.')
-    );
-
-    if (
-      !Number.isFinite(custoTransporte) ||
-      custoTransporte < 0
-    ) {
-      alert('Informe um custo de transporte válido.');
-      return;
-    }
-
-  }
-
-  // ==============================
-  // CONFIRMAÇÃO
-  // ==============================
-
-  const descricaoOrigem = origem === 'proprio'
-    ? 'ESTOQUE PRÓPRIO'
-    : 'FORNECEDOR';
-
-  let mensagemConfirmacao =
-    `Quantidade a atender: ${quantidade}\n` +
-    `Origem: ${descricaoOrigem}\n` +
-    `Restante previsto: ${pendente - quantidade}`;
-
-  if (origem === 'fornecedor') {
-
-    const custoMaterial = quantidade * custoUnitario;
-
-    const custoTotal = custoMaterial + custoTransporte;
-
-    mensagemConfirmacao +=
-      `\n\nCusto unitário: R$ ${custoUnitario.toFixed(2)}` +
-      `\nCusto do material: R$ ${custoMaterial.toFixed(2)}` +
-      `\nTransporte: R$ ${custoTransporte.toFixed(2)}` +
-      `\nCusto total: R$ ${custoTotal.toFixed(2)}`;
-
-  }
-
-  const confirmar = confirm(
-    mensagemConfirmacao +
-    '\n\nConfirmar atendimento?'
-  );
-
-  if (!confirmar) return;
-
-  // ==============================
-  // BLOQUEIO DE DUPLICIDADE
-  // ==============================
-
-  atendimentoPendenciaEmAndamento = true;
-
-  const botoes = document.querySelectorAll(
-    '#listaMateriaisPendentes button'
-  );
-
-  botoes.forEach(botao => {
-    botao.disabled = true;
-    botao.style.opacity = '0.5';
-    botao.style.cursor = 'wait';
-  });
-
-  try {
-
-    // ==============================
-    // REGISTRAR NO SUPABASE
-    // ==============================
-
-    const { data, error } = await supabaseClient.rpc(
-      'atender_pendencia',
-      {
-        p_item_venda_id: itemId,
-        p_quantidade: quantidade,
-        p_observacao: 'Atendimento manual pelo aplicativo',
-        p_origem: origem,
-        p_custo_unitario: custoUnitario,
-        p_custo_transporte: custoTransporte
-      }
-    );
-
-    if (error) {
-      console.error('Erro ao atender pendência:', error);
-      alert('Erro: ' + error.message);
-      return;
-    }
-
-    alert(
-      'Atendimento registrado com sucesso!\n\n' +
-      `Origem: ${descricaoOrigem}\n` +
-      `Quantidade atendida: ${quantidade}\n` +
-      `Quantidade ainda pendente: ${data}`
-    );
-
-    if (state.page === 'pending') {
-      await renderPending(
-        document.getElementById('content')
-      );
-    }
-
-  } catch (erro) {
-
-    console.error('Falha no atendimento:', erro);
-
-    alert(
-      'Não foi possível confirmar o resultado do atendimento.\n' +
-      'Confira o histórico antes de tentar novamente.'
-    );
-
-  } finally {
-
-    atendimentoPendenciaEmAndamento = false;
-
-    botoes.forEach(botao => {
-      if (botao.isConnected) {
-        botao.disabled = false;
-        botao.style.opacity = '';
-        botao.style.cursor = '';
-      }
-    });
-
-  }
-
-}
-async function renderPending(content, aba = 'pendentes') {
-
-  if (!state.user || state.user.tipo !== 'admin') {
-    content.innerHTML = `
-      <div style="padding:16px">
-        <h2>Acesso não autorizado</h2>
-        <p>Somente administradores podem consultar esta área.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const formatarQuantidade = valor =>
-    Number(valor).toLocaleString('pt-BR', {
-      maximumFractionDigits: 3
-    });
-
-  const escaparHTML = valor =>
-    String(valor ?? '').replace(/[&<>"']/g, caractere => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    })[caractere]);
-
-  const estiloAtivo = `
-    background:#0d47a1;
-    color:#fff;
-    border:1px solid #0d47a1;
-  `;
-
-  const estiloInativo = `
-    background:#fff;
-    color:#0d47a1;
-    border:1px solid #ccc;
-  `;
-
-  content.innerHTML = `
-    <div style="padding:16px">
-
-      <h2>Materiais Pendentes</h2>
-
-      <p>Controle de materiais faltantes e atendimentos realizados.</p>
-
-      <div style="
-        display:flex;
-        gap:10px;
-        margin:18px 0;
-      ">
-
-        <button
-          type="button"
-          style="
-            flex:1;
-            padding:12px;
-            border-radius:8px;
-            cursor:pointer;
-            ${aba === 'pendentes' ? estiloAtivo : estiloInativo}
-          "
-          onclick="renderPending(document.getElementById('content'), 'pendentes')"
-        >
-          Pendentes
-        </button>
-
-        <button
-          type="button"
-          style="
-            flex:1;
-            padding:12px;
-            border-radius:8px;
-            cursor:pointer;
-            ${aba === 'historico' ? estiloAtivo : estiloInativo}
-          "
-          onclick="renderPending(document.getElementById('content'), 'historico')"
-        >
-          Histórico
-        </button>
-
-      </div>
-
-      <div id="listaMateriaisPendentes">
-        Carregando...
-      </div>
-
-    </div>
-  `;
-
-  const lista = document.getElementById('listaMateriaisPendentes');
-
-  // ==========================================
-  // ABA: PENDENTES
-  // ==========================================
-
-  if (aba === 'pendentes') {
-
-    const { data, error } = await supabaseClient
-      .from('itens_venda')
-      .select(`
-        id,
-        vendas_id,
-        quantidade,
-        quantidade_pendente,
-        unidade_venda,
-        produtos (
-          nome
-        ),
-        vendas (
-          clientes (
-            nome
-          )
-        )
-      `)
-      .eq('origem_material', 'proprio')
-      .gt('quantidade_pendente', 0)
-      .order('created_at', { ascending: true });
-
-    if (
-      state.page !== 'pending' ||
-      document.getElementById('listaMateriaisPendentes') !== lista
-    ) return;
-
-    if (error) {
-      console.error('Erro ao carregar pendências:', error);
-      lista.textContent = 'Não foi possível carregar as pendências.';
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      lista.textContent = 'Nenhum material pendente no momento.';
-      return;
-    }
-
-    lista.innerHTML = data.map(item => `
-      <div style="
-        border:1px solid #ddd;
-        border-radius:10px;
-        padding:15px;
-        margin-bottom:12px;
-        background:#fff;
-        color:#222;
-      ">
-
-        <strong>Venda nº ${item.vendas_id}</strong>
-
-        <div style="margin-top:8px">
-          <strong>Cliente:</strong>
-          ${escaparHTML(item.vendas?.clientes?.nome || 'Não informado')}
-        </div>
-
-        <div style="margin-top:8px">
-          ${escaparHTML(item.produtos?.nome || 'Produto não encontrado')}
-        </div>
-
-        <div style="margin-top:8px">
-          Quantidade vendida:
-          ${formatarQuantidade(item.quantidade)}
-        </div>
-
-        <div style="margin-top:5px">
-          <strong>
-            Pendente:
-            ${formatarQuantidade(item.quantidade_pendente)}
-            ${escaparHTML(item.unidade_venda || '')}
-          </strong>
-        </div>
-
-        <div style="margin-top:14px">
-          <button
-            type="button"
-            class="btn primary"
-            style="width:100%;padding:12px"
-            onclick="atenderPendencia(
-              '${item.id}',
-              ${Number(item.quantidade_pendente)}
-            )"
-          >
-            ✓ Atender pendência
-          </button>
-        </div>
-
-      </div>
-    `).join('');
-
-    return;
-  }
-
-  // ==========================================
-  // ABA: HISTÓRICO
-  // ==========================================
-
-  if (aba === 'historico') {
-
-    const { data, error } = await supabaseClient
-      .from('atendimentos_pendencias')
-      .select(`
-        id,
-        quantidade,
-        observacao,
-        created_at,
-        itens_venda (
-          vendas_id,
-          unidade_venda,
-          produtos (
-            nome
-          ),
-          vendas (
-            clientes (
-              nome
-            )
-          )
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (
-      state.page !== 'pending' ||
-      document.getElementById('listaMateriaisPendentes') !== lista
-    ) return;
-
-    if (error) {
-      console.error('Erro ao carregar histórico:', error);
-      lista.textContent = 'Não foi possível carregar o histórico.';
-      return;
-    }
-
-    if (!data || data.length === 0) {
-      lista.textContent = 'Nenhum atendimento registrado.';
-      return;
-    }
-
-    lista.innerHTML = data.map(registro => {
-
-      const item = registro.itens_venda;
-
-      const dataAtendimento = new Date(
-        registro.created_at
-      ).toLocaleString('pt-BR', {
-        timeZone: 'America/Belem',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      return `
-        <div style="
-          border:1px solid #ddd;
-          border-radius:10px;
-          padding:15px;
-          margin-bottom:12px;
-          background:#fff;
-          color:#222;
-        ">
-
-          <strong>
-            Venda nº ${item?.vendas_id ?? 'Não identificada'}
-          </strong>
-
-          <div style="margin-top:8px">
-            <strong>Cliente:</strong>
-            ${escaparHTML(item?.vendas?.clientes?.nome || 'Não informado')}
-          </div>
-
-          <div style="margin-top:8px">
-            ${escaparHTML(item?.produtos?.nome || 'Produto não encontrado')}
-          </div>
-
-          <div style="margin-top:8px">
-            <strong>Quantidade atendida:</strong>
-            ${formatarQuantidade(registro.quantidade)}
-            ${escaparHTML(item?.unidade_venda || '')}
-          </div>
-
-          <div style="margin-top:8px">
-            <strong>Data:</strong>
-            ${escaparHTML(dataAtendimento)}
-          </div>
-
-          ${
-            registro.observacao
-              ? `
-                <div style="margin-top:8px">
-                  <strong>Observação:</strong>
-                  ${escaparHTML(registro.observacao)}
-                </div>
-              `
-              : ''
-          }
-
-        </div>
-      `;
-
-    }).join('');
-  }
-}
 function money(v){
   return v.toLocaleString(
     'pt-BR',
@@ -836,7 +325,6 @@ function pcEscapar(valor) {
 }
 
 function pcOpcoes(produto) {
-
   const unidade = String(
     produto.unidade || 'unidade'
   ).trim().toLowerCase();
@@ -845,10 +333,6 @@ function pcOpcoes(produto) {
     tipo: 'principal',
     unidade,
     preco: Number(produto.preco),
-    estoque: produto.estoque == null
-      ? null
-      : Number(produto.estoque),
-    controlaEstoque: produto.controla_estoque !== false,
     passo: ['m³', 'kg'].includes(unidade) ? 0.1 : 1
   }];
 
@@ -856,18 +340,12 @@ function pcOpcoes(produto) {
     ['dúzia', 'duzia', 'milheiro'].includes(unidade) &&
     produto.preco_avulso != null
   ) {
-
     opcoes.push({
       tipo: 'avulso',
       unidade: 'unidade',
       preco: Number(produto.preco_avulso),
-      estoque: produto.estoque == null
-        ? null
-        : Number(produto.estoque),
-      controlaEstoque: produto.controla_estoque !== false,
       passo: 1
     });
-
   }
 
   return opcoes;
@@ -942,14 +420,10 @@ function pcAgruparMateriais(produtos) {
         nome: grupo.nome,
         produtos: grupo.produtos,
 
-opcoes: [pacotes[0], avulsos[0]].map(produto => ({
-  ...pcOpcoes(produto)[0],
-  id: produto.id,
-  estoque: produto.estoque == null
-    ? null
-    : Number(produto.estoque),
-  controlaEstoque: produto.controla_estoque !== false
-}))
+        opcoes: [pacotes[0], avulsos[0]].map(produto => ({
+          ...pcOpcoes(produto)[0],
+          id: produto.id
+        }))
       }];
     }
 
@@ -975,6 +449,7 @@ function pcMostrarProdutos() {
     document.getElementById('saleProductSearch')?.value || ''
   ).trim().toLocaleLowerCase('pt-BR');
 
+  // Agrupa antes de pesquisar para manter as duas opções juntas.
   const grupos = pcAgruparMateriais(
     window.saleProducts || []
   ).filter(grupo =>
@@ -1004,34 +479,14 @@ function pcMostrarProdutos() {
         <div class="pc-opcoes">
           ${grupo.opcoes.map(opcao => {
             const id = Number(opcao.id);
+
             if (!Number.isSafeInteger(id)) return '';
 
-            const item = pcItem(id, opcao.tipo);
-            const quantidade = item?.qty || 0;
+            const quantidade =
+              pcItem(id, opcao.tipo)?.qty || 0;
 
             const subtotal = Math.round(
               quantidade * opcao.preco * 100
-            ) / 100;
-
-            const chave = `${id}-${opcao.tipo}`;
-
-            const origem =
-              item?.origemMaterial === 'revenda'
-                ? 'revenda'
-                : 'proprio';
-
-            const custoUnitario =
-              Number(item?.custoUnitario) || 0;
-
-            const custoTransporte =
-              Number(item?.custoTransporte) || 0;
-
-            const lucroEstimado = Math.round(
-              (
-                subtotal -
-                quantidade * custoUnitario -
-                custoTransporte
-              ) * 100
             ) / 100;
 
             return `
@@ -1040,192 +495,15 @@ function pcMostrarProdutos() {
                 data-produto="${id}"
                 data-tipo="${opcao.tipo}"
               >
-                <strong>${pcEscapar(opcao.unidade)}</strong>
+                <strong>
+                  ${pcEscapar(opcao.unidade)}
+                </strong>
 
                 <div class="muted">
                   ${money(opcao.preco)}
                   por ${pcEscapar(opcao.unidade)}
                 </div>
 
-                <div
-                  class="muted"
-                  style="margin-top:6px;font-weight:600"
-                >
-                  ${
-                    !opcao.controlaEstoque
-                      ? '🛒 Produto sem controle de estoque'
-                      : opcao.estoque == null
-                        ? '📦 Estoque não informado'
-                        : opcao.estoque <= 0
-                          ? '🔴 ESGOTADO'
-                          : opcao.estoque <= 5
-                            ? `🟠 Estoque baixo: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
-                            : `🟢 Disponível: ${opcao.estoque} ${pcEscapar(opcao.unidade)}`
-                  }
-                </div>
-
-                <!-- ORIGEM DO MATERIAL -->
-                <div
-                  style="
-                    margin-top:12px;
-                    padding:10px;
-                    border:1px solid #ddd;
-                    border-radius:8px;
-                  "
-                >
-                  <div
-                    style="
-                      font-size:12px;
-                      font-weight:700;
-                      margin-bottom:7px;
-                    "
-                  >
-                    Origem do material
-                  </div>
-
-                  <select
-                    id="pc-origem-${chave}"
-                    aria-label="Origem do material"
-                    style="
-                      width:100%;
-                      padding:9px;
-                      border:1px solid #ccc;
-                      border-radius:6px;
-                      background:#fff;
-                      color:#222;
-                    "
-                    onchange="
-                      const painel = document.getElementById(
-                        'pc-custos-${chave}'
-                      );
-
-                      if (painel) {
-                        painel.style.display =
-                          this.value === 'revenda'
-                            ? 'block'
-                            : 'none';
-                      }
-
-                      pcAtualizarRevenda(
-                        ${id},
-                        '${opcao.tipo}'
-                      );
-                    "
-                  >
-                    <option
-                      value="proprio"
-                      ${origem === 'proprio' ? 'selected' : ''}
-                    >
-                      📦 Estoque próprio
-                    </option>
-
-                    <option
-                      value="revenda"
-                      ${origem === 'revenda' ? 'selected' : ''}
-                    >
-                      🚚 Revenda de fornecedor
-                    </option>
-                  </select>
-
-                  <!-- CUSTOS INTERNOS DA REVENDA -->
-                  <div
-                    id="pc-custos-${chave}"
-                    style="
-                      display:${origem === 'revenda' ? 'block' : 'none'};
-                      margin-top:10px;
-                      padding:10px;
-                      background:#f5f5f5;
-                      border-radius:7px;
-                    "
-                  >
-                    <div
-                      style="
-                        font-size:12px;
-                        font-weight:700;
-                        margin-bottom:8px;
-                      "
-                    >
-                      💰 Custos da revenda
-                    </div>
-
-                    <label
-                      for="pc-custo-${chave}"
-                      style="font-size:12px"
-                    >
-                      Custo unitário do fornecedor (R$)
-                    </label>
-
-                    <input
-                      id="pc-custo-${chave}"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value="${custoUnitario}"
-                      oninput="
-                        pcAtualizarRevenda(
-                          ${id},
-                          '${opcao.tipo}'
-                        );
-                      "
-                      style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:8px;
-                        margin:5px 0 10px;
-                      "
-                    >
-
-                    <label
-                      for="pc-transporte-${chave}"
-                      style="font-size:12px"
-                    >
-                      Custo total do transporte (R$)
-                    </label>
-
-                    <input
-                      id="pc-transporte-${chave}"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value="${custoTransporte}"
-                      oninput="
-                        pcAtualizarRevenda(
-                          ${id},
-                          '${opcao.tipo}'
-                        );
-                      "
-                      style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:8px;
-                        margin:5px 0 10px;
-                      "
-                    >
-
-                    <div
-                      style="
-                        font-size:12px;
-                        font-weight:700;
-                        margin-top:8px;
-                      "
-                    >
-                      Lucro bruto estimado:
-                      <strong id="pc-lucro-${chave}">
-                        ${money(lucroEstimado)}
-                      </strong>
-                    </div>
-
-                    <div
-                      class="muted"
-                      style="font-size:12px;margin-top:8px"
-                    >
-                      Informações internas.
-                      Não aparecem no comprovante.
-                    </div>
-                  </div>
-                </div>
-
-                <!-- CONTROLE DE QUANTIDADE -->
                 <div class="pc-controles">
                   <button
                     type="button"
@@ -1283,6 +561,7 @@ function pcMostrarProdutos() {
     <div class="card">Nenhum material encontrado.</div>
   `;
 }
+
 function pcTotalCartao(elemento) {
   const cartao = elemento.closest('.pc-produto');
   if (!cartao) return;
@@ -1323,7 +602,6 @@ function pcAlterar(id, tipo, delta) {
   pcDefinir(id, tipo, nova);
 }
 
-
 function pcDefinir(id, tipo, valor) {
   const produto = (window.saleProducts || []).find(
     p => String(p.id) === String(id)
@@ -1334,14 +612,8 @@ function pcDefinir(id, tipo, valor) {
 
   if (!opcao) return;
 
-  const itemAnterior = pcItem(id, tipo);
-
   const quantidade = Number(
     String(valor).replace(',', '.')
-  );
-
-  const input = document.getElementById(
-    `pc-q-${id}-${tipo}`
   );
 
   if (
@@ -1351,66 +623,15 @@ function pcDefinir(id, tipo, valor) {
   ) {
     alert('Informe uma quantidade válida.');
 
-    if (input) {
-      input.value = itemAnterior?.qty || 0;
-    }
+    const input = document.getElementById(
+      `pc-q-${id}-${tipo}`
+    );
 
+    if (input) input.value = pcItem(id, tipo)?.qty || 0;
     return;
   }
 
   const qty = Math.round(quantidade * 1000) / 1000;
-
-  // ====================================
-  // LER ORIGEM E CUSTOS DIRETAMENTE DA TELA
-  // ====================================
-
-  const chave = `${id}-${tipo}`;
-
-  const origemInput = document.getElementById(
-    `pc-origem-${chave}`
-  );
-
-  const custoInput = document.getElementById(
-    `pc-custo-${chave}`
-  );
-
-  const transporteInput = document.getElementById(
-    `pc-transporte-${chave}`
-  );
-
-  const origemMaterial = origemInput
-    ? (origemInput.value === 'revenda' ? 'revenda' : 'proprio')
-    : (itemAnterior?.origemMaterial === 'revenda' ? 'revenda' : 'proprio');
-
-  const custoUnitario = origemMaterial === 'revenda'
-    ? Number(custoInput?.value ?? itemAnterior?.custoUnitario ?? 0)
-    : 0;
-
-  const custoTransporte = origemMaterial === 'revenda'
-    ? Number(transporteInput?.value ?? itemAnterior?.custoTransporte ?? 0)
-    : 0;
-
-  if (
-    origemMaterial === 'revenda' &&
-    (
-      !Number.isFinite(custoUnitario) ||
-      !Number.isFinite(custoTransporte) ||
-      custoUnitario < 0 ||
-      custoTransporte < 0
-    )
-  ) {
-    alert('Informe valores válidos para os custos da revenda.');
-
-    if (input) {
-      input.value = itemAnterior?.qty || 0;
-    }
-
-    return;
-  }
-
-  // ====================================
-  // ATUALIZAR O CARRINHO
-  // ====================================
 
   state.cart = state.cart.filter(item =>
     !(
@@ -1426,56 +647,23 @@ function pcDefinir(id, tipo, valor) {
       unit: opcao.unidade,
       price: opcao.preco,
       qty,
-      tipoOpcao: tipo,
-
-      // Informações internas da operação
-      origemMaterial,
-      custoUnitario,
-      custoTransporte
+      tipoOpcao: tipo
     });
   }
+
+  const input = document.getElementById(
+    `pc-q-${id}-${tipo}`
+  );
 
   const subtotal = document.getElementById(
     `pc-s-${id}-${tipo}`
   );
 
-  if (input) {
-    input.value = qty;
-  }
+  if (input) input.value = qty;
 
   if (subtotal) {
     subtotal.textContent = money(
       Math.round(qty * opcao.preco * 100) / 100
-    );
-  }
-
-  // ====================================
-  // ATUALIZAR LUCRO ESTIMADO
-  // ====================================
-
-  const lucroElemento = document.getElementById(
-    `pc-lucro-${id}-${tipo}`
-  );
-
-  if (lucroElemento) {
-    const itemAtual = pcItem(id, tipo);
-
-    const quantidadeAtual = Number(itemAtual?.qty || 0);
-    const preco = Number(itemAtual?.price || 0);
-
-    const custoAtual =
-      Number(itemAtual?.custoUnitario || 0);
-
-    const transporteAtual =
-      Number(itemAtual?.custoTransporte || 0);
-
-    const lucro =
-      quantidadeAtual * preco -
-      quantidadeAtual * custoAtual -
-      transporteAtual;
-
-    lucroElemento.textContent = money(
-      Math.round(lucro * 100) / 100
     );
   }
 
@@ -2842,63 +2030,6 @@ async function confirmSale(){
     return;
   }
 
-  if(!state.cart || state.cart.length === 0){
-    alert('Adicione pelo menos um material à venda.');
-    return;
-  }
-
-  // ====================================
-  // VALIDAR ORIGEM E CUSTOS DOS MATERIAIS
-  // ====================================
-
-  const itens = [];
-
-  for(const item of state.cart){
-
-    const origem = item.origemMaterial || 'proprio';
-
-    if(!['proprio', 'revenda'].includes(origem)){
-      alert(`Origem inválida para ${item.name}.`);
-      return;
-    }
-
-    const custoUnitario = Number(item.custoUnitario ?? 0);
-    const custoTransporte = Number(item.custoTransporte ?? 0);
-
-    if(
-      !Number.isFinite(custoUnitario) ||
-      !Number.isFinite(custoTransporte) ||
-      custoUnitario < 0 ||
-      custoTransporte < 0
-    ){
-      alert(`Confira os custos do material: ${item.name}.`);
-      return;
-    }
-
-    if(origem === 'revenda' && custoUnitario <= 0){
-      alert(
-        `Informe o custo do fornecedor para ${item.name}.`
-      );
-      return;
-    }
-
-    itens.push({
-      produtos_id: item.id,
-      quantidade: item.qty,
-      preco_unitario: item.price,
-      tipo_opcao: item.tipoOpcao || 'principal',
-
-      // Informações internas
-      origem_material: origem,
-      custo_unitario: origem === 'revenda'
-        ? custoUnitario
-        : 0,
-      custo_transporte: origem === 'revenda'
-        ? custoTransporte
-        : 0
-    });
-  }
-
   // ====================================
   // BUSCAR LOCALIZAÇÃO DO CLIENTE
   // ====================================
@@ -2961,6 +2092,12 @@ async function confirmSale(){
 
   const total = totalMateriais - desconto;
 
+  const itens = state.cart.map(item => ({
+    produtos_id: item.id,
+    quantidade: item.qty,
+    preco_unitario: item.price
+  }));
+
   // ====================================
   // REGISTRAR VENDA
   // ====================================
@@ -3009,12 +2146,7 @@ async function confirmSale(){
 
     if(filaError){
       console.error('ERRO AO VERIFICAR FILA:', filaError);
-
-      alert(
-        'A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' +
-        filaError.message
-      );
-
+      alert('A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' + filaError.message);
       return;
     }
 
@@ -3036,35 +2168,22 @@ async function confirmSale(){
 
     if(entregaError){
       console.error('ERRO AO CRIAR ENTREGA:', entregaError);
-
-      alert(
-        'A venda foi registrada, mas não foi possível criar a entrega:\n\n' +
-        entregaError.message
-      );
-
+      alert('A venda foi registrada, mas não foi possível criar a entrega:\n\n' + entregaError.message);
       return;
     }
   }
-
-  // ====================================
-  // LIMPAR VENDA
-  // ====================================
 
   state.cart = [];
   state.selectedClient = null;
   state.saleDiscount = 0;
   state.cartOpen = false;
-
   window.salePayment = null;
   window.saleType = null;
-
-  // ====================================
-  // IMPRESSÃO E NAVEGAÇÃO
-  // ====================================
 
   abrirImpressaoVenda(vendaId, 'pago');
   navigate('home');
 }
+
 async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
   if (!vendaId) {
@@ -4585,7 +3704,7 @@ function productRows(items){
 function openProductEdit(id){
 
   const produto = (window.currentProducts || []).find(
-    p => String(p.id) === String(id)
+    p => p.id === id
   );
 
   if(!produto){
@@ -4593,17 +3712,9 @@ function openProductEdit(id){
     return;
   }
 
-  document.getElementById('productModal')?.remove();
-
-  // Evita que caracteres especiais quebrem o formulário
-  const escapar = valor =>
-    String(valor ?? '').replace(/[&<>"']/g, c => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[c]));
+  document
+    .getElementById('productModal')
+    ?.remove();
 
   const modal = document.createElement('div');
 
@@ -4626,23 +3737,29 @@ function openProductEdit(id){
 
         <div class="modal-body">
 
-          <label>Nome do produto</label>
+          <label>
+            Nome do produto
+          </label>
 
           <input
             id="editProductName"
             type="text"
-            value="${escapar(produto.nome)}"
+            value="${produto.nome || ''}"
           >
 
-          <label>Categoria</label>
+          <label>
+            Categoria
+          </label>
 
           <input
             id="editProductCategory"
             type="text"
-            value="${escapar(produto.categoria)}"
+            value="${produto.categoria || ''}"
           >
 
-          <label>Unidade</label>
+          <label>
+            Unidade
+          </label>
 
           <select id="editProductUnit">
 
@@ -4653,22 +3770,25 @@ function openProductEdit(id){
             <option value="lata" ${produto.unidade === 'lata' ? 'selected' : ''}>lata</option>
             <option value="saco" ${produto.unidade === 'saco' ? 'selected' : ''}>saco</option>
             <option value="unidade" ${produto.unidade === 'unidade' ? 'selected' : ''}>unidade</option>
-            <option value="dúzia" ${produto.unidade === 'dúzia' ? 'selected' : ''}>dúzia</option>
             <option value="milheiro" ${produto.unidade === 'milheiro' ? 'selected' : ''}>milheiro</option>
 
           </select>
 
-          <label>Preço de venda (R$)</label>
+          <label>
+            Preço
+          </label>
 
           <input
             id="editProductPrice"
             type="number"
             min="0"
             step="0.01"
-            value="${Number(produto.preco ?? 0)}"
+            value="${Number(produto.preco || 0)}"
           >
 
-          <label>Tipo de produto</label>
+          <label>
+            Tipo de produto
+          </label>
 
           <select id="editProductStockType">
 
@@ -4688,36 +3808,95 @@ function openProductEdit(id){
 
           </select>
 
-          <!-- CAMPOS DE ESTOQUE -->
-
           <div id="editStockFields">
 
-            <label>Estoque atual</label>
+            <label>
+              Estoque atual
+            </label>
 
             <input
               id="editProductStock"
               type="number"
               min="0"
               step="0.01"
-              value="${Number(produto.estoque ?? 0)}"
+              value="${Number(produto.estoque || 0)}"
             >
 
-            <label>Estoque mínimo</label>
+            <label>
+              Estoque mínimo
+            </label>
 
             <input
               id="editProductMinStock"
               type="number"
               min="0"
               step="0.01"
-              value="${Number(produto.estoque_minimo ?? 0)}"
+              value="${Number(produto.estoque_minimo || 0)}"
             >
 
           </div>
 
-          <!-- INFORMAÇÕES DE REVENDA -->
+          <div class="actions">
 
-          <div
-            id="
+            <button
+              type="button"
+              class="secondary"
+              onclick="document.getElementById('productModal')?.remove()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              id="saveProductEditButton"
+              class="primary"
+            >
+              Salvar alterações
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const stockType =
+    document.getElementById('editProductStockType');
+
+  const stockFields =
+    document.getElementById('editStockFields');
+
+  function updateEditStockFields(){
+
+    if(stockType.value === 'revenda'){
+
+      stockFields.style.display = 'none';
+
+    }else{
+
+      stockFields.style.display = 'block';
+
+    }
+
+  }
+
+  stockType.addEventListener(
+    'change',
+    updateEditStockFields
+  );
+
+  updateEditStockFields();
+
+  document
+    .getElementById('saveProductEditButton')
+    .addEventListener('click', () => {
+      saveProductEdit(id);
+    });
+}
 async function saveProductEdit(id){
 
   const nome =
@@ -4889,8 +4068,6 @@ async function renderDeliveries(el){
       posicao_fila,
       status,
       endereço,
-      latitude,
-      longitude,
       entregador_id,
       vendas (
         id,
@@ -5007,11 +4184,7 @@ async function renderDeliveries(el){
 <button
   type="button"
   class="secondary"
- onclick="abrirMapaEntrega(
-  '${encodeURIComponent(endereco)}',
-  ${d.latitude ?? 'null'},
-  ${d.longitude ?? 'null'}
-)"
+  onclick="abrirMapaEntrega('${encodeURIComponent(endereco)}')"
 >
   🗺️ Ver no mapa
 </button>
@@ -5060,36 +4233,16 @@ async function renderDeliveries(el){
     </div>
   `;
 }
-function abrirMapaEntrega(endereco, latitude, longitude){
+function abrirMapaEntrega(endereco){
 
-  // Prioriza o ponto exato marcado no cadastro.
-  if(
-    latitude != null &&
-    longitude != null &&
-    Number.isFinite(Number(latitude)) &&
-    Number.isFinite(Number(longitude))
-  ){
-
-    const destino = `${latitude},${longitude}`;
-
-    const url =
-      'https://www.google.com/maps/dir/?api=1&destination=' +
-      encodeURIComponent(destino);
-
-    window.open(url, '_blank');
-    return;
-  }
-
-  // Entregas antigas sem coordenadas:
-  // utiliza o endereço cadastrado.
   const enderecoDecodificado =
-    decodeURIComponent(endereco || '');
+    decodeURIComponent(endereco);
 
   if(
     !enderecoDecodificado ||
     enderecoDecodificado === 'Endereço não informado'
   ){
-    alert('Esta entrega não possui localização cadastrada.');
+    alert('Esta entrega não possui endereço cadastrado.');
     return;
   }
 
@@ -5099,6 +4252,8 @@ function abrirMapaEntrega(endereco, latitude, longitude){
 
   window.open(url, '_blank');
 }
+
+window.abrirMapaEntrega = abrirMapaEntrega;
 
 async function moveDelivery(id, direction){
 
@@ -5555,7 +4710,6 @@ async function carregarRelatorio(){
 function renderMore(el){
  el.innerHTML=`<div class="list">
  <button class="card" onclick="navigate('clients')"><strong>Clientes</strong><span class="muted">Cadastro e histórico</span></button>
- <button class="card" onclick="navigate('pending')"><strong>Materiais Pendentes</strong><span class="muted">Materiais faltantes e atendimento de pedidos</span></button>
  <button class="card" onclick="navigate('cash')"><strong>Caixa / Financeiro</strong><span class="muted">Entradas, saídas e saldo</span></button>
  <button class="card" onclick="navigate('reports')"><strong>Relatórios</strong><span class="muted">Resumo de vendas e operação</span></button>
  <button class="card" onclick="navigate('settings')"><strong>Configurações</strong><span class="muted">Usuários e preferências</span></button>
