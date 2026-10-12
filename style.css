@@ -522,3 +522,49 @@ select:focus-visible {
   border-top: 1px solid var(--border);
   text-align: right;
 }
+/* ==========================================
+   NOVA VENDA — CORREÇÃO DEFINITIVA DO ESPAÇO
+   Compatível com o carrinho flutuante
+========================================== */
+
+#content:has(> #saleProducts) {
+  display: block !important;
+}
+
+/* Título Materiais */
+#content:has(> #saleProducts) > .section-title {
+  display: flex;
+  margin: 16px 0 8px !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
+#content:has(> #saleProducts) > .section-title h2 {
+  margin: 0 !important;
+}
+
+/* Pesquisa e lista de materiais */
+#content:has(> #saleProducts) > #saleProducts {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Campo de pesquisa */
+#saleProductSearch {
+  display: block;
+  margin: 0 0 12px !important;
+}
+
+/* Lista de produtos */
+#saleProductItems {
+  margin-top: 0 !important;
+}
+
+/* Mantém o espaço de segurança abaixo dos produtos
+   para o carrinho flutuante não esconder informações */
+#pcEspacoCarrinho {
+  display: block;
+}
