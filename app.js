@@ -5963,6 +5963,7 @@ function renderMore(el) {
   `;
 }
 
+
 async function renderReceivables(el) {
 
   const ehAdministrador =
@@ -5981,21 +5982,30 @@ async function renderReceivables(el) {
     return;
   }
 
+  // =====================================
+  // ESTRUTURA DA TELA
+  // =====================================
+
   el.innerHTML = `
     <div class="section-title">
       <h2>💰 Contas a receber</h2>
     </div>
 
-    <p class="muted">
-      🧪 Valores demonstrativos durante os testes.
+    <p class="muted" style="margin-bottom:16px">
+      🧪 Sistema em fase de testes.
+      Os valores são demonstrativos.
     </p>
 
     <div class="card">
       <div class="label">Total em aberto</div>
+
       <div
         id="receivablesTotal"
-        class="value"
-        style="font-size:26px;font-weight:bold;margin-top:8px"
+        style="
+          font-size:28px;
+          font-weight:bold;
+          margin-top:8px;
+        "
       >
         Carregando...
       </div>
@@ -6010,10 +6020,19 @@ async function renderReceivables(el) {
         Carregando contas...
       </div>
     </div>
+
+    <div id="receivablesPaidSection"></div>
   `;
 
   const lista = el.querySelector('#receivablesList');
   const campoTotal = el.querySelector('#receivablesTotal');
+  const secaoPagas = el.querySelector(
+    '#receivablesPaidSection'
+  );
+
+  // =====================================
+  // CONSULTAR CONTAS
+  // =====================================
 
   try {
 
@@ -6036,13 +6055,13 @@ async function renderReceivables(el) {
           vencimento,
           status
         `)
-        .in('status', ['pendente', 'parcial'])
         .order('id', { ascending: false })
         .range(inicio, inicio + tamanhoPagina - 1);
 
       if (error) throw error;
 
       const lote = data || [];
+
       contas.push(...lote);
 
       if (lote.length < tamanhoPagina) break;
@@ -6050,67 +6069,154 @@ async function renderReceivables(el) {
       pagina++;
     }
 
+    // =====================================
+    // CONSULTAR CLIENTES
+    // =====================================
+
     const clientesPorId = new Map();
 
     const idsClientes = [
       ...new Set(
-        contas.map(conta => conta.cliente_id).filter(Boolean)
+        contas
+          .map(conta => conta.cliente_id)
+          .filter(Boolean)
       )
     ];
 
-    for (let i = 0; i < idsClientes.length; i += 100) {
-
-      const loteIds = idsClientes.slice(i, i + 100);
+    for (
+      let i = 0;
+      i < idsClientes.length;
+      i += 100
+    ) {
 
       const { data, error } = await supabaseClient
         .from('clientes')
         .select('id,nome,telefone')
-        .in('id', loteIds);
+        .in('id', idsClientes.slice(i, i + 100));
 
       if (error) throw error;
 
       for (const cliente of data || []) {
-        clientesPorId.set(String(cliente.id), cliente);
+        clientesPorId.set(
+          String(cliente.id),
+          cliente
+        );
       }
     }
 
-    if (state.page !== 'receivables' || !el.isConnected) {
+    // =====================================
+    // CONSULTAR HISTÓRICO DE PAGAMENTOS
+    // =====================================
+
+    const pagamentosPorConta = new Map();
+
+    const idsContas = contas.map(conta => conta.id);
+
+    for (
+      let i = 0;
+      i < idsContas.length;
+      i += 100
+    ) {
+
+      const idsLote = idsContas.slice(i, i + 100);
+      let paginaPagamentos = 0;
+
+      while (true) {
+
+        const inicio = paginaPagamentos * tamanhoPagina;
+
+        const { data, error } = await supabaseClient
+          .from('recebimentos')
+          .select(`
+            id,
+            conta_receber_id,
+            valor,
+            forma_pagamento,
+            data_pagamento
+          `)
+          .in('conta_receber_id', idsLote)
+          .order('id', { ascending: false })
+          .range(inicio, inicio + tamanhoPagina - 1);
+
+        if (error) throw error;
+
+        const pagamentos = data || [];
+
+        for (const pagamento of pagamentos) {
+
+          const chave = String(
+            pagamento.conta_receber_id
+          );
+
+          if (!pagamentosPorConta.has(chave)) {
+            pagamentosPorConta.set(chave, []);
+          }
+
+          pagamentosPorConta.get(chave).push(
+            pagamento
+          );
+        }
+
+        if (pagamentos.length < tamanhoPagina) {
+          break;
+        }
+
+        paginaPagamentos++;
+      }
+    }
+
+    if (
+      state.page !== 'receivables' ||
+      !el.isConnected
+    ) {
       return;
     }
 
+    // =====================================
+    // ORGANIZAR VALORES
+    // =====================================
+
     let totalEmAberto = 0;
 
-    const contasValidas = contas.map(conta => {
+    const contasPreparadas = contas.map(conta => {
 
       const original = Number(conta.valor_original);
       const recebido = Number(conta.valor_recebido);
 
-      const saldo = (
+      const valoresValidos =
         Number.isFinite(original) &&
-        Number.isFinite(recebido)
-      )
+        Number.isFinite(recebido);
+
+      const saldo = valoresValidos
         ? Math.max(0, original - recebido)
         : 0;
 
-      totalEmAberto += saldo;
+      if (valoresValidos) {
+        totalEmAberto += saldo;
+      }
 
-      return { ...conta, saldo };
+      return {
+        ...conta,
+        saldo,
+        valoresValidos
+      };
     });
+
+    const abertas = contasPreparadas.filter(
+      conta => conta.saldo > 0 && conta.valoresValidos
+    );
+
+    const pagas = contasPreparadas.filter(
+      conta => conta.saldo === 0 && conta.valoresValidos
+    );
 
     campoTotal.textContent = money(totalEmAberto);
 
-    if (!contasValidas.length) {
-      lista.innerHTML = `
-        <div class="card">
-          <p class="muted">
-            Nenhuma dívida em aberto encontrada.
-          </p>
-        </div>
-      `;
-      return;
-    }
+    // =====================================
+    // MONTAR CARTÃO DE CADA CONTA
+    // =====================================
 
-    lista.innerHTML = contasValidas.map(conta => {
+    function montarCartao(conta) {
 
       const cliente = clientesPorId.get(
         String(conta.cliente_id)
@@ -6124,16 +6230,72 @@ async function renderReceivables(el) {
         cliente?.telefone || 'Telefone não informado'
       );
 
-      const status = conta.status === 'parcial'
-        ? 'Pagamento parcial'
-        : 'Pendente';
+      const status = conta.saldo === 0
+        ? 'Pago'
+        : Number(conta.valor_recebido) > 0
+          ? 'Pagamento parcial'
+          : 'Pendente';
 
       const vencimento = conta.vencimento
         ? conta.vencimento.split('-').reverse().join('/')
         : 'Não informado';
 
+      const pagamentos = pagamentosPorConta.get(
+        String(conta.id)
+      ) || [];
+
+      const historico = pagamentos.length
+        ? pagamentos.map(pagamento => {
+
+            const data = new Date(
+              pagamento.data_pagamento
+            );
+
+            const dataFormatada =
+              Number.isNaN(data.getTime())
+                ? 'Data não informada'
+                : data.toLocaleString('pt-BR');
+
+            const forma = {
+              dinheiro: 'Dinheiro',
+              pix: 'Pix',
+              'cartão': 'Cartão'
+            }[pagamento.forma_pagamento] ||
+              pagamento.forma_pagamento;
+
+            return `
+              <div
+                style="
+                  padding:10px 0;
+                  border-bottom:1px solid #e2e8f0;
+                "
+              >
+                <strong>
+                  ${money(Number(pagamento.valor))}
+                </strong>
+
+                <div class="muted">
+                  ${pcEscapar(forma)}
+                  · ${pcEscapar(dataFormatada)}
+                </div>
+              </div>
+            `;
+          }).join('')
+        : `
+          <p class="muted">
+            Nenhum pagamento registrado.
+          </p>
+        `;
+
+      const idConta = Number(conta.id);
+
+      const podeRegistrar =
+        conta.saldo > 0 &&
+        Number.isSafeInteger(idConta) &&
+        idConta > 0;
+
       return `
-        <div class="card" style="margin-bottom:12px">
+        <div class="card" style="margin-bottom:14px">
 
           <div class="row">
             <strong>${nome}</strong>
@@ -6164,24 +6326,301 @@ async function renderReceivables(el) {
 
           <div style="margin-top:8px">
             Saldo devedor:
-            <strong style="font-size:19px">
+            <strong style="font-size:20px">
               ${money(conta.saldo)}
             </strong>
           </div>
 
           <p class="muted" style="margin-top:10px">
-            Vencimento: ${vencimento}
+            Vencimento: ${pcEscapar(vencimento)}
           </p>
+
+          ${podeRegistrar ? `
+            <details style="margin-top:16px">
+
+              <summary
+                style="
+                  cursor:pointer;
+                  font-weight:bold;
+                  padding:10px 0;
+                "
+              >
+                💵 Registrar pagamento
+              </summary>
+
+              <form
+                class="pc-form-recebimento"
+                data-conta-id="${idConta}"
+                style="
+                  margin-top:12px;
+                  display:grid;
+                  gap:12px;
+                "
+              >
+
+                <label>
+                  Valor recebido (R$)
+
+                  <input
+                    name="valor"
+                    type="number"
+                    min="0.01"
+                    max="${conta.saldo.toFixed(2)}"
+                    step="0.01"
+                    required
+                    placeholder="0,00"
+                    style="width:100%;margin-top:6px"
+                  >
+                </label>
+
+                <label>
+                  Forma de pagamento
+
+                  <select
+                    name="forma"
+                    required
+                    style="width:100%;margin-top:6px"
+                  >
+                    <option value="pix">Pix</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="cartão">Cartão</option>
+                  </select>
+                </label>
+
+                <p class="muted">
+                  Saldo disponível para pagamento:
+                  ${money(conta.saldo)}
+                </p>
+
+                <button
+                  type="submit"
+                  class="primary"
+                >
+                  Confirmar pagamento
+                </button>
+
+              </form>
+
+            </details>
+          ` : ''}
+
+          <details style="margin-top:16px">
+
+            <summary
+              style="
+                cursor:pointer;
+                font-weight:bold;
+                padding:10px 0;
+              "
+            >
+              📋 Histórico de pagamentos
+              (${pagamentos.length})
+            </summary>
+
+            <div style="margin-top:10px">
+              ${historico}
+            </div>
+
+          </details>
 
         </div>
       `;
-    }).join('');
+    }
+
+    // =====================================
+    // MOSTRAR DÍVIDAS EM ABERTO
+    // =====================================
+
+    lista.innerHTML = abertas.length
+      ? abertas.map(montarCartao).join('')
+      : `
+        <div class="card">
+          <p class="muted">
+            Nenhuma dívida em aberto.
+          </p>
+        </div>
+      `;
+
+    // =====================================
+    // MOSTRAR CONTAS QUITADAS
+    // =====================================
+
+    secaoPagas.innerHTML = pagas.length
+      ? `
+        <div class="section-title">
+          <h2>Contas quitadas</h2>
+        </div>
+
+        <details>
+          <summary
+            style="
+              cursor:pointer;
+              padding:12px 0;
+              font-weight:bold;
+            "
+          >
+            Ver ${pagas.length} conta(s) quitada(s)
+          </summary>
+
+          <div style="margin-top:12px">
+            ${pagas.map(montarCartao).join('')}
+          </div>
+        </details>
+      `
+      : '';
+
+    // =====================================
+    // REGISTRAR PAGAMENTO PELO SUPABASE
+    // =====================================
+
+    lista.addEventListener('submit', async evento => {
+
+      const formulario = evento.target.closest(
+        '.pc-form-recebimento'
+      );
+
+      if (!formulario) return;
+
+      evento.preventDefault();
+
+      if (formulario.dataset.salvando === 'true') {
+        return;
+      }
+
+      const contaId = Number(
+        formulario.dataset.contaId
+      );
+
+      const conta = abertas.find(
+        item => Number(item.id) === contaId
+      );
+
+      if (!conta) {
+        alert('Conta não encontrada. Atualize a página.');
+        return;
+      }
+
+      const campoValor = formulario.elements.valor;
+      const campoForma = formulario.elements.forma;
+
+      const valorTexto = String(
+        campoValor.value || ''
+      ).replace(',', '.');
+
+      const valor = Number(valorTexto);
+
+      const forma = campoForma.value;
+
+      if (
+        !Number.isFinite(valor) ||
+        valor <= 0 ||
+        Math.round(valor * 100) !== valor * 100
+      ) {
+        alert('Informe um valor válido com até 2 casas decimais.');
+        return;
+      }
+
+      const valorCentavos = Math.round(valor * 100);
+      const saldoCentavos = Math.round(
+        conta.saldo * 100
+      );
+
+      if (valorCentavos > saldoCentavos) {
+        alert('O pagamento não pode ultrapassar o saldo devedor.');
+        return;
+      }
+
+      if (!['dinheiro', 'pix', 'cartão'].includes(forma)) {
+        alert('Selecione uma forma de pagamento válida.');
+        return;
+      }
+
+      const nomeCliente =
+        clientesPorId.get(String(conta.cliente_id))
+          ?.nome || 'Cliente não identificado';
+
+      const formaTexto = {
+        dinheiro: 'Dinheiro',
+        pix: 'Pix',
+        'cartão': 'Cartão'
+      }[forma];
+
+      const confirmado = confirm(
+        'Confirmar recebimento?\n\n' +
+        'Cliente: ' + nomeCliente + '\n' +
+        'Venda: #' + conta.venda_id + '\n' +
+        'Valor: ' + money(valorCentavos / 100) + '\n' +
+        'Forma: ' + formaTexto + '\n\n' +
+        'Esta operação será registrada no Supabase.'
+      );
+
+      if (!confirmado) return;
+
+      const botao = formulario.querySelector(
+        'button[type="submit"]'
+      );
+
+      formulario.dataset.salvando = 'true';
+
+      botao.disabled = true;
+      botao.textContent = 'Registrando...';
+
+      try {
+
+        const { error } = await supabaseClient.rpc(
+          'registrar_recebimento',
+          {
+            p_conta_receber_id: contaId,
+            p_valor: valorCentavos / 100,
+            p_forma_pagamento: forma
+          }
+        );
+
+        if (error) throw error;
+
+        alert(
+          'Pagamento registrado com sucesso!\n\n' +
+          'Valor: ' + money(valorCentavos / 100)
+        );
+
+        if (
+          state.page === 'receivables' &&
+          el.isConnected
+        ) {
+          await renderReceivables(el);
+        }
+
+      } catch (erro) {
+
+        console.error(
+          'Erro ao registrar pagamento:',
+          erro
+        );
+
+        alert(
+          'Não foi possível registrar o pagamento.\n\n' +
+          (erro.message || 'Erro desconhecido')
+        );
+
+        botao.disabled = false;
+        botao.textContent = 'Confirmar pagamento';
+
+        formulario.dataset.salvando = 'false';
+      }
+
+    });
 
   } catch (erro) {
 
-    console.error('Erro nas contas a receber:', erro);
+    console.error(
+      'Erro ao carregar contas a receber:',
+      erro
+    );
 
-    if (state.page !== 'receivables' || !el.isConnected) {
+    if (
+      state.page !== 'receivables' ||
+      !el.isConnected
+    ) {
       return;
     }
 
@@ -6189,9 +6628,12 @@ async function renderReceivables(el) {
 
     lista.innerHTML = `
       <div class="card">
-        <strong>Não foi possível carregar as contas.</strong>
+        <strong>
+          Não foi possível carregar as contas.
+        </strong>
+
         <p class="muted">
-          Confira o console do navegador para mais detalhes.
+          ${pcEscapar(erro.message || 'Erro desconhecido')}
         </p>
       </div>
     `;
