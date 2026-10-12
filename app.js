@@ -120,13 +120,17 @@ function toggleUserMenu(){
 }
 
 
+
 function navigate(page) {
 
   const ehAdministrador =
     state.user?.tipo === 'admin' ||
     state.user?.tipo === 'administrador';
 
-  // Entregadores acessam somente entregas
+  // =====================================
+  // RESTRIÇÃO PARA ENTREGADORES
+  // =====================================
+
   if (state.user?.tipo === 'entregador') {
 
     const permitidas = ['deliveries'];
@@ -137,22 +141,44 @@ function navigate(page) {
 
   }
 
-  // Proteger a área de contas a receber
+  // =====================================
+  // RESTRIÇÃO FINANCEIRA
+  // =====================================
+
   if (page === 'receivables' && !ehAdministrador) {
-    alert('Acesso permitido somente aos administradores.');
+
+    alert(
+      'Acesso permitido somente aos administradores.'
+    );
+
     page = 'more';
+
   }
 
+  // =====================================
+  // PÁGINA ATUAL
+  // =====================================
+
   state.page = page;
+
+  // =====================================
+  // MENU INFERIOR
+  // =====================================
 
   document
     .querySelectorAll('.bottom-nav button')
     .forEach(b => {
+
       b.classList.toggle(
         'active',
         b.dataset.page === page
       );
+
     });
+
+  // =====================================
+  // TÍTULOS DAS PÁGINAS
+  // =====================================
 
   const titles = {
     home: 'Início',
@@ -170,67 +196,63 @@ function navigate(page) {
   document.getElementById('pageTitle').textContent =
     titles[page] || 'Ponto da Construção';
 
-  const content = document.getElementById('content');
+  // =====================================
+  // ÁREA DE CONTEÚDO
+  // =====================================
+
+  const content =
+    document.getElementById('content');
+
+  // =====================================
+  // CARREGAMENTO DAS PÁGINAS
+  // =====================================
 
   if (page === 'home') {
+
     renderHome(content);
 
   } else if (page === 'sales') {
+
     renderSales(content);
 
   } else if (page === 'products') {
+
     renderProducts(content);
 
   } else if (page === 'deliveries') {
+
     renderDeliveries(content);
 
   } else if (page === 'more') {
+
     renderMore(content);
 
   } else if (page === 'clients') {
+
     renderClients(content);
 
-} else if (page === 'receivables') {
-  renderReceivables(content);
+  } else if (page === 'receivables') {
 
-    // Tela provisória até conectarmos as contas
-    content.innerHTML = `
-      <div class="section-title">
-        <h2>💰 Contas a receber</h2>
-      </div>
-
-      <div class="card">
-        <h3>Controle de dívidas dos clientes</h3>
-
-        <p class="muted">
-          Esta área reunirá as compras a prazo,
-          os saldos devedores e os pagamentos
-          realizados por cada cliente.
-        </p>
-
-        <p class="muted">
-          Estamos preparando a integração
-          com os dados do Supabase.
-        </p>
-
-        <button
-          class="secondary"
-          onclick="navigate('more')"
-        >
-          ← Voltar
-        </button>
-      </div>
-    `;
+    // CONSULTA REAL DAS CONTAS A RECEBER
+    renderReceivables(content);
 
   } else if (page === 'cash') {
+
     renderCash(content);
 
   } else if (page === 'reports') {
+
     renderReports(content);
 
   } else if (page === 'settings') {
+
     renderSettings(content);
+
   }
+
+  // =====================================
+  // VOLTAR AO TOPO
+  // =====================================
 
   window.scrollTo({
     top: 0,
