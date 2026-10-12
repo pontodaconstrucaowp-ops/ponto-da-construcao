@@ -192,6 +192,7 @@ function money(v){
 
 
 
+
 async function renderHome(el) {
 
   const ehAdministrador =
@@ -210,7 +211,10 @@ async function renderHome(el) {
     return;
   }
 
-  // Datas no horário local do navegador
+  // =====================================
+  // DATAS NO HORÁRIO LOCAL
+  // =====================================
+
   const agora = new Date();
 
   const ano = agora.getFullYear();
@@ -222,6 +226,10 @@ async function renderHome(el) {
 
   const inicioMes = new Date(ano, mes, 1);
   const inicioProximoMes = new Date(ano, mes + 1, 1);
+
+  // =====================================
+  // ESTRUTURA DO DASHBOARD
+  // =====================================
 
   el.innerHTML = `
     <div class="section-title">
@@ -251,7 +259,9 @@ async function renderHome(el) {
 
       <div class="card stat">
         <div class="label">A receber</div>
-        <div class="value">${money(0)}</div>
+        <div class="value" id="dashAReceber">
+          Carregando...
+        </div>
       </div>
 
       <div class="card stat">
@@ -322,8 +332,9 @@ async function renderHome(el) {
     </div>
   `;
 
-  // Consultar todas as vendas do mês em lotes
-  // para não limitar o cálculo às primeiras 1.000.
+  // =====================================
+  // CONSULTAR VENDAS DO MÊS
+  // =====================================
 
   try {
 
@@ -383,7 +394,6 @@ async function renderHome(el) {
 
     }
 
-    // Evita atualizar outra página após navegação
     if (state.page !== 'home') return;
 
     const campoHoje =
@@ -403,7 +413,7 @@ async function renderHome(el) {
   } catch (erro) {
 
     console.error(
-      'Erro ao carregar Dashboard:',
+      'Erro ao carregar vendas do Dashboard:',
       erro
     );
 
@@ -424,6 +434,91 @@ async function renderHome(el) {
     }
 
   }
+
+  // =====================================
+  // CONSULTAR CONTAS A RECEBER
+  // =====================================
+
+  try {
+
+    let totalAReceber = 0;
+    let pagina = 0;
+    const tamanhoPagina = 1000;
+
+    while (true) {
+
+      const inicio = pagina * tamanhoPagina;
+      const fim = inicio + tamanhoPagina - 1;
+
+      const { data, error } = await supabaseClient
+        .from('contas_receber')
+        .select('id,valor_original,valor_recebido,status')
+        .in('status', ['pendente', 'parcial'])
+        .order('id', { ascending: true })
+        .range(inicio, fim);
+
+      if (error) throw error;
+
+      const contas = data || [];
+
+      for (const conta of contas) {
+
+        const valorOriginal =
+          Number(conta.valor_original);
+
+        const valorRecebido =
+          Number(conta.valor_recebido);
+
+        if (
+          !Number.isFinite(valorOriginal) ||
+          !Number.isFinite(valorRecebido)
+        ) {
+          continue;
+        }
+
+        const saldo = Math.max(
+          0,
+          valorOriginal - valorRecebido
+        );
+
+        totalAReceber += saldo;
+
+      }
+
+      if (contas.length < tamanhoPagina) break;
+
+      pagina++;
+
+    }
+
+    if (state.page !== 'home') return;
+
+    const campoAReceber =
+      document.getElementById('dashAReceber');
+
+    if (campoAReceber) {
+      campoAReceber.textContent =
+        money(totalAReceber);
+    }
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao carregar contas a receber:',
+      erro
+    );
+
+    if (state.page !== 'home') return;
+
+    const campoAReceber =
+      document.getElementById('dashAReceber');
+
+    if (campoAReceber) {
+      campoAReceber.textContent = 'Indisponível';
+    }
+
+  }
+
 }
 
 function deliveryCard(d){
