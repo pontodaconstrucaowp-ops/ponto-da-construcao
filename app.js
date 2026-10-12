@@ -4717,6 +4717,85 @@ function openProductEdit(id){
 
           </div>
 
+          <!-- INFORMAÇÕES DE REVENDA -->
+          <div style="
+            margin-top:20px;
+            padding:15px;
+            border:1px solid #ddd;
+            border-radius:12px;
+            background:#f8fafc;
+          ">
+
+            <h3 style="margin:0 0 12px">
+              💰 Informações de Revenda
+            </h3>
+
+            <label>Custo do fornecedor (R$)</label>
+            <input
+              id="editProductCost"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(produto.custo_referencia ?? 0)}"
+              oninput="atualizarLucroRevenda()"
+            >
+
+            <label>Frete por unidade (R$)</label>
+            <input
+              id="editProductFreight"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${Number(produto.frete_referencia ?? 0)}"
+              oninput="atualizarLucroRevenda()"
+            >
+
+            <label>Margem desejada (%)</label>
+            <input
+              id="editProductMargin"
+              type="number"
+              min="0"
+              max="99.99"
+              step="0.01"
+              value="${Number(produto.margem_desejada ?? 0)}"
+            >
+
+            <label>Fornecedor habitual</label>
+            <input
+              id="editProductSupplier"
+              type="text"
+              value="${pcEscapar(produto.fornecedor_referencia ?? '')}"
+              placeholder="Nome do fornecedor"
+            >
+
+            <label>Observações</label>
+            <textarea
+              id="editProductResaleNotes"
+              rows="3"
+              placeholder="Informações sobre a revenda..."
+            >${pcEscapar(produto.observacoes_revenda ?? '')}</textarea>
+
+            <div style="
+              margin-top:15px;
+              padding:12px;
+              border-radius:10px;
+              background:#e8f5e9;
+              color:#1b5e20;
+            ">
+
+              <div>
+                <strong>Lucro bruto estimado:</strong>
+                <span id="editProductProfit">R$ 0,00</span>
+              </div>
+
+              <div style="margin-top:8px">
+                <strong>Margem bruta:</strong>
+                <span id="editProductProfitMargin">0,00%</span>
+              </div>
+
+            </div>
+
+          </div>
           <div class="actions">
 
             <button
