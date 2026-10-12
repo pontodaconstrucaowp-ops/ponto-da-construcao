@@ -7211,37 +7211,83 @@ function filterClients() {
 
 }
 
-async function saveClient(){
+
+async function saveClient() {
 
   const nome = document.getElementById('clientName')?.value.trim();
   const telefone = document.getElementById('clientPhone')?.value.trim();
   const endereco = document.getElementById('clientAddress')?.value.trim();
 
-  // Localização marcada no mapa
+  // Preserva a localização marcada no mapa.
   const latitude = window.clienteLatitude ?? null;
   const longitude = window.clienteLongitude ?? null;
 
-  if(!nome){
+  if (!nome) {
     alert('Informe o nome do cliente.');
     return;
   }
 
+  // Normaliza o telefone para comparação.
+  const telefoneNumeros = (telefone || '').replace(/\D/g, '');
+
+  if (telefone && telefoneNumeros.length < 10) {
+    alert('Informe um telefone válido com DDD.');
+    return;
+  }
+
+  // Verifica clientes existentes antes de cadastrar.
+  if (telefoneNumeros) {
+
+    const { data: clientesExistentes, error: erroConsulta } =
+      await supabaseClient
+        .from('clientes')
+        .select('id,nome,telefone,endereço');
+
+    if (erroConsulta) {
+      console.error('Erro ao verificar clientes:', erroConsulta);
+
+      alert(
+        'Não foi possível verificar se o cliente já existe.\n' +
+        'O cadastro não foi realizado. Tente novamente.'
+      );
+      return;
+    }
+
+    const clienteDuplicado = (clientesExistentes || []).find(cliente => {
+      const numeroExistente = String(cliente.telefone || '')
+        .replace(/\D/g, '');
+
+      return numeroExistente === telefoneNumeros;
+    });
+
+    if (clienteDuplicado) {
+      alert(
+        '⚠️ Este telefone já está cadastrado!\n\n' +
+        'Cliente: ' + clienteDuplicado.nome + '\n' +
+        'Telefone: ' + clienteDuplicado.telefone + '\n' +
+        'Endereço: ' + (clienteDuplicado.endereço || 'Não informado') +
+        '\n\nUtilize o cadastro existente para manter ' +
+        'o histórico de compras e pagamentos no mesmo cliente.'
+      );
+
+      return;
+    }
+  }
+
+  // Cadastra somente quando não foi encontrada duplicidade.
   const { error } = await supabaseClient
     .from('clientes')
     .insert({
       nome: nome,
-      telefone: telefone || null,
+      telefone: telefoneNumeros || null,
       endereço: endereco || null,
       latitude: latitude,
       longitude: longitude
     });
 
-  if(error){
+  if (error) {
 
-    console.error(
-      'ERRO AO CADASTRAR CLIENTE:',
-      error
-    );
+    console.error('ERRO AO CADASTRAR CLIENTE:', error);
 
     alert(
       'Não foi possível cadastrar o cliente:\n\n' +
@@ -7251,7 +7297,7 @@ async function saveClient(){
     return;
   }
 
-  // Limpa a localização para o próximo cadastro
+  // Limpa a localização somente após salvar.
   window.clienteLatitude = null;
   window.clienteLongitude = null;
 
