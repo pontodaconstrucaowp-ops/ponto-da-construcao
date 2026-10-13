@@ -8847,6 +8847,17 @@ function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
     return;
   }
 
+  const pagamento = String(formaPagamento || '')
+    .trim()
+    .toLowerCase();
+
+  const exigeEstorno = [
+    'dinheiro',
+    'pix',
+    'cartão',
+    'cartao'
+  ].includes(pagamento);
+
   const janelaExistente =
     document.getElementById('janelaCancelamentoVenda');
 
@@ -8889,6 +8900,11 @@ function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
         e registrar movimentações financeiras.
       </p>
 
+      <p>
+        <strong>Forma de pagamento:</strong>
+        ${pagamento}
+      </p>
+
       <label for="motivoCancelamentoVenda">
         <strong>Motivo do cancelamento</strong>
       </label>
@@ -8907,16 +8923,17 @@ function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
         "
       ></textarea>
 
-      <div style="margin-top:16px;">
-        <label>
-          <input
-            type="checkbox"
-            id="estornoCancelamentoVenda"
-          >
-          Confirmo que o valor já foi devolvido ao cliente,
-          quando houver pagamento antecipado.
-        </label>
-      </div>
+      ${exigeEstorno ? `
+        <div style="margin-top:16px;">
+          <label>
+            <input
+              type="checkbox"
+              id="estornoCancelamentoVenda"
+            >
+            Confirmo que o valor já foi devolvido ao cliente.
+          </label>
+        </div>
+      ` : ''}
 
       <div style="
         display:flex;
@@ -8934,7 +8951,7 @@ function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
 
         <button
           class="btn primary"
-onclick="validarCancelamentoVendaTeste()"
+          onclick="validarCancelamentoVendaTeste()"
         >
           Confirmar cancelamento
         </button>
