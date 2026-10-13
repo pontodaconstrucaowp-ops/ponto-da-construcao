@@ -5935,6 +5935,7 @@ async function carregarRelatorio(){
 }
 
 
+
 async function renderCash(el) {
 
   const ehAdministrador =
@@ -5946,22 +5947,120 @@ async function renderCash(el) {
       <div class="card">
         <h2>Acesso restrito</h2>
         <p class="muted">
-          O Caixa / Financeiro é exclusivo
-          dos administradores.
+          O Caixa / Financeiro é exclusivo dos administradores.
         </p>
       </div>
     `;
     return;
   }
 
+  // =====================================
+  // PERÍODO SELECIONADO
+  // =====================================
+
+  const agora = new Date();
+
+  const mesInicial = Number(
+    window.caixaMesSelecionado ?? (agora.getMonth() + 1)
+  );
+
+  const anoInicial = Number(
+    window.caixaAnoSelecionado ?? agora.getFullYear()
+  );
+
+  const mes = (
+    Number.isInteger(mesInicial) &&
+    mesInicial >= 1 &&
+    mesInicial <= 12
+  ) ? mesInicial : agora.getMonth() + 1;
+
+  const ano = (
+    Number.isInteger(anoInicial) &&
+    anoInicial >= 2000 &&
+    anoInicial <= 2100
+  ) ? anoInicial : agora.getFullYear();
+
+  window.caixaMesSelecionado = mes;
+  window.caixaAnoSelecionado = ano;
+
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março',
+    'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro',
+    'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const opcoesMeses = meses.map((nome, indice) => `
+    <option
+      value="${indice + 1}"
+      ${mes === indice + 1 ? 'selected' : ''}
+    >
+      ${nome}
+    </option>
+  `).join('');
+
+  const opcoesAnos = Array.from(
+    { length: 101 },
+    (_, indice) => 2000 + indice
+  ).map(valor => `
+    <option
+      value="${valor}"
+      ${ano === valor ? 'selected' : ''}
+    >
+      ${valor}
+    </option>
+  `).join('');
+
+  // =====================================
+  // ESTRUTURA DA TELA
+  // =====================================
+
   el.innerHTML = `
     <div class="section-title">
       <h2>💰 Caixa / Financeiro</h2>
     </div>
 
-    <p class="muted">
-      Controle de movimentações financeiras.
-    </p>
+    <div class="card">
+      <h3>📅 Consultar período</h3>
+
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:12px;
+        margin-top:12px;
+      ">
+
+        <div class="field">
+          <label for="caixaFiltroMes">Mês</label>
+          <select id="caixaFiltroMes" class="search">
+            ${opcoesMeses}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="caixaFiltroAno">Ano</label>
+          <select id="caixaFiltroAno" class="search">
+            ${opcoesAnos}
+          </select>
+        </div>
+
+      </div>
+
+      <button
+        type="button"
+        class="primary"
+        id="caixaConsultarPeriodo"
+        style="margin-top:12px"
+      >
+        Consultar período
+      </button>
+    </div>
+
+    <div class="section-title">
+      <h2>
+        Resumo — ${meses[mes - 1]} de ${ano}
+      </h2>
+    </div>
 
     <div class="grid stats">
 
@@ -5986,28 +6085,85 @@ async function renderCash(el) {
         </div>
       </div>
 
+      <div class="card stat">
+        <div class="label">🚚 Gastos com o veículo</div>
+        <div class="value" id="caixaGastosVeiculo">
+          Carregando...
+        </div>
+      </div>
+
     </div>
 
     <div class="section-title">
-      <h2>📋 Histórico de movimentações</h2>
+      <h2>📋 Histórico do período</h2>
     </div>
 
     <div id="caixaHistorico" class="list">
-      <div class="card">Carregando histórico...</div>
+      <div class="card">Carregando movimentações...</div>
     </div>
 
-    <p class="muted" style="margin-top:14px;font-size:12px">
-      Nesta primeira etapa, os valores consideram
-      somente a tabela de movimentações manuais.
-      As vendas e os recebimentos serão integrados
-      nas próximas etapas.
+    <p class="muted" style="
+      margin-top:14px;
+      font-size:12px;
+    ">
+      Este resumo considera somente as movimentações
+      registradas na tabela do Caixa.
+      A integração automática com vendas e recebimentos
+      será feita em uma próxima etapa.
     </p>
   `;
+
+  // =====================================
+  // BOTÃO DE CONSULTA
+  // =====================================
+
+  const botaoConsultar =
+    el.querySelector('#caixaConsultarPeriodo');
+
+  botaoConsultar.addEventListener('click', () => {
+
+    const novoMes = Number(
+      el.querySelector('#caixaFiltroMes').value
+    );
+
+    const novoAno = Number(
+      el.querySelector('#caixaFiltroAno').value
+    );
+
+    if (
+      !Number.isInteger(novoMes) ||
+      novoMes < 1 ||
+      novoMes > 12 ||
+      !Number.isInteger(novoAno) ||
+      novoAno < 2000 ||
+      novoAno > 2100
+    ) {
+      alert('Selecione um mês e ano válidos.');
+      return;
+    }
+
+    window.caixaMesSelecionado = novoMes;
+    window.caixaAnoSelecionado = novoAno;
+
+    renderCash(el);
+  });
+
+  // =====================================
+  // INTERVALO DO MÊS
+  // =====================================
+
+  const inicioMes = new Date(ano, mes - 1, 1);
+  const inicioProximoMes = new Date(ano, mes, 1);
+
+  // =====================================
+  // CONSULTAR SUPABASE
+  // =====================================
 
   try {
 
     const movimentacoes = [];
     const tamanhoPagina = 1000;
+
     let pagina = 0;
 
     while (true) {
@@ -6017,26 +6173,59 @@ async function renderCash(el) {
 
       const { data, error } = await supabaseClient
         .from('movimentacoes_caixa')
-        .select('id,tipo,descricao,valor,data,created_at')
+        .select(`
+          id,
+          tipo,
+          categoria,
+          descricao,
+          valor,
+          data,
+          created_at
+        `)
+        .gte('data', inicioMes.toISOString())
+        .lt('data', inicioProximoMes.toISOString())
+        .order('data', { ascending: false })
         .order('id', { ascending: false })
         .range(inicio, fim);
 
       if (error) throw error;
 
       const lote = data || [];
+
       movimentacoes.push(...lote);
 
-      if (lote.length < tamanhoPagina) break;
+      if (lote.length < tamanhoPagina) {
+        break;
+      }
 
       pagina++;
     }
 
-    if (state.page !== 'cash' || !el.isConnected) {
+    // Evitar atualizar outra página ou outro período.
+    if (
+      state.page !== 'cash' ||
+      !el.isConnected ||
+      window.caixaMesSelecionado !== mes ||
+      window.caixaAnoSelecionado !== ano
+    ) {
       return;
     }
 
+    // =====================================
+    // CALCULAR INDICADORES
+    // =====================================
+
     let entradas = 0;
     let saidas = 0;
+    let gastosVeiculo = 0;
+
+    const categoriasVeiculo = [
+      'veiculo',
+      'veículo',
+      'despesas_veiculo',
+      'despesas com veiculo',
+      'despesas com veículo'
+    ];
 
     for (const movimento of movimentacoes) {
 
@@ -6044,65 +6233,104 @@ async function renderCash(el) {
         movimento.tipo || ''
       ).trim().toLowerCase();
 
+      const categoria = String(
+        movimento.categoria || ''
+      ).trim().toLowerCase();
+
       const valor = Number(movimento.valor);
 
-      if (!Number.isFinite(valor) || valor <= 0) {
+      if (
+        !Number.isFinite(valor) ||
+        valor <= 0
+      ) {
         continue;
       }
 
       if (tipo === 'entrada') {
         entradas += valor;
-      } else if (tipo === 'saida' || tipo === 'saída') {
+      }
+
+      if (tipo === 'saida' || tipo === 'saída') {
+
         saidas += valor;
+
+        if (categoriasVeiculo.includes(categoria)) {
+          gastosVeiculo += valor;
+        }
       }
     }
 
-    document.getElementById('caixaEntradas').textContent =
-      money(entradas);
+    const atualizarValor = (id, valor) => {
+      const campo = el.querySelector('#' + id);
+      if (campo) campo.textContent = money(valor);
+    };
 
-    document.getElementById('caixaSaidas').textContent =
-      money(saidas);
+    atualizarValor('caixaEntradas', entradas);
+    atualizarValor('caixaSaidas', saidas);
+    atualizarValor('caixaSaldo', entradas - saidas);
+    atualizarValor('caixaGastosVeiculo', gastosVeiculo);
 
-    document.getElementById('caixaSaldo').textContent =
-      money(entradas - saidas);
+    // =====================================
+    // HISTÓRICO
+    // =====================================
 
     const historico =
-      document.getElementById('caixaHistorico');
+      el.querySelector('#caixaHistorico');
 
     if (!movimentacoes.length) {
+
       historico.innerHTML = `
         <div class="card">
-          <strong>Nenhuma movimentação registrada.</strong>
+          <strong>
+            Nenhuma movimentação neste período.
+          </strong>
+
           <p class="muted">
-            Os lançamentos aparecerão aqui
-            quando forem cadastrados.
+            Não existem lançamentos em
+            ${meses[mes - 1]} de ${ano}.
           </p>
         </div>
       `;
+
       return;
     }
 
     historico.innerHTML = movimentacoes.map(m => {
 
-      const tipo = String(m.tipo || '')
-        .trim()
-        .toLowerCase();
+      const tipo = String(
+        m.tipo || ''
+      ).trim().toLowerCase();
+
+      const categoria = String(
+        m.categoria || ''
+      ).trim().toLowerCase();
 
       const entrada = tipo === 'entrada';
 
-      const dataMovimento = m.data || m.created_at;
+      const ehVeiculo =
+        !entrada &&
+        categoriasVeiculo.includes(categoria);
 
-      const dataFormatada = dataMovimento
-        ? new Date(dataMovimento).toLocaleString('pt-BR')
-        : 'Data não informada';
+      const dataRegistro = m.data || m.created_at;
+
+      const dataObj = new Date(dataRegistro);
+
+      const dataFormatada =
+        !Number.isNaN(dataObj.getTime())
+          ? dataObj.toLocaleString('pt-BR')
+          : 'Data não informada';
+
+      const titulo = entrada
+        ? '🟢 Entrada'
+        : ehVeiculo
+          ? '🚚 Despesa do veículo'
+          : '🔴 Saída';
 
       return `
         <div class="card">
 
           <div class="row">
-            <strong>
-              ${entrada ? '🟢 Entrada' : '🔴 Saída / Outro'}
-            </strong>
+            <strong>${titulo}</strong>
 
             <strong>
               ${money(Number(m.valor) || 0)}
@@ -6110,7 +6338,9 @@ async function renderCash(el) {
           </div>
 
           <p>
-            ${pcEscapar(m.descricao || 'Sem descrição')}
+            ${pcEscapar(
+              m.descricao || 'Sem descrição'
+            )}
           </p>
 
           <span class="muted">
@@ -6125,36 +6355,53 @@ async function renderCash(el) {
   } catch (erro) {
 
     console.error(
-      'Erro ao carregar o Caixa:',
+      'Erro ao consultar Caixa / Financeiro:',
       erro
     );
 
-    if (state.page !== 'cash' || !el.isConnected) {
+    if (
+      state.page !== 'cash' ||
+      !el.isConnected ||
+      window.caixaMesSelecionado !== mes ||
+      window.caixaAnoSelecionado !== ano
+    ) {
       return;
     }
 
+    [
+      'caixaEntradas',
+      'caixaSaidas',
+      'caixaSaldo',
+      'caixaGastosVeiculo'
+    ].forEach(id => {
+
+      const campo = el.querySelector('#' + id);
+
+      if (campo) {
+        campo.textContent = 'Indisponível';
+      }
+    });
+
     const historico =
-      document.getElementById('caixaHistorico');
+      el.querySelector('#caixaHistorico');
 
     if (historico) {
       historico.innerHTML = `
         <div class="card">
-          <strong>Não foi possível carregar o Caixa.</strong>
+          <strong>
+            Não foi possível consultar o Caixa.
+          </strong>
+
           <p class="muted">
-            Verifique as permissões e a conexão
-            com o Supabase.
+            Verifique a conexão e as permissões
+            no Supabase.
           </p>
         </div>
       `;
     }
-
-    ['caixaEntradas', 'caixaSaidas', 'caixaSaldo']
-      .forEach(id => {
-        const campo = document.getElementById(id);
-        if (campo) campo.textContent = 'Indisponível';
-      });
   }
 }
+
 
 function renderMore(el) {
 
