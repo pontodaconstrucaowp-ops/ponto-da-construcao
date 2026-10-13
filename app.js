@@ -7090,14 +7090,22 @@ let estornosCentavos = 0;
         entradasCentavos += centavos;
       }
 
-      if (tipo === 'saida' || tipo === 'saída') {
+if (tipo === 'saida' || tipo === 'saída') {
 
-        saidasCentavos += centavos;
+  saidasCentavos += centavos;
 
-        if (ehCategoriaVeiculo(movimento.categoria)) {
-          veiculoCentavos += centavos;
-        }
-      }
+  const categoria = String(
+    movimento.categoria || ''
+  ).trim().toLowerCase();
+
+  if (categoria === 'estorno_venda') {
+    estornosCentavos += centavos;
+  }
+
+  if (ehCategoriaVeiculo(categoria)) {
+    veiculoCentavos += centavos;
+  }
+}
     }
 
     // Entradas automáticas somadas uma única vez ao resumo.
