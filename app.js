@@ -7144,6 +7144,7 @@ async function renderClients(el) {
 }
 
 
+
 function filterClients() {
 
   const input = document.getElementById('clientSearch');
@@ -7198,7 +7199,12 @@ function filterClients() {
             ${idValido ? `
               <div
                 class="actions"
-                style="margin-top:14px"
+                style="
+                  margin-top:14px;
+                  display:flex;
+                  gap:10px;
+                  flex-wrap:wrap;
+                "
               >
                 <button
                   type="button"
@@ -7206,6 +7212,18 @@ function filterClients() {
                   data-cliente-historico="${id}"
                 >
                   📋 Histórico de compras
+                </button>
+
+                <button
+                  type="button"
+                  class="secondary"
+                  data-cliente-excluir="${id}"
+                  style="
+                    color:#b42318;
+                    border:1px solid #f1b5b0;
+                  "
+                >
+                  🗑️ Excluir cliente
                 </button>
               </div>
             ` : ''}
