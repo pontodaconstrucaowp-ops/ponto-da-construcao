@@ -5934,10 +5934,10 @@ const totalVendido = vendasValidas.reduce(
   document.getElementById('reportSummary').innerHTML = `
     <div class="card" style="margin-bottom:15px;">
 
-      <div class="row">
-        <span>Quantidade de vendas</span>
-        <strong>${vendas.length}</strong>
-      </div>
+<div class="row">
+  <span>Quantidade de vendas</span>
+  <strong>${vendasValidas.length}</strong>
+</div>
 
       <div class="row">
         <span>Total vendido</span>
