@@ -7004,9 +7004,9 @@ q => q.in('status', ['concluida', 'cancelada'])
       'vendas',
       'id,data,valor_total,forma_pagamento,status',
       'data',
-      consulta => consulta
-        .eq('status', 'concluida')
-        .in('forma_pagamento', ['dinheiro', 'pix', 'cartão'])
+consulta => consulta
+  .in('status', ['concluida', 'cancelada'])
+  .in('forma_pagamento', ['dinheiro', 'pix', 'cartão', 'cartao'])
     );
 
     if (!consultaAtiva()) return;
