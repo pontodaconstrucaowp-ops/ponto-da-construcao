@@ -6189,6 +6189,30 @@ async function renderCash(el) {
 
     </div>
 
+    <!-- FECHAMENTO DIÁRIO: CONSULTA INDEPENDENTE DO MÊS -->
+    <div class="card" style="margin-top:18px">
+      <h3>📊 Fechamento diário</h3>
+      <p class="muted" style="margin:8px 0">
+        Consulte e imprima o movimento de uma data, sem gravar um fechamento.
+      </p>
+      <div class="field" style="margin-top:12px">
+        <label for="caixaFechamentoData">Data do fechamento</label>
+        <input id="caixaFechamentoData" class="search" type="date"
+          min="2000-01-01" max="2100-12-31">
+      </div>
+      <div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="primary" id="caixaFechamentoConsultar">
+          📊 Consultar dia
+        </button>
+        <button type="button" class="secondary" id="caixaFechamentoImprimir" disabled>
+          🖨️ Imprimir fechamento
+        </button>
+      </div>
+      <div id="caixaFechamentoResultado" style="margin-top:14px" aria-live="polite">
+        Selecione uma data e toque em Consultar dia.
+      </div>
+    </div>
+
     <!-- BOTÃO PARA ABRIR O FORMULÁRIO -->
 
     <div style="margin:20px 0">
@@ -6418,6 +6442,222 @@ async function renderCash(el) {
   }
 
   dataInput.value = dataLocalFormatada(agora);
+
+  // =====================================
+  // FECHAMENTO DIÁRIO AUTOMÁTICO
+  // Não altera nem grava movimentações.
+  // =====================================
+
+  const fechamentoData = campo('caixaFechamentoData');
+  const fechamentoConsultar = campo('caixaFechamentoConsultar');
+  const fechamentoImprimir = campo('caixaFechamentoImprimir');
+  const fechamentoResultado = campo('caixaFechamentoResultado');
+  fechamentoData.value = dataLocalFormatada(agora);
+  let fechamentoAtual = null;
+  let fechamentoConsultaId = 0;
+
+  const fechamentoDinheiro = valor => {
+    const numero = Number(valor);
+    return Number.isFinite(numero) && numero > 0
+      ? Math.round(numero * 100) : 0;
+  };
+
+  const fechamentoForma = valor => {
+    const forma = String(valor || '').trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (forma === 'dinheiro') return 'dinheiro';
+    if (forma === 'pix') return 'pix';
+    if (forma === 'cartao' || forma.includes('cartao')) return 'cartao';
+    return 'outros';
+  };
+
+  async function buscarFechamento(tabela, colunas, colunaData, inicio, fim, filtro, consultaId) {
+    const registros = [];
+    let pagina = 0;
+    const tamanho = 1000;
+    while (true) {
+      let consulta = supabaseClient.from(tabela)
+        .select(colunas)
+        .gte(colunaData, inicio)
+        .lt(colunaData, fim);
+      if (filtro) consulta = filtro(consulta);
+      const { data, error } = await consulta
+        .order(colunaData, { ascending: true })
+        .order('id', { ascending: true })
+        .range(pagina * tamanho, (pagina + 1) * tamanho - 1);
+      if (error) throw error;
+      if (!consultaAtiva() || consultaId !== fechamentoConsultaId) return null;
+      const lote = data || [];
+      registros.push(...lote);
+      if (lote.length < tamanho) return registros;
+      pagina++;
+    }
+  }
+
+  fechamentoData.addEventListener('change', () => {
+    fechamentoConsultaId++;
+    fechamentoAtual = null;
+    fechamentoImprimir.disabled = true;
+    fechamentoResultado.textContent = 'Toque em Consultar dia para atualizar os valores.';
+  });
+
+  fechamentoConsultar.addEventListener('click', async () => {
+    const texto = fechamentoData.value;
+    const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+    if (!partes) {
+      alert('Selecione uma data válida.');
+      return;
+    }
+    const anoDia = Number(partes[1]);
+    const mesDia = Number(partes[2]);
+    const dia = Number(partes[3]);
+    const inicio = new Date(anoDia, mesDia - 1, dia);
+    if (anoDia < 2000 || anoDia > 2100 ||
+        inicio.getFullYear() !== anoDia ||
+        inicio.getMonth() !== mesDia - 1 ||
+        inicio.getDate() !== dia) {
+      alert('Selecione uma data entre 2000 e 2100.');
+      return;
+    }
+    const fim = new Date(anoDia, mesDia - 1, dia + 1);
+    const idConsulta = ++fechamentoConsultaId;
+    fechamentoAtual = null;
+    fechamentoImprimir.disabled = true;
+    fechamentoConsultar.disabled = true;
+    fechamentoResultado.textContent = 'Consultando o movimento do dia...';
+
+    try {
+      const [vendas, recebimentos, manuais] = await Promise.all([
+        buscarFechamento('vendas', 'id,data,valor_total,forma_pagamento,status',
+          'data', inicio.toISOString(), fim.toISOString(),
+          q => q.eq('status', 'concluida')
+            .in('forma_pagamento', ['dinheiro', 'pix', 'cartão', 'cartao']), idConsulta),
+        buscarFechamento('recebimentos', 'id,valor,forma_pagamento,data_pagamento',
+          'data_pagamento', inicio.toISOString(), fim.toISOString(), null, idConsulta),
+        buscarFechamento('movimentacoes_caixa', 'id,tipo,categoria,descricao,valor,data',
+          'data', inicio.toISOString(), fim.toISOString(), null, idConsulta)
+      ]);
+      if (!consultaAtiva() || idConsulta !== fechamentoConsultaId ||
+          !vendas || !recebimentos || !manuais) return;
+
+      const dados = {
+        data: inicio.toLocaleDateString('pt-BR'),
+        vendas: { dinheiro: 0, pix: 0, cartao: 0 },
+        dividas: { dinheiro: 0, pix: 0, cartao: 0, outros: 0 },
+        manuaisEntrada: 0, despesas: 0, veiculos: 0,
+        quantidadeVendas: vendas.length,
+        quantidadeRecebimentos: recebimentos.length,
+        quantidadeManuais: manuais.length
+      };
+      for (const venda of vendas) {
+        const forma = fechamentoForma(venda.forma_pagamento);
+        if (forma in dados.vendas) {
+          dados.vendas[forma] += fechamentoDinheiro(venda.valor_total);
+        }
+      }
+      for (const rec of recebimentos) {
+        dados.dividas[fechamentoForma(rec.forma_pagamento)] +=
+          fechamentoDinheiro(rec.valor);
+      }
+      for (const mov of manuais) {
+        const tipo = String(mov.tipo || '').trim().toLowerCase();
+        const centavos = fechamentoDinheiro(mov.valor);
+        if (tipo === 'entrada') {
+          dados.manuaisEntrada += centavos;
+        } else if (tipo === 'saida' || tipo === 'saída') {
+          dados.despesas += centavos;
+          const categoria = String(mov.categoria || '').trim().toLowerCase();
+          if (categoria.startsWith('veiculo_') ||
+              ['veiculo', 'veículo', 'despesas_veiculo',
+               'despesas com veiculo', 'despesas com veículo'].includes(categoria)) {
+            dados.veiculos += centavos;
+          }
+        }
+      }
+      dados.totalVendas = Object.values(dados.vendas).reduce((a,b)=>a+b,0);
+      dados.totalDividas = Object.values(dados.dividas).reduce((a,b)=>a+b,0);
+      dados.entradas = dados.totalVendas + dados.totalDividas + dados.manuaisEntrada;
+      dados.saldo = dados.entradas - dados.despesas;
+      const valor = centavos => money(centavos / 100);
+      const linha = (rotulo, centavos) => `
+        <div style="display:flex;justify-content:space-between;gap:12px;
+          padding:7px 0;border-bottom:1px solid #e5e7eb">
+          <span>${rotulo}</span><strong style="white-space:nowrap">${valor(centavos)}</strong>
+        </div>`;
+      const resumo = `
+        <h4 style="margin:0 0 8px">Movimento de ${dados.data}</h4>
+        <strong>Vendas recebidas no dia</strong>
+        ${linha('Dinheiro', dados.vendas.dinheiro)}
+        ${linha('Pix', dados.vendas.pix)}
+        ${linha('Cartão', dados.vendas.cartao)}
+        ${linha('Subtotal de vendas', dados.totalVendas)}
+        <br><strong>Recebimentos de dívidas</strong>
+        ${linha('Dinheiro', dados.dividas.dinheiro)}
+        ${linha('Pix', dados.dividas.pix)}
+        ${linha('Cartão', dados.dividas.cartao)}
+        ${linha('Outras formas / não informada', dados.dividas.outros)}
+        ${linha('Subtotal de dívidas', dados.totalDividas)}
+        <br><strong>Outras movimentações</strong>
+        ${linha('Entradas manuais', dados.manuaisEntrada)}
+        ${linha('Despesas do dia', dados.despesas)}
+        ${linha('Incluído nas despesas: veículos', dados.veiculos)}
+        <div style="margin-top:14px;padding:12px;background:#eef5ff;border-radius:10px">
+          ${linha('TOTAL DE ENTRADAS', dados.entradas)}
+          ${linha('TOTAL DE SAÍDAS', dados.despesas)}
+          ${linha('SALDO DO DIA', dados.saldo)}
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:12px">
+          Relatório gerencial: cartão contabilizado na venda. O saldo não
+          representa necessariamente o dinheiro físico disponível.
+          Os gastos com veículos já estão incluídos nas despesas.
+        </p>`;
+      fechamentoAtual = { dados, resumo };
+      fechamentoResultado.innerHTML = resumo;
+      fechamentoImprimir.disabled = false;
+    } catch (erro) {
+      if (!consultaAtiva() || idConsulta !== fechamentoConsultaId) return;
+      console.error('Erro no fechamento diário:', erro);
+      fechamentoResultado.textContent =
+        'Não foi possível consultar o dia: ' + (erro.message || 'Erro desconhecido');
+    } finally {
+      if (fechamentoConsultar.isConnected && idConsulta === fechamentoConsultaId) {
+        fechamentoConsultar.disabled = false;
+      }
+    }
+  });
+
+  fechamentoImprimir.addEventListener('click', () => {
+    if (!fechamentoAtual) return;
+    const { dados, resumo } = fechamentoAtual;
+    const janela = window.open('', '_blank');
+    if (!janela) {
+      alert('Permita janelas pop-up para imprimir o fechamento.');
+      return;
+    }
+    const logo = new URL('logo-ponto-construcao.png', document.baseURI).href;
+    janela.document.open();
+    janela.document.write(`<!doctype html><html lang="pt-BR"><head>
+      <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Fechamento diário - ${dados.data}</title>
+      <style>
+        body{font:14px Arial,sans-serif;color:#172033;max-width:760px;margin:20px auto;padding:16px}
+        header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #123f87;padding-bottom:15px}
+        header img{width:80px;max-height:80px;object-fit:contain}
+        h1{font-size:21px;color:#123f87;margin:0}h4{font-size:18px}
+        .acoes{margin-bottom:16px}.acoes button{padding:12px;border:0;border-radius:8px;background:#123f87;color:white}
+        @media print{.acoes{display:none}body{margin:0;max-width:none}@page{size:A4;margin:12mm}}
+      </style></head><body>
+      <div class="acoes"><button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button></div>
+      <header><img src="${logo}" alt="Logo Ponto da Construção">
+      <div><h1>PONTO DA CONSTRUÇÃO</h1><div>FECHAMENTO DIÁRIO DO CAIXA</div>
+      <div>WhatsApp: (91) 98894-2001</div></div></header>
+      <main style="margin-top:20px">${resumo}</main>
+      <p style="font-size:11px;color:#64748b;margin-top:22px">
+        Consulta emitida em ${new Date().toLocaleString('pt-BR')}. Nenhum lançamento foi criado.
+      </p></body></html>`);
+    janela.document.close();
+    janela.focus();
+  });
 
   // =====================================
   // ABRIR E FECHAR FORMULÁRIO
@@ -7024,6 +7264,9 @@ async function renderCash(el) {
     `;
   }
 }
+
+
+
 
 
 
