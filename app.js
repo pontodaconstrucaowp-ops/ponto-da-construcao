@@ -6013,7 +6013,7 @@ ${state.user?.tipo === 'admin' && venda.status === 'concluida' ? `
   <button
     class="btn secondary"
     style="color:#b91c1c;"
-    onclick="alert('Cancelamento de vendas em preparação. Nenhuma alteração foi realizada.')"
+onclick="abrirConfirmacaoCancelamento(${venda.id})"
   >
     Cancelar venda
   </button>
