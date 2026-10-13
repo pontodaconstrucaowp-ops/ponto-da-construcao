@@ -5922,13 +5922,15 @@ async function carregarRelatorio(){
     mapaClientes[cliente.id] = cliente;
   });
 
-  const totalVendido =
-    vendas.reduce(
-      (soma, venda) =>
-        soma + Number(venda.valor_total || 0),
-      0
-    );
+const vendasValidas = vendas.filter(
+  venda => venda.status === 'concluida'
+);
 
+const totalVendido = vendasValidas.reduce(
+  (soma, venda) =>
+    soma + Number(venda.valor_total || 0),
+  0
+);
   document.getElementById('reportSummary').innerHTML = `
     <div class="card" style="margin-bottom:15px;">
 
