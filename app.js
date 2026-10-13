@@ -6082,7 +6082,7 @@ async function renderCash(el) {
     <div class="grid stats">
 
       <div class="card stat">
-        <div class="label">Entradas manuais</div>
+        <div class="label">Entradas totais</div>
         <div class="value" id="caixaEntradas">
           Carregando...
         </div>
@@ -6096,7 +6096,7 @@ async function renderCash(el) {
       </div>
 
       <div class="card stat">
-        <div class="label">Saldo das movimentações</div>
+        <div class="label">Saldo do período</div>
         <div class="value" id="caixaSaldo">
           Carregando...
         </div>
@@ -6234,10 +6234,11 @@ async function renderCash(el) {
       margin-top:14px;
       font-size:12px;
     ">
-      Os indicadores consideram as movimentações
-      registradas diretamente no Caixa.
-      Vendas e recebimentos serão integrados
-      em uma próxima etapa, sem duplicidade.
+      O resumo inclui entradas manuais, vendas concluídas
+      em dinheiro, Pix ou cartão e pagamentos de dívidas.
+      O histórico abaixo ainda mostra somente os lançamentos
+      manuais. Não registre vendas ou recebimentos novamente
+      como entradas manuais.
     </p>
   `;
 
@@ -6640,6 +6641,79 @@ async function renderCash(el) {
     if (!consultaAtiva()) return;
 
     // =====================================
+    // CONSULTAR VENDAS E RECEBIMENTOS
+    // =====================================
+
+    async function buscarRegistrosFinanceiros(
+      tabela, colunas, campoData, aplicarFiltros
+    ) {
+      const registros = [];
+      const tamanho = 1000;
+      let pagina = 0;
+
+      while (true) {
+        const inicio = pagina * tamanho;
+        const fim = inicio + tamanho - 1;
+
+        let consulta = supabaseClient
+          .from(tabela)
+          .select(colunas)
+          .gte(campoData, inicioMes.toISOString())
+          .lt(campoData, inicioProximoMes.toISOString());
+
+        if (aplicarFiltros) {
+          consulta = aplicarFiltros(consulta);
+        }
+
+        const { data, error } = await consulta
+          .order(campoData, { ascending: true })
+          .order('id', { ascending: true })
+          .range(inicio, fim);
+
+        if (error) throw error;
+        if (!consultaAtiva()) return null;
+
+        const lote = data || [];
+        registros.push(...lote);
+        if (lote.length < tamanho) break;
+        pagina++;
+      }
+
+      return registros;
+    }
+
+    const vendasCaixa = await buscarRegistrosFinanceiros(
+      'vendas',
+      'id,data,valor_total,forma_pagamento,status',
+      'data',
+      consulta => consulta
+        .eq('status', 'concluida')
+        .in('forma_pagamento', ['dinheiro', 'pix', 'cartão'])
+    );
+
+    if (!consultaAtiva()) return;
+
+    const recebimentosCaixa = await buscarRegistrosFinanceiros(
+      'recebimentos',
+      'id,valor,forma_pagamento,data_pagamento,conta_receber_id',
+      'data_pagamento'
+    );
+
+    if (!consultaAtiva()) return;
+
+    function somarCentavos(registros, coluna) {
+      return (registros || []).reduce((soma, registro) => {
+        const valor = Number(registro[coluna]);
+        if (!Number.isFinite(valor) || valor <= 0) return soma;
+        return soma + Math.round(valor * 100);
+      }, 0);
+    }
+
+    const entradasAutomaticasCentavos =
+      somarCentavos(vendasCaixa, 'valor_total') +
+      somarCentavos(recebimentosCaixa, 'valor');
+
+    // =====================================
     // CALCULAR INDICADORES
     // =====================================
 
@@ -6693,6 +6767,9 @@ async function renderCash(el) {
         }
       }
     }
+
+    // Entradas automáticas somadas uma única vez ao resumo.
+    entradasCentavos += entradasAutomaticasCentavos;
 
     campo('caixaEntradas').textContent =
       money(entradasCentavos / 100);
