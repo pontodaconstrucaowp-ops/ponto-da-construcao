@@ -7049,10 +7049,10 @@ consulta => consulta
     // CALCULAR INDICADORES
     // =====================================
 
-    let entradasCentavos = 0;
-    let saidasCentavos = 0;
-    let veiculoCentavos = 0;
-
+let entradasCentavos = 0;
+let saidasCentavos = 0;
+let veiculoCentavos = 0;
+let estornosCentavos = 0;
     function ehCategoriaVeiculo(categoria) {
 
       const texto = String(
