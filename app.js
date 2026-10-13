@@ -7116,6 +7116,8 @@ if (tipo === 'saida' || tipo === 'saída') {
 
     campo('caixaSaidas').textContent =
       money(saidasCentavos / 100);
+    campo('caixaEstornos').textContent =
+  money(estornosCentavos / 100);
 
     campo('caixaSaldo').textContent =
       money(
