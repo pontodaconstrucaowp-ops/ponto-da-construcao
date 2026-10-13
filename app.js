@@ -606,6 +606,7 @@ function deliveryCard(d){
   return `<div class="card"><div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div><p class="muted">${d.address}</p><div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div></div>`
 }
 function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
+
 async function renderSales(el) {
 
   const carrinhoEstavaAberto =
@@ -776,6 +777,25 @@ async function renderSales(el) {
         ></strong>
 
       </div>
+
+      <!-- BOTÃO DE ORÇAMENTO ADAPTADO AO CELULAR -->
+      <button
+        type="button"
+        class="secondary"
+        onclick="pcImprimirOrcamento()"
+        style="
+          display:block;
+          width:100%;
+          min-height:48px;
+          margin:0 0 12px;
+          border:1px solid #0b408e;
+          color:#0b408e;
+          font-weight:700;
+          border-radius:10px;
+        "
+      >
+        🖨️ Imprimir orçamento
+      </button>
 
       <div class="actions">
 
@@ -1209,6 +1229,363 @@ async function renderSales(el) {
   ajustarPosicaoCarrinho();
 
 }
+
+
+function pcImprimirOrcamento() {
+
+  // Orçamento não registra venda, não altera estoque nem Caixa.
+  if (!Array.isArray(state.cart) || !state.cart.length) {
+    alert('Adicione pelo menos um material ao orçamento.');
+    return;
+  }
+
+  const totalMateriais = pcTotal();
+
+  const descontoInformado = Number(
+    document.getElementById('saleDiscount')?.value ??
+    state.saleDiscount ??
+    0
+  );
+
+  if (
+    !Number.isFinite(descontoInformado) ||
+    descontoInformado < 0
+  ) {
+    alert('Confira o desconto informado antes de imprimir.');
+    return;
+  }
+
+  const desconto = Math.min(
+    descontoInformado,
+    totalMateriais
+  );
+
+  const totalFinal =
+    Math.round((totalMateriais - desconto) * 100) / 100;
+
+  const escapar = valor =>
+    pcEscapar(String(valor ?? ''));
+
+  const formatarQuantidade = valor =>
+    Number(valor).toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
+
+  const nomeCliente = state.selectedClient
+    ? (
+        document.getElementById('saleClient')
+          ?.value?.trim() || 'Cliente'
+      )
+    : 'Não informado';
+
+  const itens = [];
+
+  for (const item of state.cart) {
+
+    const quantidade = Number(item.qty);
+    const preco = Number(item.price);
+
+    if (
+      !Number.isFinite(quantidade) ||
+      quantidade <= 0 ||
+      !Number.isFinite(preco) ||
+      preco < 0
+    ) {
+      alert(
+        'Existe um material com quantidade ou preço inválido.'
+      );
+      return;
+    }
+
+    itens.push({
+      nome: String(item.name || 'Material'),
+      unidade: String(item.unit || 'unidade'),
+      quantidade,
+      preco,
+      subtotal:
+        Math.round(quantidade * preco * 100) / 100
+    });
+
+  }
+
+  // Abrir imediatamente ajuda a evitar bloqueio de pop-ups.
+  const janela = window.open('', '_blank');
+
+  if (!janela) {
+    alert(
+      'Permita pop-ups para este site e tente imprimir novamente.'
+    );
+    return;
+  }
+
+  const linhas = itens.map(item => `
+    <tr>
+      <td>
+        ${escapar(item.nome)}
+        <small>${escapar(item.unidade)}</small>
+      </td>
+
+      <td class="numero">
+        ${formatarQuantidade(item.quantidade)}
+      </td>
+
+      <td class="numero">
+        ${money(item.preco)}
+      </td>
+
+      <td class="numero">
+        ${money(item.subtotal)}
+      </td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1"
+>
+<title>Orçamento - Ponto da Construção</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font: 14px Arial, sans-serif;
+    color: #172033;
+    margin: 0;
+    background: #f3f5f8;
+  }
+
+  main {
+    max-width: 800px;
+    margin: 20px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+  }
+
+  header {
+    border-bottom: 2px solid #123f87;
+    padding-bottom: 15px;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    margin: 0;
+    color: #123f87;
+    font-size: 23px;
+  }
+
+  .sub {
+    color: #64748b;
+    margin-top: 5px;
+  }
+
+  .dados {
+    line-height: 1.7;
+    margin: 14px 0 20px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 10px 6px;
+    border-bottom: 1px solid #dbe2ea;
+    vertical-align: top;
+  }
+
+  th {
+    text-align: left;
+    background: #eef3fb;
+  }
+
+  td small {
+    display: block;
+    color: #64748b;
+    margin-top: 3px;
+  }
+
+  .numero {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .totais {
+    margin: 20px 0 0 auto;
+    max-width: 350px;
+    line-height: 2;
+  }
+
+  .totais div {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+  }
+
+  .final {
+    border-top: 2px solid #123f87;
+    font-size: 18px;
+    font-weight: bold;
+    color: #123f87;
+  }
+
+  .aviso {
+    margin-top: 25px;
+    color: #64748b;
+    font-size: 12px;
+  }
+
+  .acoes {
+    display: flex;
+    gap: 10px;
+    margin: 15px auto;
+    max-width: 800px;
+    padding: 0 10px;
+  }
+
+  button {
+    background: #123f87;
+    color: white;
+    border: 0;
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-weight: bold;
+    font-size: 15px;
+  }
+
+  @media (max-width: 600px) {
+
+    main {
+      margin: 0;
+      padding: 15px;
+      border-radius: 0;
+    }
+
+    table {
+      font-size: 10px;
+    }
+
+    th, td {
+      padding: 8px 3px;
+    }
+
+    h1 {
+      font-size: 20px;
+    }
+
+  }
+
+  @media print {
+
+    body {
+      background: white;
+    }
+
+    main {
+      max-width: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .acoes {
+      display: none;
+    }
+
+    @page {
+      margin: 12mm;
+    }
+
+  }
+</style>
+</head>
+
+<body>
+
+<div class="acoes">
+  <button onclick="window.print()">
+    🖨️ Imprimir / Salvar PDF
+  </button>
+</div>
+
+<main>
+
+  <header>
+    <h1>PONTO DA CONSTRUÇÃO</h1>
+    <div class="sub">
+      ORÇAMENTO DE MATERIAIS
+    </div>
+  </header>
+
+  <div class="dados">
+    <strong>Cliente:</strong>
+    ${escapar(nomeCliente)}
+    <br>
+
+    <strong>Emissão:</strong>
+    ${escapar(new Date().toLocaleString('pt-BR'))}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Material</th>
+        <th class="numero">Qtd.</th>
+        <th class="numero">Unitário</th>
+        <th class="numero">Subtotal</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      ${linhas}
+    </tbody>
+  </table>
+
+  <div class="totais">
+
+    <div>
+      <span>Materiais</span>
+      <strong>${money(totalMateriais)}</strong>
+    </div>
+
+    <div>
+      <span>Desconto</span>
+      <strong>${money(desconto)}</strong>
+    </div>
+
+    <div class="final">
+      <span>Total do orçamento</span>
+      <span>${money(totalFinal)}</span>
+    </div>
+
+  </div>
+
+  <p class="aviso">
+    Este documento é apenas um orçamento.
+    Não é comprovante de pagamento, venda ou reserva
+    de estoque. Valores sujeitos a confirmação.
+  </p>
+
+</main>
+
+</body>
+</html>`;
+
+  janela.document.open();
+  janela.document.write(html);
+  janela.document.close();
+  janela.focus();
+
+}
+
 
 function pcEscapar(valor) {
   return String(valor ?? '').replace(/[&<>"']/g, c => ({
