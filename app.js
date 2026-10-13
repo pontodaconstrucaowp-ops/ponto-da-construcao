@@ -6173,6 +6173,13 @@ async function renderCash(el) {
         </div>
       </div>
 
+<div class="card stat">
+  <div class="label">↩️ Estornos de vendas</div>
+  <div class="value" id="caixaEstornos">
+    Carregando...
+  </div>
+</div>
+
       <div class="card stat">
         <div class="label">Saldo do período</div>
         <div class="value" id="caixaSaldo">
