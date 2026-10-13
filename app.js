@@ -7116,9 +7116,10 @@ consulta => consulta
 
     const historico = campo('caixaHistorico');
 
-    const nomesCategorias = {
-      despesa_geral: 'Despesa geral',
-      outra_entrada: 'Outra entrada',
+const nomesCategorias = {
+  despesa_geral: 'Despesa geral',
+  outra_entrada: 'Outra entrada',
+  estorno_venda: 'Estornos de vendas',
       veiculo: 'Despesa do veículo',
       veiculo_combustivel: 'Combustível',
       veiculo_pneus: 'Pneus',
@@ -7149,11 +7150,13 @@ consulta => consulta
         origem: 'manual',
         id: m.id,
         data: m.data || m.created_at,
-        titulo: entrada
-          ? '🟢 Entrada manual'
-          : veiculo
-            ? '🚚 Despesa do veículo'
-            : '🔴 Saída manual',
+titulo: entrada
+  ? '🟢 Entrada manual'
+  : categoria === 'estorno_venda'
+    ? '↩️ Estorno de venda'
+    : veiculo
+      ? '🚚 Despesa do veículo'
+      : '🔴 Saída manual',
         descricao: m.descricao || 'Sem descrição',
         detalhe: nomesCategorias[categoria] || categoria || 'Sem categoria',
         valor: Number(m.valor) || 0
