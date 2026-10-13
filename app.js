@@ -452,9 +452,13 @@ async function renderHome(el) {
     let totalHoje = 0;
     let totalMes = 0;
 
-    for (const venda of vendas) {
+for (const venda of vendas) {
 
-      const valor = Number(venda.valor_total || 0);
+  if (venda.status !== 'concluida') {
+    continue;
+  }
+
+  const valor = Number(venda.valor_total || 0);
       const dataVenda = new Date(venda.data);
 
       if (
