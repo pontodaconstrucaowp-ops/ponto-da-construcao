@@ -8834,7 +8834,7 @@ async function saveClient() {
     document.getElementById('content')
   );
 }
-function abrirConfirmacaoCancelamento(vendaId) {
+function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
 
   if (state.user?.tipo !== 'admin') {
     alert('Somente administradores podem cancelar vendas.');
