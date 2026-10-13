@@ -7265,6 +7265,7 @@ titulo: entrada
     [
       'caixaEntradas',
       'caixaSaidas',
+     'caixaEstornos',
       'caixaSaldo',
       'caixaGastosVeiculo'
     ].forEach(id => {
