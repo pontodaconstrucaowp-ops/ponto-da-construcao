@@ -6787,6 +6787,7 @@ window.clienteLongitude = null;
 
 
 
+
 async function renderClients(el) {
 
   el.innerHTML = `
@@ -6841,6 +6842,27 @@ async function renderClients(el) {
   filterClients();
 
   lista.addEventListener('click', async evento => {
+
+    // =====================================
+    // EXCLUIR CLIENTE
+    // =====================================
+
+    const botaoExcluir = evento.target.closest(
+      '[data-cliente-excluir]'
+    );
+
+    if (botaoExcluir) {
+
+      await excluirCliente(
+        botaoExcluir.dataset.clienteExcluir
+      );
+
+      return;
+    }
+
+    // =====================================
+    // HISTÓRICO DE COMPRAS
+    // =====================================
 
     const botao = evento.target.closest(
       '[data-cliente-historico]'
