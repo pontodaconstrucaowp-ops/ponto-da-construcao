@@ -8928,7 +8928,7 @@ function abrirConfirmacaoCancelamento(vendaId) {
 
         <button
           class="btn primary"
-          onclick="alert('Janela em teste. Nenhuma venda foi cancelada.')"
+onclick="validarCancelamentoVendaTeste()"
         >
           Confirmar cancelamento
         </button>
@@ -8938,4 +8938,20 @@ function abrirConfirmacaoCancelamento(vendaId) {
   `;
 
   document.body.appendChild(fundo);
+}
+function validarCancelamentoVendaTeste() {
+
+  const motivo = document
+    .getElementById('motivoCancelamentoVenda')
+    ?.value.trim();
+
+  if (!motivo || motivo.length < 5) {
+    alert('Informe um motivo com pelo menos 5 caracteres.');
+    return;
+  }
+
+  alert(
+    'Validação realizada com sucesso!\n\n' +
+    'Nenhuma venda foi cancelada. Estamos em modo de teste.'
+  );
 }
