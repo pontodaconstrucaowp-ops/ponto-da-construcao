@@ -5936,6 +5936,7 @@ async function carregarRelatorio(){
 
 
 
+
 async function renderCash(el) {
 
   const ehAdministrador =
@@ -5955,30 +5956,32 @@ async function renderCash(el) {
   }
 
   // =====================================
-  // PERÍODO SELECIONADO
+  // CONFIGURAÇÃO DO PERÍODO
   // =====================================
 
   const agora = new Date();
 
-  const mesInicial = Number(
-    window.caixaMesSelecionado ?? (agora.getMonth() + 1)
+  const mesAtual = Number(
+    window.caixaMesSelecionado ?? agora.getMonth() + 1
   );
 
-  const anoInicial = Number(
+  const anoAtual = Number(
     window.caixaAnoSelecionado ?? agora.getFullYear()
   );
 
-  const mes = (
-    Number.isInteger(mesInicial) &&
-    mesInicial >= 1 &&
-    mesInicial <= 12
-  ) ? mesInicial : agora.getMonth() + 1;
+  const mes =
+    Number.isInteger(mesAtual) &&
+    mesAtual >= 1 &&
+    mesAtual <= 12
+      ? mesAtual
+      : agora.getMonth() + 1;
 
-  const ano = (
-    Number.isInteger(anoInicial) &&
-    anoInicial >= 2000 &&
-    anoInicial <= 2100
-  ) ? anoInicial : agora.getFullYear();
+  const ano =
+    Number.isInteger(anoAtual) &&
+    anoAtual >= 2000 &&
+    anoAtual <= 2100
+      ? anoAtual
+      : agora.getFullYear();
 
   window.caixaMesSelecionado = mes;
   window.caixaAnoSelecionado = ano;
@@ -6012,7 +6015,21 @@ async function renderCash(el) {
   `).join('');
 
   // =====================================
-  // ESTRUTURA DA TELA
+  // IDENTIFICAÇÃO DESTA CONSULTA
+  // =====================================
+
+  const consultaId =
+    (window.caixaConsultaId || 0) + 1;
+
+  window.caixaConsultaId = consultaId;
+
+  const consultaAtiva = () =>
+    state.page === 'cash' &&
+    el.isConnected &&
+    window.caixaConsultaId === consultaId;
+
+  // =====================================
+  // MONTAR TELA
   // =====================================
 
   el.innerHTML = `
@@ -6032,6 +6049,7 @@ async function renderCash(el) {
 
         <div class="field">
           <label for="caixaFiltroMes">Mês</label>
+
           <select id="caixaFiltroMes" class="search">
             ${opcoesMeses}
           </select>
@@ -6039,6 +6057,7 @@ async function renderCash(el) {
 
         <div class="field">
           <label for="caixaFiltroAno">Ano</label>
+
           <select id="caixaFiltroAno" class="search">
             ${opcoesAnos}
           </select>
@@ -6057,9 +6076,7 @@ async function renderCash(el) {
     </div>
 
     <div class="section-title">
-      <h2>
-        Resumo — ${meses[mes - 1]} de ${ano}
-      </h2>
+      <h2>Resumo — ${meses[mes - 1]} de ${ano}</h2>
     </div>
 
     <div class="grid stats">
@@ -6094,58 +6111,478 @@ async function renderCash(el) {
 
     </div>
 
+    <!-- BOTÃO PARA ABRIR O FORMULÁRIO -->
+
+    <div style="margin:20px 0">
+
+      <button
+        type="button"
+        class="primary"
+        id="caixaBotaoNovo"
+      >
+        ＋ Nova movimentação
+      </button>
+
+    </div>
+
+    <!-- FORMULÁRIO INICIALMENTE FECHADO -->
+
+    <div
+      id="caixaFormulario"
+      class="card"
+      style="display:none;margin-bottom:20px"
+    >
+
+      <div class="row">
+        <h3>📝 Nova movimentação</h3>
+
+        <button
+          type="button"
+          class="secondary"
+          id="caixaFecharFormulario"
+        >
+          ✕ Fechar
+        </button>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="caixaTipo">Tipo</label>
+
+        <select id="caixaTipo" class="search">
+          <option value="saida">Saída</option>
+          <option value="entrada">Entrada</option>
+        </select>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="caixaCategoria">Categoria</label>
+
+        <select id="caixaCategoria" class="search">
+        </select>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="caixaDescricao">Descrição</label>
+
+        <input
+          id="caixaDescricao"
+          class="search"
+          type="text"
+          maxlength="200"
+          placeholder="Ex.: Abastecimento do carro"
+        >
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="caixaValor">Valor (R$)</label>
+
+        <input
+          id="caixaValor"
+          class="search"
+          type="number"
+          min="0.01"
+          step="0.01"
+          placeholder="0,00"
+        >
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label for="caixaData">Data da movimentação</label>
+
+        <input
+          id="caixaData"
+          class="search"
+          type="date"
+          min="2000-01-01"
+          max="2100-12-31"
+        >
+      </div>
+
+      <div class="actions" style="margin-top:18px">
+
+        <button
+          type="button"
+          class="primary"
+          id="caixaSalvarMovimentacao"
+        >
+          💾 Salvar movimentação
+        </button>
+
+        <button
+          type="button"
+          class="secondary"
+          id="caixaCancelarMovimentacao"
+        >
+          Cancelar
+        </button>
+
+      </div>
+
+    </div>
+
     <div class="section-title">
       <h2>📋 Histórico do período</h2>
     </div>
 
     <div id="caixaHistorico" class="list">
-      <div class="card">Carregando movimentações...</div>
+      <div class="card">
+        Carregando movimentações...
+      </div>
     </div>
 
     <p class="muted" style="
       margin-top:14px;
       font-size:12px;
     ">
-      Este resumo considera somente as movimentações
-      registradas na tabela do Caixa.
-      A integração automática com vendas e recebimentos
-      será feita em uma próxima etapa.
+      Os indicadores consideram as movimentações
+      registradas diretamente no Caixa.
+      Vendas e recebimentos serão integrados
+      em uma próxima etapa, sem duplicidade.
     </p>
   `;
 
   // =====================================
-  // BOTÃO DE CONSULTA
+  // ELEMENTOS DO FORMULÁRIO
   // =====================================
 
-  const botaoConsultar =
-    el.querySelector('#caixaConsultarPeriodo');
+  const campo = id => el.querySelector('#' + id);
 
-  botaoConsultar.addEventListener('click', () => {
+  const formulario = campo('caixaFormulario');
+  const botaoNovo = campo('caixaBotaoNovo');
+  const botaoSalvar = campo('caixaSalvarMovimentacao');
 
-    const novoMes = Number(
-      el.querySelector('#caixaFiltroMes').value
-    );
+  const tipoInput = campo('caixaTipo');
+  const categoriaInput = campo('caixaCategoria');
+  const descricaoInput = campo('caixaDescricao');
+  const valorInput = campo('caixaValor');
+  const dataInput = campo('caixaData');
 
-    const novoAno = Number(
-      el.querySelector('#caixaFiltroAno').value
-    );
+  // =====================================
+  // CATEGORIAS
+  // =====================================
 
-    if (
-      !Number.isInteger(novoMes) ||
-      novoMes < 1 ||
-      novoMes > 12 ||
-      !Number.isInteger(novoAno) ||
-      novoAno < 2000 ||
-      novoAno > 2100
-    ) {
-      alert('Selecione um mês e ano válidos.');
+  const categoriasSaida = [
+    {
+      valor: 'despesa_geral',
+      nome: 'Despesa geral'
+    },
+    {
+      valor: 'veiculo_combustivel',
+      nome: '🚚 Veículo — Combustível'
+    },
+    {
+      valor: 'veiculo_pneus',
+      nome: '🚚 Veículo — Pneus'
+    },
+    {
+      valor: 'veiculo_manutencao',
+      nome: '🚚 Veículo — Manutenção / Oficina'
+    },
+    {
+      valor: 'veiculo_oleo',
+      nome: '🚚 Veículo — Troca de óleo'
+    },
+    {
+      valor: 'veiculo_documentacao',
+      nome: '🚚 Veículo — Documentação / Seguro'
+    },
+    {
+      valor: 'veiculo_outros',
+      nome: '🚚 Veículo — Outras despesas'
+    }
+  ];
+
+  const categoriasEntrada = [
+    {
+      valor: 'outra_entrada',
+      nome: 'Outra entrada manual'
+    }
+  ];
+
+  function atualizarCategorias() {
+
+    const categorias =
+      tipoInput.value === 'entrada'
+        ? categoriasEntrada
+        : categoriasSaida;
+
+    categoriaInput.innerHTML = categorias.map(c => `
+      <option value="${c.valor}">
+        ${c.nome}
+      </option>
+    `).join('');
+  }
+
+  tipoInput.addEventListener(
+    'change',
+    atualizarCategorias
+  );
+
+  atualizarCategorias();
+
+  // =====================================
+  // DATA LOCAL
+  // =====================================
+
+  function dataLocalFormatada(data) {
+
+    const anoData = data.getFullYear();
+    const mesData = String(
+      data.getMonth() + 1
+    ).padStart(2, '0');
+
+    const diaData = String(
+      data.getDate()
+    ).padStart(2, '0');
+
+    return `${anoData}-${mesData}-${diaData}`;
+  }
+
+  dataInput.value = dataLocalFormatada(agora);
+
+  // =====================================
+  // ABRIR E FECHAR FORMULÁRIO
+  // =====================================
+
+  function abrirFormulario() {
+
+    formulario.style.display = 'block';
+    botaoNovo.style.display = 'none';
+
+    formulario.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest'
+    });
+  }
+
+  function fecharFormulario() {
+
+    if (botaoSalvar.disabled) return;
+
+    formulario.style.display = 'none';
+    botaoNovo.style.display = '';
+
+    tipoInput.value = 'saida';
+    atualizarCategorias();
+
+    descricaoInput.value = '';
+    valorInput.value = '';
+    dataInput.value = dataLocalFormatada(new Date());
+  }
+
+  botaoNovo.addEventListener(
+    'click',
+    abrirFormulario
+  );
+
+  campo('caixaFecharFormulario').addEventListener(
+    'click',
+    fecharFormulario
+  );
+
+  campo('caixaCancelarMovimentacao').addEventListener(
+    'click',
+    fecharFormulario
+  );
+
+  // =====================================
+  // CONSULTAR OUTRO MÊS
+  // =====================================
+
+  campo('caixaConsultarPeriodo').addEventListener(
+    'click',
+    () => {
+
+      if (botaoSalvar.disabled) return;
+
+      const novoMes = Number(
+        campo('caixaFiltroMes').value
+      );
+
+      const novoAno = Number(
+        campo('caixaFiltroAno').value
+      );
+
+      if (
+        !Number.isInteger(novoMes) ||
+        novoMes < 1 ||
+        novoMes > 12 ||
+        !Number.isInteger(novoAno) ||
+        novoAno < 2000 ||
+        novoAno > 2100
+      ) {
+        alert('Selecione um período válido.');
+        return;
+      }
+
+      window.caixaMesSelecionado = novoMes;
+      window.caixaAnoSelecionado = novoAno;
+
+      renderCash(el);
+    }
+  );
+
+  // =====================================
+  // SALVAR MOVIMENTAÇÃO
+  // =====================================
+
+  botaoSalvar.addEventListener('click', async () => {
+
+    if (botaoSalvar.disabled) return;
+
+    const tipo = tipoInput.value;
+    const categoria = categoriaInput.value;
+    const descricao = descricaoInput.value.trim();
+
+    const valorTexto = String(
+      valorInput.value || ''
+    ).replace(',', '.');
+
+    const valor = Number(valorTexto);
+
+    const dataInformada = dataInput.value;
+
+    if (!['entrada', 'saida'].includes(tipo)) {
+      alert('Selecione um tipo válido.');
       return;
     }
 
-    window.caixaMesSelecionado = novoMes;
-    window.caixaAnoSelecionado = novoAno;
+    const categoriasPermitidas =
+      tipo === 'entrada'
+        ? categoriasEntrada
+        : categoriasSaida;
 
-    renderCash(el);
+    if (
+      !categoriasPermitidas.some(
+        c => c.valor === categoria
+      )
+    ) {
+      alert('Selecione uma categoria válida.');
+      return;
+    }
+
+    if (!descricao) {
+      alert('Informe a descrição da movimentação.');
+      descricaoInput.focus();
+      return;
+    }
+
+    if (
+      !Number.isFinite(valor) ||
+      valor <= 0 ||
+      Math.round(valor * 100) !== valor * 100
+    ) {
+      alert('Informe um valor válido com até duas casas decimais.');
+      valorInput.focus();
+      return;
+    }
+
+    const centavos = Math.round(valor * 100);
+    const valorFinal = centavos / 100;
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(dataInformada)
+    ) {
+      alert('Informe uma data válida.');
+      return;
+    }
+
+    const partes = dataInformada
+      .split('-')
+      .map(Number);
+
+    const dataEscolhida = new Date(
+      partes[0],
+      partes[1] - 1,
+      partes[2],
+      12,
+      0,
+      0
+    );
+
+    if (
+      dataEscolhida.getFullYear() !== partes[0] ||
+      dataEscolhida.getMonth() !== partes[1] - 1 ||
+      dataEscolhida.getDate() !== partes[2] ||
+      partes[0] < 2000 ||
+      partes[0] > 2100
+    ) {
+      alert('Informe uma data entre 2000 e 2100.');
+      return;
+    }
+
+    const categoriaNome =
+      categoriasPermitidas.find(
+        c => c.valor === categoria
+      )?.nome || categoria;
+
+    const confirmado = confirm(
+      'Confirma este lançamento?\n\n' +
+      'Tipo: ' + (tipo === 'entrada' ? 'Entrada' : 'Saída') +
+      '\nCategoria: ' + categoriaNome +
+      '\nDescrição: ' + descricao +
+      '\nValor: ' + money(valorFinal) +
+      '\nData: ' + dataEscolhida.toLocaleDateString('pt-BR')
+    );
+
+    if (!confirmado) return;
+
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = 'Salvando...';
+
+    try {
+
+      const { data: usuarioAuth, error: erroAuth } =
+        await supabaseClient.auth.getUser();
+
+      if (erroAuth || !usuarioAuth?.user?.id) {
+        throw new Error(
+          'Sua sessão expirou. Entre novamente no sistema.'
+        );
+      }
+
+      const { error } = await supabaseClient
+        .from('movimentacoes_caixa')
+        .insert({
+          tipo,
+          categoria,
+          descricao,
+          valor: valorFinal,
+          data: dataEscolhida.toISOString(),
+          responsavel_id: usuarioAuth.user.id
+        });
+
+      if (error) throw error;
+
+      alert('Movimentação registrada com sucesso!');
+
+      // Abrir automaticamente o mês do lançamento.
+      window.caixaMesSelecionado = partes[1];
+      window.caixaAnoSelecionado = partes[0];
+
+      if (state.page === 'cash' && el.isConnected) {
+        await renderCash(el);
+      }
+
+    } catch (erro) {
+
+      console.error(
+        'Erro ao salvar movimentação:',
+        erro
+      );
+
+      alert(
+        'Não foi possível salvar a movimentação.\n\n' +
+        (erro.message || 'Erro desconhecido.')
+      );
+
+    } finally {
+
+      if (botaoSalvar.isConnected) {
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = '💾 Salvar movimentação';
+      }
+    }
   });
 
   // =====================================
@@ -6156,7 +6593,7 @@ async function renderCash(el) {
   const inicioProximoMes = new Date(ano, mes, 1);
 
   // =====================================
-  // CONSULTAR SUPABASE
+  // CARREGAR MOVIMENTAÇÕES
   // =====================================
 
   try {
@@ -6190,51 +6627,46 @@ async function renderCash(el) {
 
       if (error) throw error;
 
-      const lote = data || [];
+      if (!consultaAtiva()) return;
 
+      const lote = data || [];
       movimentacoes.push(...lote);
 
-      if (lote.length < tamanhoPagina) {
-        break;
-      }
+      if (lote.length < tamanhoPagina) break;
 
       pagina++;
     }
 
-    // Evitar atualizar outra página ou outro período.
-    if (
-      state.page !== 'cash' ||
-      !el.isConnected ||
-      window.caixaMesSelecionado !== mes ||
-      window.caixaAnoSelecionado !== ano
-    ) {
-      return;
-    }
+    if (!consultaAtiva()) return;
 
     // =====================================
     // CALCULAR INDICADORES
     // =====================================
 
-    let entradas = 0;
-    let saidas = 0;
-    let gastosVeiculo = 0;
+    let entradasCentavos = 0;
+    let saidasCentavos = 0;
+    let veiculoCentavos = 0;
 
-    const categoriasVeiculo = [
-      'veiculo',
-      'veículo',
-      'despesas_veiculo',
-      'despesas com veiculo',
-      'despesas com veículo'
-    ];
+    function ehCategoriaVeiculo(categoria) {
+
+      const texto = String(
+        categoria || ''
+      ).trim().toLowerCase();
+
+      return (
+        texto === 'veiculo' ||
+        texto === 'veículo' ||
+        texto === 'despesas_veiculo' ||
+        texto === 'despesas com veiculo' ||
+        texto === 'despesas com veículo' ||
+        texto.startsWith('veiculo_')
+      );
+    }
 
     for (const movimento of movimentacoes) {
 
       const tipo = String(
         movimento.tipo || ''
-      ).trim().toLowerCase();
-
-      const categoria = String(
-        movimento.categoria || ''
       ).trim().toLowerCase();
 
       const valor = Number(movimento.valor);
@@ -6246,36 +6678,41 @@ async function renderCash(el) {
         continue;
       }
 
+      const centavos = Math.round(valor * 100);
+
       if (tipo === 'entrada') {
-        entradas += valor;
+        entradasCentavos += centavos;
       }
 
       if (tipo === 'saida' || tipo === 'saída') {
 
-        saidas += valor;
+        saidasCentavos += centavos;
 
-        if (categoriasVeiculo.includes(categoria)) {
-          gastosVeiculo += valor;
+        if (ehCategoriaVeiculo(movimento.categoria)) {
+          veiculoCentavos += centavos;
         }
       }
     }
 
-    const atualizarValor = (id, valor) => {
-      const campo = el.querySelector('#' + id);
-      if (campo) campo.textContent = money(valor);
-    };
+    campo('caixaEntradas').textContent =
+      money(entradasCentavos / 100);
 
-    atualizarValor('caixaEntradas', entradas);
-    atualizarValor('caixaSaidas', saidas);
-    atualizarValor('caixaSaldo', entradas - saidas);
-    atualizarValor('caixaGastosVeiculo', gastosVeiculo);
+    campo('caixaSaidas').textContent =
+      money(saidasCentavos / 100);
+
+    campo('caixaSaldo').textContent =
+      money(
+        (entradasCentavos - saidasCentavos) / 100
+      );
+
+    campo('caixaGastosVeiculo').textContent =
+      money(veiculoCentavos / 100);
 
     // =====================================
     // HISTÓRICO
     // =====================================
 
-    const historico =
-      el.querySelector('#caixaHistorico');
+    const historico = campo('caixaHistorico');
 
     if (!movimentacoes.length) {
 
@@ -6295,36 +6732,52 @@ async function renderCash(el) {
       return;
     }
 
+    const nomesCategorias = {
+      despesa_geral: 'Despesa geral',
+      outra_entrada: 'Outra entrada',
+      veiculo: 'Despesa do veículo',
+      veiculo_combustivel: 'Combustível',
+      veiculo_pneus: 'Pneus',
+      veiculo_manutencao: 'Manutenção / Oficina',
+      veiculo_oleo: 'Troca de óleo',
+      veiculo_documentacao: 'Documentação / Seguro',
+      veiculo_outros: 'Outras despesas do veículo'
+    };
+
     historico.innerHTML = movimentacoes.map(m => {
 
       const tipo = String(
         m.tipo || ''
       ).trim().toLowerCase();
 
-      const categoria = String(
-        m.categoria || ''
-      ).trim().toLowerCase();
-
       const entrada = tipo === 'entrada';
 
-      const ehVeiculo =
-        !entrada &&
-        categoriasVeiculo.includes(categoria);
-
-      const dataRegistro = m.data || m.created_at;
-
-      const dataObj = new Date(dataRegistro);
-
-      const dataFormatada =
-        !Number.isNaN(dataObj.getTime())
-          ? dataObj.toLocaleString('pt-BR')
-          : 'Data não informada';
+      const veiculo =
+        !entrada && ehCategoriaVeiculo(m.categoria);
 
       const titulo = entrada
         ? '🟢 Entrada'
-        : ehVeiculo
+        : veiculo
           ? '🚚 Despesa do veículo'
           : '🔴 Saída';
+
+      const categoria = String(
+        m.categoria || ''
+      );
+
+      const nomeCategoria =
+        nomesCategorias[categoria] ||
+        categoria ||
+        'Sem categoria';
+
+      const dataObj = new Date(
+        m.data || m.created_at
+      );
+
+      const dataFormatada =
+        Number.isNaN(dataObj.getTime())
+          ? 'Data não informada'
+          : dataObj.toLocaleString('pt-BR');
 
       return `
         <div class="card">
@@ -6337,15 +6790,20 @@ async function renderCash(el) {
             </strong>
           </div>
 
-          <p>
-            ${pcEscapar(
-              m.descricao || 'Sem descrição'
-            )}
+          <p style="margin:10px 0 5px">
+            ${pcEscapar(m.descricao || 'Sem descrição')}
           </p>
 
-          <span class="muted">
-            ${pcEscapar(dataFormatada)}
-          </span>
+          <div class="muted" style="font-size:13px">
+            ${pcEscapar(nomeCategoria)}
+          </div>
+
+          <div class="muted" style="
+            font-size:12px;
+            margin-top:7px;
+          ">
+            📅 ${pcEscapar(dataFormatada)}
+          </div>
 
         </div>
       `;
@@ -6355,18 +6813,11 @@ async function renderCash(el) {
   } catch (erro) {
 
     console.error(
-      'Erro ao consultar Caixa / Financeiro:',
+      'Erro ao carregar Caixa:',
       erro
     );
 
-    if (
-      state.page !== 'cash' ||
-      !el.isConnected ||
-      window.caixaMesSelecionado !== mes ||
-      window.caixaAnoSelecionado !== ano
-    ) {
-      return;
-    }
+    if (!consultaAtiva()) return;
 
     [
       'caixaEntradas',
@@ -6375,30 +6826,26 @@ async function renderCash(el) {
       'caixaGastosVeiculo'
     ].forEach(id => {
 
-      const campo = el.querySelector('#' + id);
+      const elemento = campo(id);
 
-      if (campo) {
-        campo.textContent = 'Indisponível';
+      if (elemento) {
+        elemento.textContent = 'Indisponível';
       }
     });
 
-    const historico =
-      el.querySelector('#caixaHistorico');
+    campo('caixaHistorico').innerHTML = `
+      <div class="card">
+        <strong>
+          Não foi possível carregar o Caixa.
+        </strong>
 
-    if (historico) {
-      historico.innerHTML = `
-        <div class="card">
-          <strong>
-            Não foi possível consultar o Caixa.
-          </strong>
-
-          <p class="muted">
-            Verifique a conexão e as permissões
-            no Supabase.
-          </p>
-        </div>
-      `;
-    }
+        <p class="muted">
+          ${pcEscapar(
+            erro.message || 'Erro na consulta.'
+          )}
+        </p>
+      </div>
+    `;
   }
 }
 
