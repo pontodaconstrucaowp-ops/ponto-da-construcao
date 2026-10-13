@@ -6236,9 +6236,9 @@ async function renderCash(el) {
     ">
       O resumo inclui entradas manuais, vendas concluídas
       em dinheiro, Pix ou cartão e pagamentos de dívidas.
-      O histórico abaixo ainda mostra somente os lançamentos
-      manuais. Não registre vendas ou recebimentos novamente
-      como entradas manuais.
+      O histórico reúne vendas à vista, recebimentos de dívidas
+      e lançamentos manuais. Não registre vendas ou recebimentos
+      novamente como entradas manuais.
     </p>
   `;
 
@@ -6791,24 +6791,6 @@ async function renderCash(el) {
 
     const historico = campo('caixaHistorico');
 
-    if (!movimentacoes.length) {
-
-      historico.innerHTML = `
-        <div class="card">
-          <strong>
-            Nenhuma movimentação neste período.
-          </strong>
-
-          <p class="muted">
-            Não existem lançamentos em
-            ${meses[mes - 1]} de ${ano}.
-          </p>
-        </div>
-      `;
-
-      return;
-    }
-
     const nomesCategorias = {
       despesa_geral: 'Despesa geral',
       outra_entrada: 'Outra entrada',
@@ -6821,70 +6803,109 @@ async function renderCash(el) {
       veiculo_outros: 'Outras despesas do veículo'
     };
 
-    historico.innerHTML = movimentacoes.map(m => {
+    const nomesPagamento = {
+      dinheiro: 'Dinheiro',
+      pix: 'Pix',
+      'cartão': 'Cartão',
+      cartao: 'Cartão'
+    };
 
-      const tipo = String(
-        m.tipo || ''
-      ).trim().toLowerCase();
+    // Apenas monta o histórico: não grava novos lançamentos.
+    // As mesmas vendas e recebimentos já compõem os indicadores.
+    const itensHistorico = [];
 
+    for (const m of movimentacoes) {
+      const tipo = String(m.tipo || '').trim().toLowerCase();
       const entrada = tipo === 'entrada';
+      const veiculo = !entrada && ehCategoriaVeiculo(m.categoria);
+      const categoria = String(m.categoria || '');
 
-      const veiculo =
-        !entrada && ehCategoriaVeiculo(m.categoria);
+      itensHistorico.push({
+        origem: 'manual',
+        id: m.id,
+        data: m.data || m.created_at,
+        titulo: entrada
+          ? '🟢 Entrada manual'
+          : veiculo
+            ? '🚚 Despesa do veículo'
+            : '🔴 Saída manual',
+        descricao: m.descricao || 'Sem descrição',
+        detalhe: nomesCategorias[categoria] || categoria || 'Sem categoria',
+        valor: Number(m.valor) || 0
+      });
+    }
 
-      const titulo = entrada
-        ? '🟢 Entrada'
-        : veiculo
-          ? '🚚 Despesa do veículo'
-          : '🔴 Saída';
+    for (const venda of vendasCaixa || []) {
+      const forma = String(venda.forma_pagamento || '').toLowerCase();
+      itensHistorico.push({
+        origem: 'venda',
+        id: venda.id,
+        data: venda.data,
+        titulo: '🟢 Venda recebida',
+        descricao: `Venda #${venda.id}`,
+        detalhe: `Pagamento: ${nomesPagamento[forma] || forma}`,
+        valor: Number(venda.valor_total) || 0
+      });
+    }
 
-      const categoria = String(
-        m.categoria || ''
-      );
+    for (const recebimento of recebimentosCaixa || []) {
+      const forma = String(recebimento.forma_pagamento || '').toLowerCase();
+      itensHistorico.push({
+        origem: 'recebimento',
+        id: recebimento.id,
+        data: recebimento.data_pagamento,
+        titulo: '💰 Recebimento de dívida',
+        descricao: `Pagamento da conta #${recebimento.conta_receber_id}`,
+        detalhe: `Pagamento: ${nomesPagamento[forma] || forma || 'Não informado'}`,
+        valor: Number(recebimento.valor) || 0
+      });
+    }
 
-      const nomeCategoria =
-        nomesCategorias[categoria] ||
-        categoria ||
-        'Sem categoria';
+    // Data decrescente; desempate estável por origem e ID.
+    itensHistorico.sort((a, b) => {
+      const tempoA = new Date(a.data).getTime() || 0;
+      const tempoB = new Date(b.data).getTime() || 0;
+      if (tempoA !== tempoB) return tempoB - tempoA;
+      const origem = a.origem.localeCompare(b.origem);
+      if (origem !== 0) return origem;
+      return Number(b.id) - Number(a.id);
+    });
 
-      const dataObj = new Date(
-        m.data || m.created_at
-      );
+    if (!itensHistorico.length) {
+      historico.innerHTML = `
+        <div class="card">
+          <strong>Nenhuma movimentação neste período.</strong>
+          <p class="muted">
+            Não existem lançamentos em ${meses[mes - 1]} de ${ano}.
+          </p>
+        </div>
+      `;
+      return;
+    }
 
-      const dataFormatada =
-        Number.isNaN(dataObj.getTime())
-          ? 'Data não informada'
-          : dataObj.toLocaleString('pt-BR');
+    historico.innerHTML = itensHistorico.map(item => {
+      const dataObj = new Date(item.data);
+      const dataFormatada = Number.isNaN(dataObj.getTime())
+        ? 'Data não informada'
+        : dataObj.toLocaleString('pt-BR');
 
       return `
         <div class="card">
-
           <div class="row">
-            <strong>${titulo}</strong>
-
-            <strong>
-              ${money(Number(m.valor) || 0)}
-            </strong>
+            <strong>${pcEscapar(item.titulo)}</strong>
+            <strong>${money(item.valor)}</strong>
           </div>
-
           <p style="margin:10px 0 5px">
-            ${pcEscapar(m.descricao || 'Sem descrição')}
+            ${pcEscapar(item.descricao)}
           </p>
-
           <div class="muted" style="font-size:13px">
-            ${pcEscapar(nomeCategoria)}
+            ${pcEscapar(item.detalhe)}
           </div>
-
-          <div class="muted" style="
-            font-size:12px;
-            margin-top:7px;
-          ">
+          <div class="muted" style="font-size:12px;margin-top:7px">
             📅 ${pcEscapar(dataFormatada)}
           </div>
-
         </div>
       `;
-
     }).join('');
 
   } catch (erro) {
@@ -6925,6 +6946,7 @@ async function renderCash(el) {
     `;
   }
 }
+
 
 
 function renderMore(el) {
