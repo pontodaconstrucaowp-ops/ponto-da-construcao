@@ -430,7 +430,7 @@ async function renderHome(el) {
 
       const { data, error } = await supabaseClient
         .from('vendas')
-        .select('id,data,valor_total')
+ .select('id,data,valor_total,status')
         .gte('data', inicioMes.toISOString())
         .lt('data', inicioProximoMes.toISOString())
         .order('data', { ascending: true })
