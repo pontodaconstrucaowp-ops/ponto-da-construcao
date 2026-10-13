@@ -7243,6 +7243,102 @@ function filterClients() {
 }
 
 
+async function excluirCliente(clienteId) {
+
+  const cliente = (window.currentClients || [])
+    .find(c => String(c.id) === String(clienteId));
+
+  if (!cliente) {
+    alert('Cliente não encontrado.');
+    return;
+  }
+
+  const confirmar = confirm(
+    `Deseja realmente excluir o cliente "${cliente.nome}"?\n\n` +
+    'Essa ação não poderá ser desfeita.'
+  );
+
+  if (!confirmar) return;
+
+  try {
+
+    // Verificar se o cliente possui vendas
+    const { data: vendas, error: erroVendas } =
+      await supabaseClient
+        .from('vendas')
+        .select('id')
+        .eq('cliente_id', clienteId)
+        .limit(1);
+
+    if (erroVendas) throw erroVendas;
+
+    if (vendas && vendas.length) {
+      alert(
+        'Este cliente possui vendas registradas e não pode ser excluído.'
+      );
+      return;
+    }
+
+    // Verificar se possui contas a receber
+    const { data: contas, error: erroContas } =
+      await supabaseClient
+        .from('contas_receber')
+        .select('id')
+        .eq('cliente_id', clienteId)
+        .limit(1);
+
+    if (erroContas) throw erroContas;
+
+    if (contas && contas.length) {
+      alert(
+        'Este cliente possui contas a receber e não pode ser excluído.'
+      );
+      return;
+    }
+
+    // Excluir cliente
+    const { data: excluido, error: erroExcluir } =
+      await supabaseClient
+        .from('clientes')
+        .delete()
+        .eq('id', clienteId)
+        .select('id');
+
+    if (erroExcluir) throw erroExcluir;
+
+    if (!excluido || !excluido.length) {
+      alert(
+        'Não foi possível confirmar a exclusão. Verifique suas permissões.'
+      );
+      return;
+    }
+
+    window.currentClients =
+      (window.currentClients || []).filter(
+        c => String(c.id) !== String(clienteId)
+      );
+
+    const painel = document.getElementById(
+      'pcHistoricoCliente'
+    );
+
+    if (painel) painel.innerHTML = '';
+
+    filterClients();
+
+    alert('Cliente excluído com sucesso!');
+
+  } catch (erro) {
+
+    console.error('Erro ao excluir cliente:', erro);
+
+    alert(
+      'Não foi possível excluir o cliente.\n\n' +
+      (erro.message || 'Erro desconhecido.')
+    );
+  }
+}
+
 async function saveClient() {
 
   const nome = document.getElementById('clientName')?.value.trim();
