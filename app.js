@@ -6530,8 +6530,8 @@ async function renderCash(el) {
       const [vendas, recebimentos, manuais] = await Promise.all([
         buscarFechamento('vendas', 'id,data,valor_total,forma_pagamento,status',
           'data', inicio.toISOString(), fim.toISOString(),
-          q => q.eq('status', 'concluida')
-            .in('forma_pagamento', ['dinheiro', 'pix', 'cartão', 'cartao']), idConsulta),
+q => q.in('status', ['concluida', 'cancelada'])
+  .in('forma_pagamento', ['dinheiro', 'pix', 'cartão', 'cartao']), idConsulta),
         buscarFechamento('recebimentos', 'id,valor,forma_pagamento,data_pagamento',
           'data_pagamento', inicio.toISOString(), fim.toISOString(), null, idConsulta),
         buscarFechamento('movimentacoes_caixa', 'id,tipo,categoria,descricao,valor,data',
