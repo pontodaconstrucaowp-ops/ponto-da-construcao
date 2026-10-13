@@ -8834,3 +8834,108 @@ async function saveClient() {
     document.getElementById('content')
   );
 }
+function abrirConfirmacaoCancelamento(vendaId) {
+
+  if (state.user?.tipo !== 'admin') {
+    alert('Somente administradores podem cancelar vendas.');
+    return;
+  }
+
+  const janelaExistente =
+    document.getElementById('janelaCancelamentoVenda');
+
+  if (janelaExistente) {
+    janelaExistente.remove();
+  }
+
+  const fundo = document.createElement('div');
+  fundo.id = 'janelaCancelamentoVenda';
+
+  fundo.style.cssText = `
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.65);
+    z-index:99999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    box-sizing:border-box;
+  `;
+
+  fundo.innerHTML = `
+    <div style="
+      background:#fff;
+      color:#222;
+      width:100%;
+      max-width:440px;
+      padding:24px;
+      border-radius:16px;
+      box-sizing:border-box;
+    ">
+
+      <h2 style="margin-top:0;">
+        Cancelar venda #${vendaId}
+      </h2>
+
+      <p style="color:#666;">
+        Esta operação poderá devolver produtos ao estoque
+        e registrar movimentações financeiras.
+      </p>
+
+      <label for="motivoCancelamentoVenda">
+        <strong>Motivo do cancelamento</strong>
+      </label>
+
+      <textarea
+        id="motivoCancelamentoVenda"
+        placeholder="Informe o motivo..."
+        style="
+          width:100%;
+          min-height:90px;
+          margin-top:8px;
+          padding:10px;
+          box-sizing:border-box;
+          border:1px solid #ccc;
+          border-radius:8px;
+        "
+      ></textarea>
+
+      <div style="margin-top:16px;">
+        <label>
+          <input
+            type="checkbox"
+            id="estornoCancelamentoVenda"
+          >
+          Confirmo que o valor já foi devolvido ao cliente,
+          quando houver pagamento antecipado.
+        </label>
+      </div>
+
+      <div style="
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        margin-top:24px;
+      ">
+
+        <button
+          class="btn secondary"
+          onclick="document.getElementById('janelaCancelamentoVenda').remove()"
+        >
+          Voltar
+        </button>
+
+        <button
+          class="btn primary"
+          onclick="alert('Janela em teste. Nenhuma venda foi cancelada.')"
+        >
+          Confirmar cancelamento
+        </button>
+
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(fundo);
+}
