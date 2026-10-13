@@ -1232,7 +1232,12 @@ async function renderSales(el) {
 
 
 
+
 function pcImprimirOrcamento() {
+
+  // =====================================
+  // VALIDAR CARRINHO
+  // =====================================
 
   if (!Array.isArray(state.cart) || !state.cart.length) {
     alert('Adicione pelo menos um material ao orçamento.');
@@ -1278,6 +1283,10 @@ function pcImprimirOrcamento() {
       )
     : 'Não informado';
 
+  // =====================================
+  // PREPARAR MATERIAIS
+  // =====================================
+
   const itens = [];
 
   for (const item of state.cart) {
@@ -1291,7 +1300,9 @@ function pcImprimirOrcamento() {
       !Number.isFinite(preco) ||
       preco < 0
     ) {
-      alert('Existe um material com quantidade ou preço inválido.');
+      alert(
+        'Existe um material com quantidade ou preço inválido.'
+      );
       return;
     }
 
@@ -1299,13 +1310,17 @@ function pcImprimirOrcamento() {
       nome: String(item.name || 'Material'),
       unidade: String(item.unit || 'unidade'),
       quantidade,
-      preco,
+
+      // Apenas o total da linha será exibido.
       subtotal:
         Math.round(quantidade * preco * 100) / 100
     });
   }
 
-  // A logo já existe na pasta pública do aplicativo.
+  // =====================================
+  // DADOS DA EMPRESA
+  // =====================================
+
   const logoEmpresa = new URL(
     'logo-ponto-construcao.png',
     document.baseURI
@@ -1313,7 +1328,8 @@ function pcImprimirOrcamento() {
 
   const telefoneEmpresa = '(91) 98894-2001';
 
-  // Abrir imediatamente ajuda a evitar bloqueio no celular.
+  // Abrir imediatamente ajuda a evitar
+  // bloqueio de pop-ups no celular.
   const janela = window.open('', '_blank');
 
   if (!janela) {
@@ -1323,35 +1339,52 @@ function pcImprimirOrcamento() {
     return;
   }
 
+  // =====================================
+  // LINHAS DA TABELA
+  // SEM PREÇO UNITÁRIO
+  // =====================================
+
   const linhas = itens.map(item => `
     <tr>
-      <td>
+
+      <td class="material">
         ${escapar(item.nome)}
-        <small>${escapar(item.unidade)}</small>
+
+        <small>
+          ${escapar(item.unidade)}
+        </small>
       </td>
+
       <td class="numero">
         ${formatarQuantidade(item.quantidade)}
       </td>
-      <td class="numero">
-        ${money(item.preco)}
-      </td>
+
       <td class="numero">
         ${money(item.subtotal)}
       </td>
+
     </tr>
   `).join('');
 
+  // =====================================
+  // DOCUMENTO DO ORÇAMENTO
+  // =====================================
+
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
 <meta charset="UTF-8">
+
 <meta
   name="viewport"
   content="width=device-width, initial-scale=1"
 >
+
 <title>Orçamento - Ponto da Construção</title>
 
 <style>
+
   * {
     box-sizing: border-box;
   }
@@ -1370,6 +1403,8 @@ function pcImprimirOrcamento() {
     padding: 25px;
     border-radius: 10px;
   }
+
+  /* CABEÇALHO */
 
   header {
     display: flex;
@@ -1409,10 +1444,14 @@ function pcImprimirOrcamento() {
     color: #172033;
   }
 
+  /* DADOS DO CLIENTE */
+
   .dados {
     line-height: 1.7;
     margin: 14px 0 20px;
   }
+
+  /* TABELA */
 
   table {
     border-collapse: collapse;
@@ -1431,6 +1470,10 @@ function pcImprimirOrcamento() {
     background: #eef3fb;
   }
 
+  .material {
+    width: 60%;
+  }
+
   td small {
     display: block;
     color: #64748b;
@@ -1441,6 +1484,8 @@ function pcImprimirOrcamento() {
     text-align: right;
     white-space: nowrap;
   }
+
+  /* TOTAIS */
 
   .totais {
     margin: 20px 0 0 auto;
@@ -1467,6 +1512,8 @@ function pcImprimirOrcamento() {
     font-size: 12px;
   }
 
+  /* BOTÃO DE IMPRESSÃO */
+
   .acoes {
     display: flex;
     gap: 10px;
@@ -1486,7 +1533,10 @@ function pcImprimirOrcamento() {
     cursor: pointer;
   }
 
+  /* CELULAR */
+
   @media (max-width: 600px) {
+
     main {
       margin: 0;
       padding: 15px;
@@ -1517,9 +1567,25 @@ function pcImprimirOrcamento() {
     th, td {
       padding: 8px 3px;
     }
+
+    .material {
+      width: 55%;
+    }
+
+    .final {
+      font-size: 16px;
+    }
+
+    .acoes button {
+      width: 100%;
+    }
+
   }
 
+  /* IMPRESSÃO */
+
   @media print {
+
     body {
       background: white;
     }
@@ -1538,21 +1604,28 @@ function pcImprimirOrcamento() {
       size: A4;
       margin: 12mm;
     }
+
   }
+
 </style>
 </head>
 
 <body>
 
 <div class="acoes">
+
   <button onclick="window.print()">
     🖨️ Imprimir / Salvar PDF
   </button>
+
 </div>
 
 <main>
 
+  <!-- LOGO E DADOS DA EMPRESA -->
+
   <header>
+
     <img
       class="logo"
       src="${logoEmpresa}"
@@ -1560,7 +1633,10 @@ function pcImprimirOrcamento() {
     >
 
     <div class="empresa">
-      <h1>PONTO DA CONSTRUÇÃO</h1>
+
+      <h1>
+        PONTO DA CONSTRUÇÃO
+      </h1>
 
       <div class="sub">
         ORÇAMENTO DE MATERIAIS
@@ -1569,32 +1645,50 @@ function pcImprimirOrcamento() {
       <div class="telefone">
         WhatsApp: ${telefoneEmpresa}
       </div>
+
     </div>
+
   </header>
 
+  <!-- CLIENTE E DATA -->
+
   <div class="dados">
+
     <strong>Cliente:</strong>
     ${escapar(nomeCliente)}
+
     <br>
 
     <strong>Emissão:</strong>
     ${escapar(new Date().toLocaleString('pt-BR'))}
+
   </div>
 
+  <!-- MATERIAIS -->
+
   <table>
+
     <thead>
       <tr>
         <th>Material</th>
-        <th class="numero">Qtd.</th>
-        <th class="numero">Unitário</th>
-        <th class="numero">Subtotal</th>
+
+        <th class="numero">
+          Qtd.
+        </th>
+
+        <th class="numero">
+          Total
+        </th>
       </tr>
     </thead>
 
     <tbody>
       ${linhas}
     </tbody>
+
   </table>
+
+  <!-- TOTAIS -->
 
   <div class="totais">
 
@@ -1609,16 +1703,26 @@ function pcImprimirOrcamento() {
     </div>
 
     <div class="final">
-      <span>Total do orçamento</span>
-      <span>${money(totalFinal)}</span>
+
+      <span>
+        Total do orçamento
+      </span>
+
+      <span>
+        ${money(totalFinal)}
+      </span>
+
     </div>
 
   </div>
 
+  <!-- OBSERVAÇÃO -->
+
   <p class="aviso">
     Este documento é apenas um orçamento.
-    Não é comprovante de pagamento, venda ou reserva
-    de estoque. Valores sujeitos a confirmação.
+    Não é comprovante de pagamento,
+    venda ou reserva de estoque.
+    Valores sujeitos a confirmação.
   </p>
 
 </main>
@@ -1626,11 +1730,17 @@ function pcImprimirOrcamento() {
 </body>
 </html>`;
 
+  // =====================================
+  // ABRIR ORÇAMENTO
+  // =====================================
+
   janela.document.open();
   janela.document.write(html);
   janela.document.close();
   janela.focus();
+
 }
+
 
 
 function pcEscapar(valor) {
