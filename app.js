@@ -5934,6 +5934,228 @@ async function carregarRelatorio(){
     }).join('');
 }
 
+
+async function renderCash(el) {
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  if (!ehAdministrador) {
+    el.innerHTML = `
+      <div class="card">
+        <h2>Acesso restrito</h2>
+        <p class="muted">
+          O Caixa / Financeiro é exclusivo
+          dos administradores.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="section-title">
+      <h2>💰 Caixa / Financeiro</h2>
+    </div>
+
+    <p class="muted">
+      Controle de movimentações financeiras.
+    </p>
+
+    <div class="grid stats">
+
+      <div class="card stat">
+        <div class="label">Entradas manuais</div>
+        <div class="value" id="caixaEntradas">
+          Carregando...
+        </div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">Saídas manuais</div>
+        <div class="value" id="caixaSaidas">
+          Carregando...
+        </div>
+      </div>
+
+      <div class="card stat">
+        <div class="label">Saldo das movimentações</div>
+        <div class="value" id="caixaSaldo">
+          Carregando...
+        </div>
+      </div>
+
+    </div>
+
+    <div class="section-title">
+      <h2>📋 Histórico de movimentações</h2>
+    </div>
+
+    <div id="caixaHistorico" class="list">
+      <div class="card">Carregando histórico...</div>
+    </div>
+
+    <p class="muted" style="margin-top:14px;font-size:12px">
+      Nesta primeira etapa, os valores consideram
+      somente a tabela de movimentações manuais.
+      As vendas e os recebimentos serão integrados
+      nas próximas etapas.
+    </p>
+  `;
+
+  try {
+
+    const movimentacoes = [];
+    const tamanhoPagina = 1000;
+    let pagina = 0;
+
+    while (true) {
+
+      const inicio = pagina * tamanhoPagina;
+      const fim = inicio + tamanhoPagina - 1;
+
+      const { data, error } = await supabaseClient
+        .from('movimentacoes_caixa')
+        .select('id,tipo,descricao,valor,data,created_at')
+        .order('id', { ascending: false })
+        .range(inicio, fim);
+
+      if (error) throw error;
+
+      const lote = data || [];
+      movimentacoes.push(...lote);
+
+      if (lote.length < tamanhoPagina) break;
+
+      pagina++;
+    }
+
+    if (state.page !== 'cash' || !el.isConnected) {
+      return;
+    }
+
+    let entradas = 0;
+    let saidas = 0;
+
+    for (const movimento of movimentacoes) {
+
+      const tipo = String(
+        movimento.tipo || ''
+      ).trim().toLowerCase();
+
+      const valor = Number(movimento.valor);
+
+      if (!Number.isFinite(valor) || valor <= 0) {
+        continue;
+      }
+
+      if (tipo === 'entrada') {
+        entradas += valor;
+      } else if (tipo === 'saida' || tipo === 'saída') {
+        saidas += valor;
+      }
+    }
+
+    document.getElementById('caixaEntradas').textContent =
+      money(entradas);
+
+    document.getElementById('caixaSaidas').textContent =
+      money(saidas);
+
+    document.getElementById('caixaSaldo').textContent =
+      money(entradas - saidas);
+
+    const historico =
+      document.getElementById('caixaHistorico');
+
+    if (!movimentacoes.length) {
+      historico.innerHTML = `
+        <div class="card">
+          <strong>Nenhuma movimentação registrada.</strong>
+          <p class="muted">
+            Os lançamentos aparecerão aqui
+            quando forem cadastrados.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    historico.innerHTML = movimentacoes.map(m => {
+
+      const tipo = String(m.tipo || '')
+        .trim()
+        .toLowerCase();
+
+      const entrada = tipo === 'entrada';
+
+      const dataMovimento = m.data || m.created_at;
+
+      const dataFormatada = dataMovimento
+        ? new Date(dataMovimento).toLocaleString('pt-BR')
+        : 'Data não informada';
+
+      return `
+        <div class="card">
+
+          <div class="row">
+            <strong>
+              ${entrada ? '🟢 Entrada' : '🔴 Saída / Outro'}
+            </strong>
+
+            <strong>
+              ${money(Number(m.valor) || 0)}
+            </strong>
+          </div>
+
+          <p>
+            ${pcEscapar(m.descricao || 'Sem descrição')}
+          </p>
+
+          <span class="muted">
+            ${pcEscapar(dataFormatada)}
+          </span>
+
+        </div>
+      `;
+
+    }).join('');
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao carregar o Caixa:',
+      erro
+    );
+
+    if (state.page !== 'cash' || !el.isConnected) {
+      return;
+    }
+
+    const historico =
+      document.getElementById('caixaHistorico');
+
+    if (historico) {
+      historico.innerHTML = `
+        <div class="card">
+          <strong>Não foi possível carregar o Caixa.</strong>
+          <p class="muted">
+            Verifique as permissões e a conexão
+            com o Supabase.
+          </p>
+        </div>
+      `;
+    }
+
+    ['caixaEntradas', 'caixaSaidas', 'caixaSaldo']
+      .forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) campo.textContent = 'Indisponível';
+      });
+  }
+}
+
 function renderMore(el) {
 
   const ehAdministrador =
