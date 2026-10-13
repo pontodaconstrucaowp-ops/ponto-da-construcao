@@ -6167,7 +6167,7 @@ async function renderCash(el) {
       </div>
 
       <div class="card stat">
-        <div class="label">Saídas manuais</div>
+ <div class="label">Total de saídas</div>
         <div class="value" id="caixaSaidas">
           Carregando...
         </div>
