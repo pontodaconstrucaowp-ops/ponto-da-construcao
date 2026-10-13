@@ -5926,22 +5926,23 @@ async function carregarRelatorio(){
     mapaClientes[cliente.id] = cliente;
   });
 
-const vendasValidas = vendas.filter(
-  venda => venda.status === 'concluida'
-);
+  const vendasValidas = vendas.filter(
+    venda => venda.status === 'concluida'
+  );
 
-const totalVendido = vendasValidas.reduce(
-  (soma, venda) =>
-    soma + Number(venda.valor_total || 0),
-  0
-);
+  const totalVendido = vendasValidas.reduce(
+    (soma, venda) =>
+      soma + Number(venda.valor_total || 0),
+    0
+  );
+
   document.getElementById('reportSummary').innerHTML = `
     <div class="card" style="margin-bottom:15px;">
 
-<div class="row">
-  <span>Quantidade de vendas</span>
-  <strong>${vendasValidas.length}</strong>
-</div>
+      <div class="row">
+        <span>Quantidade de vendas</span>
+        <strong>${vendasValidas.length}</strong>
+      </div>
 
       <div class="row">
         <span>Total vendido</span>
@@ -6009,15 +6010,20 @@ const totalVendido = vendasValidas.reduce(
             >
               Imprimir
             </button>
-${state.user?.tipo === 'admin' && venda.status === 'concluida' ? `
-  <button
-    class="btn secondary"
-    style="color:#b91c1c;"
-onclick="abrirConfirmacaoCancelamento(${venda.id}, '${formaPagamento}')"
-  >
-    Cancelar venda
-  </button>
-` : ''}
+
+            ${state.user?.tipo === 'admin' &&
+              venda.status === 'concluida' ? `
+
+              <button
+                class="btn secondary"
+                style="color:#b91c1c;"
+                onclick="abrirConfirmacaoCancelamento(${venda.id}, '${formaPagamento.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+              >
+                Cancelar venda
+              </button>
+
+            ` : ''}
+
           </div>
 
         </div>
