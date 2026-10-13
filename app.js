@@ -8973,8 +8973,19 @@ function validarCancelamentoVendaTeste() {
     return;
   }
 
+  const campoEstorno =
+    document.getElementById('estornoCancelamentoVenda');
+
+  // Se a confirmação aparece, ela precisa estar marcada.
+  if (campoEstorno && !campoEstorno.checked) {
+    alert(
+      'Antes de continuar, confirme que o valor já foi devolvido ao cliente.'
+    );
+    return;
+  }
+
   alert(
-    'Validação realizada com sucesso!\n\n' +
+    'Todas as validações foram realizadas com sucesso!\n\n' +
     'Nenhuma venda foi cancelada. Estamos em modo de teste.'
   );
 }
