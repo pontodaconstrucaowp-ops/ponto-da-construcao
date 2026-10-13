@@ -6564,9 +6564,14 @@ q => q.in('status', ['concluida', 'cancelada'])
         const centavos = fechamentoDinheiro(mov.valor);
         if (tipo === 'entrada') {
           dados.manuaisEntrada += centavos;
-        } else if (tipo === 'saida' || tipo === 'saída') {
-          dados.despesas += centavos;
-          const categoria = String(mov.categoria || '').trim().toLowerCase();
+} else if (tipo === 'saida' || tipo === 'saída') {
+  const categoria = String(mov.categoria || '').trim().toLowerCase();
+
+  if (categoria === 'estorno_venda') {
+    dados.estornos += centavos;
+  } else {
+    dados.despesas += centavos;
+  }
           if (categoria.startsWith('veiculo_') ||
               ['veiculo', 'veículo', 'despesas_veiculo',
                'despesas com veiculo', 'despesas com veículo'].includes(categoria)) {
@@ -6577,7 +6582,8 @@ q => q.in('status', ['concluida', 'cancelada'])
       dados.totalVendas = Object.values(dados.vendas).reduce((a,b)=>a+b,0);
       dados.totalDividas = Object.values(dados.dividas).reduce((a,b)=>a+b,0);
       dados.entradas = dados.totalVendas + dados.totalDividas + dados.manuaisEntrada;
-      dados.saldo = dados.entradas - dados.despesas;
+dados.totalSaidas = dados.despesas + dados.estornos;
+dados.saldo = dados.entradas - dados.totalSaidas;
       const valor = centavos => money(centavos / 100);
       const linha = (rotulo, centavos) => `
         <div style="display:flex;justify-content:space-between;gap:12px;
@@ -6599,11 +6605,12 @@ q => q.in('status', ['concluida', 'cancelada'])
         ${linha('Subtotal de dívidas', dados.totalDividas)}
         <br><strong>Outras movimentações</strong>
         ${linha('Entradas manuais', dados.manuaisEntrada)}
-        ${linha('Despesas do dia', dados.despesas)}
-        ${linha('Incluído nas despesas: veículos', dados.veiculos)}
+${linha('Despesas do dia', dados.despesas)}
+${linha('Incluído nas despesas: veículos', dados.veiculos)}
+${linha('Estornos de vendas', dados.estornos)}
         <div style="margin-top:14px;padding:12px;background:#eef5ff;border-radius:10px">
           ${linha('TOTAL DE ENTRADAS', dados.entradas)}
-          ${linha('TOTAL DE SAÍDAS', dados.despesas)}
+${linha('TOTAL DE SAÍDAS', dados.totalSaidas)}
           ${linha('SALDO DO DIA', dados.saldo)}
         </div>
         <p class="muted" style="font-size:12px;margin-top:12px">
