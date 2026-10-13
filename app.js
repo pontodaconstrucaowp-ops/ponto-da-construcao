@@ -6544,7 +6544,7 @@ q => q.in('status', ['concluida', 'cancelada'])
         data: inicio.toLocaleDateString('pt-BR'),
         vendas: { dinheiro: 0, pix: 0, cartao: 0 },
         dividas: { dinheiro: 0, pix: 0, cartao: 0, outros: 0 },
-        manuaisEntrada: 0, despesas: 0, veiculos: 0,
+ manuaisEntrada: 0, despesas: 0, veiculos: 0, estornos: 0,
         quantidadeVendas: vendas.length,
         quantidadeRecebimentos: recebimentos.length,
         quantidadeManuais: manuais.length
