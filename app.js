@@ -1231,9 +1231,9 @@ async function renderSales(el) {
 }
 
 
+
 function pcImprimirOrcamento() {
 
-  // Orçamento não registra venda, não altera estoque nem Caixa.
   if (!Array.isArray(state.cart) || !state.cart.length) {
     alert('Adicione pelo menos um material ao orçamento.');
     return;
@@ -1291,9 +1291,7 @@ function pcImprimirOrcamento() {
       !Number.isFinite(preco) ||
       preco < 0
     ) {
-      alert(
-        'Existe um material com quantidade ou preço inválido.'
-      );
+      alert('Existe um material com quantidade ou preço inválido.');
       return;
     }
 
@@ -1305,10 +1303,17 @@ function pcImprimirOrcamento() {
       subtotal:
         Math.round(quantidade * preco * 100) / 100
     });
-
   }
 
-  // Abrir imediatamente ajuda a evitar bloqueio de pop-ups.
+  // A logo já existe na pasta pública do aplicativo.
+  const logoEmpresa = new URL(
+    'logo-ponto-construcao.png',
+    document.baseURI
+  ).href;
+
+  const telefoneEmpresa = '(91) 98894-2001';
+
+  // Abrir imediatamente ajuda a evitar bloqueio no celular.
   const janela = window.open('', '_blank');
 
   if (!janela) {
@@ -1324,15 +1329,12 @@ function pcImprimirOrcamento() {
         ${escapar(item.nome)}
         <small>${escapar(item.unidade)}</small>
       </td>
-
       <td class="numero">
         ${formatarQuantidade(item.quantidade)}
       </td>
-
       <td class="numero">
         ${money(item.preco)}
       </td>
-
       <td class="numero">
         ${money(item.subtotal)}
       </td>
@@ -1370,9 +1372,23 @@ function pcImprimirOrcamento() {
   }
 
   header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
     border-bottom: 2px solid #123f87;
-    padding-bottom: 15px;
+    padding-bottom: 16px;
     margin-bottom: 18px;
+  }
+
+  .logo {
+    width: 90px;
+    max-height: 95px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+
+  .empresa {
+    min-width: 0;
   }
 
   h1 {
@@ -1384,6 +1400,13 @@ function pcImprimirOrcamento() {
   .sub {
     color: #64748b;
     margin-top: 5px;
+  }
+
+  .telefone {
+    margin-top: 7px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #172033;
   }
 
   .dados {
@@ -1460,14 +1483,31 @@ function pcImprimirOrcamento() {
     padding: 14px 20px;
     font-weight: bold;
     font-size: 15px;
+    cursor: pointer;
   }
 
   @media (max-width: 600px) {
-
     main {
       margin: 0;
       padding: 15px;
       border-radius: 0;
+    }
+
+    header {
+      gap: 10px;
+    }
+
+    .logo {
+      width: 65px;
+      max-height: 75px;
+    }
+
+    h1 {
+      font-size: 18px;
+    }
+
+    .telefone {
+      font-size: 12px;
     }
 
     table {
@@ -1477,15 +1517,9 @@ function pcImprimirOrcamento() {
     th, td {
       padding: 8px 3px;
     }
-
-    h1 {
-      font-size: 20px;
-    }
-
   }
 
   @media print {
-
     body {
       background: white;
     }
@@ -1501,9 +1535,9 @@ function pcImprimirOrcamento() {
     }
 
     @page {
+      size: A4;
       margin: 12mm;
     }
-
   }
 </style>
 </head>
@@ -1519,9 +1553,22 @@ function pcImprimirOrcamento() {
 <main>
 
   <header>
-    <h1>PONTO DA CONSTRUÇÃO</h1>
-    <div class="sub">
-      ORÇAMENTO DE MATERIAIS
+    <img
+      class="logo"
+      src="${logoEmpresa}"
+      alt="Logo Ponto da Construção"
+    >
+
+    <div class="empresa">
+      <h1>PONTO DA CONSTRUÇÃO</h1>
+
+      <div class="sub">
+        ORÇAMENTO DE MATERIAIS
+      </div>
+
+      <div class="telefone">
+        WhatsApp: ${telefoneEmpresa}
+      </div>
     </div>
   </header>
 
@@ -1583,7 +1630,6 @@ function pcImprimirOrcamento() {
   janela.document.write(html);
   janela.document.close();
   janela.focus();
-
 }
 
 
