@@ -6013,7 +6013,7 @@ ${state.user?.tipo === 'admin' && venda.status === 'concluida' ? `
   <button
     class="btn secondary"
     style="color:#b91c1c;"
-onclick="abrirConfirmacaoCancelamento(${venda.id})"
+onclick="abrirConfirmacaoCancelamento(${venda.id}, '${formaPagamento}')"
   >
     Cancelar venda
   </button>
