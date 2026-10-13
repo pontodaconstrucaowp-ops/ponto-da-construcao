@@ -3720,6 +3720,7 @@ async function confirmSale(){
   navigate('home');
 }
 
+
 async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
   if (!vendaId) {
@@ -3728,7 +3729,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
   }
 
   // ==============================
-  // VENDA
+  // CARREGAR VENDA
   // ==============================
 
   const { data: venda, error: vendaError } =
@@ -3745,52 +3746,37 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
       .eq('id', vendaId)
       .maybeSingle();
 
-  if (vendaError) {
-    console.error('ERRO AO CARREGAR VENDA:', vendaError);
-
+  if (vendaError || !venda) {
     alert(
-      'Não foi possível carregar a venda:\n\n' +
-      vendaError.message
+      vendaError?.message ||
+      'Venda não encontrada.'
     );
-
-    return;
-  }
-
-  if (!venda) {
-    alert('A venda nº ' + vendaId + ' não foi encontrada.');
     return;
   }
 
   // ==============================
-  // CLIENTE
+  // CARREGAR CLIENTE
   // ==============================
 
   let cliente = {};
 
   if (venda.cliente_id) {
-    const { data: clienteData, error: clienteError } =
-      await supabaseClient
-        .from('clientes')
-        .select(`
-          nome,
-          telefone,
-          endereço
-        `)
-        .eq('id', venda.cliente_id)
-        .maybeSingle();
 
-    if (clienteError) {
-      console.error(
-        'ERRO AO CARREGAR CLIENTE:',
-        clienteError
-      );
-    } else if (clienteData) {
-      cliente = clienteData;
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .select('nome,telefone,endereço')
+      .eq('id', venda.cliente_id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Erro ao carregar cliente:', error);
+    } else {
+      cliente = data || {};
     }
   }
 
   // ==============================
-  // ITENS — INCLUI A UNIDADE VENDIDA
+  // CARREGAR ITENS
   // ==============================
 
   const { data: itens, error: itensError } =
@@ -3805,75 +3791,71 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
       .eq('vendas_id', vendaId);
 
   if (itensError) {
-    console.error('ERRO AO CARREGAR ITENS:', itensError);
-
     alert(
-      'Não foi possível carregar os itens da venda:\n\n' +
+      'Não foi possível carregar os itens:\n' +
       itensError.message
     );
-
     return;
   }
 
   // ==============================
-  // PRODUTOS
+  // CARREGAR PRODUTOS
   // ==============================
 
-  const produtoIds =
-    (itens || [])
-      .map(item => item.produtos_id)
-      .filter(Boolean);
+  const produtoIds = [
+    ...new Set(
+      (itens || [])
+        .map(item => item.produtos_id)
+        .filter(id => id != null)
+    )
+  ];
 
   let produtos = [];
 
   if (produtoIds.length) {
-    const { data: produtosData, error: produtosError } =
-      await supabaseClient
-        .from('produtos')
-        .select(`
-          id,
-          nome,
-          unidade
-        `)
-        .in('id', produtoIds);
 
-    if (produtosError) {
-      console.error(
-        'ERRO AO CARREGAR PRODUTOS:',
-        produtosError
-      );
+    const { data, error } = await supabaseClient
+      .from('produtos')
+      .select('id,nome,unidade')
+      .in('id', produtoIds);
 
+    if (error) {
       alert(
-        'Não foi possível carregar os produtos:\n\n' +
-        produtosError.message
+        'Não foi possível carregar os produtos:\n' +
+        error.message
       );
-
       return;
     }
 
-    produtos = produtosData || [];
+    produtos = data || [];
   }
 
   // ==============================
-  // FORMATADORES
+  // INFORMAÇÕES DA EMPRESA
   // ==============================
 
-  const formatarQuantidade = (quantidade) => {
-    const numero = Number(quantidade);
+  const logoEmpresa = new URL(
+    'logo-ponto-construcao.png',
+    document.baseURI
+  ).href;
 
-    if (Number.isInteger(numero)) {
-      return String(numero);
-    }
+  const telefoneEmpresa = '(91) 98894-2001';
 
-    return numero
-      .toFixed(3)
-      .replace(/\.?0+$/, '');
+  const escapar = valor =>
+    pcEscapar(String(valor ?? ''));
+
+  const formatarQuantidade = valor => {
+    const numero = Number(valor);
+
+    if (!Number.isFinite(numero)) return '0';
+
+    return numero.toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
   };
 
-  const formatarUnidade = (unidade) => {
-
+  const formatarUnidade = unidade => {
     const mapa = {
-
       'unidade': 'Unidade',
       'dúzia': 'Dúzia',
       'duzia': 'Dúzia',
@@ -3883,941 +3865,504 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
       'carrada': 'Carrada',
       'balde': 'Balde',
       'saco': 'Saco'
-
     };
 
     return mapa[unidade] || unidade || '';
-
   };
 
+  // ==============================
+  // MONTAR LINHAS DOS PRODUTOS
+  // ==============================
+
+  const linhasItens = (itens || []).map(item => {
+
+    const produto = produtos.find(
+      p => Number(p.id) === Number(item.produtos_id)
+    ) || {};
+
+    const quantidade = formatarQuantidade(
+      item.quantidade
+    );
+
+    const unidade = formatarUnidade(
+      item.unidade_venda || produto.unidade
+    );
+
+    return `
+      <tr>
+        <td class="material">
+          ${escapar(produto.nome || 'Produto')}
+        </td>
+
+        <td class="quantidade">
+          ${escapar(quantidade)}
+          <span>${escapar(unidade)}</span>
+        </td>
+
+        <td class="valor">
+          ${money(Number(item.subtotal || 0))}
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   // ==============================
-  // LINHAS DOS PRODUTOS
+  // VALORES
   // ==============================
 
-  const linhasItens =
-    (itens || []).map(item => {
+  const subtotalItens = (itens || []).reduce(
+    (soma, item) =>
+      soma + Number(item.subtotal || 0),
+    0
+  );
 
-      const produto =
-        produtos.find(
-          p => Number(p.id) === Number(item.produtos_id)
-        ) || {};
+  const totalFinal = Number(venda.valor_total || 0);
 
-      const quantidade =
-        formatarQuantidade(item.quantidade);
-
-      const unidade =
-  formatarUnidade(item.unidade_venda || produto.unidade);
-
-      return `
-
-        <tr>
-
-          <td class="material">
-            ${produto.nome || 'Produto'}
-          </td>
-
-          <td class="quantidade">
-            ${quantidade}
-            <span>${unidade}</span>
-          </td>
-
-          <td class="valor">
-            ${money(Number(item.subtotal || 0))}
-          </td>
-
-        </tr>
-
-      `;
-
-    }).join('');
-
+  const valorAbatido = Math.max(
+    0,
+    subtotalItens - totalFinal
+  );
 
   // ==============================
   // TIPO DE DOCUMENTO
   // ==============================
 
-  const isOrcamento =
-    tipo === 'orcamento';
+  const isOrcamento = tipo === 'orcamento';
 
-  const titulo =
-    isOrcamento
-      ? 'ORÇAMENTO'
-      : 'COMPROVANTE DE VENDA';
+  const titulo = isOrcamento
+    ? 'ORÇAMENTO'
+    : 'COMPROVANTE DE VENDA';
 
+  const carimbo = isOrcamento
+    ? ''
+    : '<div class="carimbo-pago">PAGO</div>';
 
-  const carimbo =
-    isOrcamento
-      ? ''
-      : `
+  const dataVenda = venda.data
+    ? new Date(venda.data).toLocaleString('pt-BR')
+    : 'Não informada';
 
-        <div class="carimbo-pago">
-          PAGO
+  // ==============================
+  // CABEÇALHO COMPARTILHADO
+  // ==============================
+
+  const cabecalho = `
+    <div class="cabecalho">
+
+      <img
+        class="logo"
+        src="${logoEmpresa}"
+        alt="Logo Ponto da Construção"
+      >
+
+      <div class="empresa">
+        PONTO DA CONSTRUÇÃO
+      </div>
+
+      <div class="subtitulo">
+        MATERIAIS DE CONSTRUÇÃO
+      </div>
+
+      <div class="dados-empresa">
+        Telefone / WhatsApp:
+        <strong>${telefoneEmpresa}</strong>
+      </div>
+
+    </div>
+  `;
+
+  // ==============================
+  // CONTEÚDO DE CADA VIA
+  // ==============================
+
+  function montarVia(nomeVia, rodape) {
+
+    return `
+      <div class="via">
+
+        <div class="via-titulo">
+          ${escapar(nomeVia)}
         </div>
 
-      `;
+        ${carimbo}
 
+        ${cabecalho}
+
+        ${
+          isOrcamento
+            ? '<div class="orcamento">ORÇAMENTO</div>'
+            : ''
+        }
+
+        <div class="identificacao">
+
+          <div>
+            Venda nº:
+            <strong>${escapar(venda.id)}</strong>
+          </div>
+
+          <div>
+            Data:
+            <strong>${escapar(dataVenda)}</strong>
+          </div>
+
+        </div>
+
+        <div class="cliente">
+
+          <strong>Cliente:</strong>
+          ${escapar(cliente.nome || 'Não informado')}
+
+          ${
+            cliente.telefone
+              ? `
+                &nbsp; | &nbsp;
+                <strong>Tel.:</strong>
+                ${escapar(cliente.telefone)}
+              `
+              : ''
+          }
+
+          ${
+            cliente.endereço
+              ? `
+                <br>
+                <strong>End.:</strong>
+                ${escapar(cliente.endereço)}
+              `
+              : ''
+          }
+
+        </div>
+
+        <table class="tabela">
+
+          <thead>
+            <tr>
+              <th>MATERIAL</th>
+              <th>QUANTIDADE</th>
+              <th style="text-align:right">
+                TOTAL
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${linhasItens}
+          </tbody>
+
+        </table>
+
+        <div class="total">
+
+          <span>TOTAL GERAL:</span>
+          <span>${money(totalFinal)}</span>
+
+        </div>
+
+        <div class="abatido">
+
+          <span>VALOR ABATIDO:</span>
+          <span>${money(valorAbatido)}</span>
+
+        </div>
+
+        ${
+          !isOrcamento
+            ? `
+              <div class="pagamento">
+                <strong>Forma de pagamento:</strong>
+                ${escapar(venda.forma_pagamento || '-')}
+              </div>
+            `
+            : ''
+        }
+
+        <div class="rodape">
+          ${escapar(rodape)}
+        </div>
+
+      </div>
+    `;
+  }
 
   // ==============================
-  // HTML DA IMPRESSÃO
+  // DOCUMENTO COMPLETO
   // ==============================
 
-// ==============================
-// VALOR ABATIDO
-// ==============================
-
-const subtotalItens = (itens || []).reduce(
-  (s, item) => s + Number(item.subtotal || 0),
-  0
-);
-
-const totalFinal = Number(venda.valor_total || 0);
-
-const valorAbatido = Math.max(
-  0,
-  subtotalItens - totalFinal
-);
-  const html = `
-
-<!DOCTYPE html>
-
+  const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
-
 <meta charset="UTF-8">
 
-<title>
-  ${titulo} - Venda ${venda.id}
-</title>
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1"
+>
 
+<title>
+  ${titulo} - Venda ${escapar(venda.id)}
+</title>
 
 <style>
 
-*{
-  box-sizing:border-box;
-}
-
-
-body{
-
-  margin:0;
-
-  padding:15px;
-
-  background:#eee;
-
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
-
-  color:#111;
-
-}
-
-
-.folha{
-
-  width:210mm;
-
-  min-height:297mm;
-
-  margin:0 auto;
-
-  background:#fff;
-
-  padding:10mm;
-
-}
-
-
-.via{
-
-  position:relative;
-
-  min-height:125mm;
-
-}
-
-
-.cabecalho{
-
-  position:relative;
-
-  text-align:center;
-
-  border-bottom:1px solid #222;
-
-  padding-bottom:8px;
-
-  margin-bottom:8px;
-
-}
-
-
-.logo{
-
-  width:85px;
-
-  height:auto;
-
-  margin-bottom:5px;
-
-}
-
-
-.empresa{
-
-  font-size:22px;
-
-  font-weight:bold;
-
-}
-
-
-.subtitulo{
-
-  font-size:11px;
-
-  margin-top:3px;
-
-}
-
-
-.dados-empresa{
-
-  font-size:10px;
-
-  margin-top:4px;
-
-}
-
-
-.via-titulo{
-
-  text-align:right;
-
-  font-size:10px;
-
-  font-weight:bold;
-
-  margin-bottom:3px;
-
-}
-
-
-.identificacao{
-
-  display:flex;
-
-  justify-content:space-between;
-
-  gap:10px;
-
-  font-size:11px;
-
-  margin-bottom:8px;
-
-}
-
-
-.cliente{
-
-  font-size:11px;
-
-  margin-bottom:9px;
-
-  border-bottom:1px solid #aaa;
-
-  padding-bottom:6px;
-
-}
-
-
-.tabela{
-
-  width:100%;
-
-  border-collapse:collapse;
-
-  font-size:11px;
-
-}
-
-
-.tabela th{
-
-  border-bottom:1px solid #222;
-
-  padding:4px;
-
-  text-align:left;
-
-}
-
-
-.tabela td{
-
-  padding:5px 4px;
-
-  border-bottom:1px solid #ddd;
-
-}
-
-
-.material{
-
-  width:55%;
-
-  text-transform:uppercase;
-
-  font-weight:600;
-
-}
-
-
-.quantidade{
-
-  width:20%;
-
-  text-align:center;
-
-}
-
-
-.quantidade span{
-
-  font-size:9px;
-
-  display:block;
-
-  color:#555;
-
-}
-
-
-.valor{
-
-  width:25%;
-
-  text-align:right;
-
-  font-weight:bold;
-
-}
-
-
-.total{
-
-  display:flex;
-
-  justify-content:space-between;
-
-  border-top:2px solid #222;
-
-  margin-top:8px;
-
-  padding-top:7px;
-
-  font-size:15px;
-
-  font-weight:bold;
-
-}
-
-
-.abatido{
-
-  display:flex;
-
-  justify-content:space-between;
-
-  margin-top:6px;
-
-  font-size:11px;
-
-}
-
-
-.pagamento{
-
-  margin-top:6px;
-
-  font-size:10px;
-
-}
-
-
-.rodape{
-
-  margin-top:10px;
-
-  text-align:center;
-
-  font-size:9px;
-
-}
-
-
-.linha-corte{
-
-  border-top:2px dashed #555;
-
-  margin:5mm 0;
-
-  padding-top:3px;
-
-  text-align:center;
-
-  font-size:9px;
-
-  color:#555;
-
-}
-
-
-.carimbo-pago{
-
-  position:absolute;
-
-  right:15px;
-
-  top:38px;
-
-  border:4px solid #b00000;
-
-  color:#b00000;
-
-  padding:5px 12px;
-
-  font-size:24px;
-
-  font-weight:900;
-
-  letter-spacing:2px;
-
-  transform:rotate(-10deg);
-
-  opacity:.85;
-
-}
-
-
-.orcamento{
-
-  text-align:center;
-
-  font-size:15px;
-
-  font-weight:bold;
-
-  margin-bottom:7px;
-
-}
-
-
-@media print{
-
-  body{
-
-    padding:0;
-
-    background:#fff;
-
+  * {
+    box-sizing: border-box;
   }
 
-
-  .folha{
-
-    width:210mm;
-
-    min-height:297mm;
-
-    margin:0;
-
-    padding:8mm;
-
+  body {
+    margin: 0;
+    padding: 15px;
+    background: #eee;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
   }
 
-
-  @page{
-
-    size:A4;
-
-    margin:0;
-
+  .folha {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    padding: 10mm;
   }
 
-}
+  .via {
+    position: relative;
+    min-height: 125mm;
+  }
+
+  .via-titulo {
+    text-align: right;
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 3px;
+  }
+
+  .cabecalho {
+    text-align: center;
+    border-bottom: 1px solid #222;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .logo {
+    width: 80px;
+    max-height: 80px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 8px;
+  }
+
+  .empresa {
+    font-size: 20px;
+    font-weight: bold;
+  }
+
+  .subtitulo {
+    font-size: 11px;
+    margin-top: 3px;
+  }
+
+  .dados-empresa {
+    font-size: 11px;
+    margin-top: 5px;
+    font-weight: 500;
+  }
+
+  .identificacao {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .cliente {
+    font-size: 11px;
+    margin-bottom: 9px;
+    border-bottom: 1px solid #aaa;
+    padding-bottom: 6px;
+    line-height: 1.5;
+  }
+
+  .tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .tabela th {
+    border-bottom: 1px solid #222;
+    padding: 4px;
+    text-align: left;
+  }
+
+  .tabela td {
+    padding: 5px 4px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .material {
+    width: 55%;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .quantidade {
+    width: 20%;
+    text-align: center;
+  }
+
+  .quantidade span {
+    font-size: 9px;
+    display: block;
+    color: #555;
+  }
+
+  .valor {
+    width: 25%;
+    text-align: right;
+    font-weight: bold;
+  }
+
+  .total {
+    display: flex;
+    justify-content: space-between;
+    border-top: 2px solid #222;
+    margin-top: 8px;
+    padding-top: 7px;
+    font-size: 15px;
+    font-weight: bold;
+  }
+
+  .abatido {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+  }
+
+  .pagamento {
+    margin-top: 6px;
+    font-size: 10px;
+  }
+
+  .rodape {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 9px;
+  }
+
+  .linha-corte {
+    border-top: 2px dashed #555;
+    margin: 5mm 0;
+    padding-top: 3px;
+    text-align: center;
+    font-size: 9px;
+    color: #555;
+  }
+
+  .carimbo-pago {
+    position: absolute;
+    right: 15px;
+    top: 38px;
+    border: 4px solid #b00000;
+    color: #b00000;
+    padding: 5px 12px;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    transform: rotate(-10deg);
+    opacity: .85;
+  }
+
+  .orcamento {
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 7px;
+  }
+
+  @media print {
+
+    body {
+      padding: 0;
+      background: #fff;
+    }
+
+    .folha {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0;
+      padding: 8mm;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+  }
 
 </style>
 
 </head>
 
-
 <body>
-
 
 <div class="folha">
 
-
-  <!-- ========================= -->
-  <!-- VIA CLIENTE -->
-  <!-- ========================= -->
-
-  <div class="via">
-
-
-    <div class="via-titulo">
-      VIA CLIENTE
-    </div>
-
-
-    ${carimbo}
-
-
-    <div class="cabecalho">
-
-<img
-  src="https://raw.githubusercontent.com/pontodaconstrucaowp-ops/ponto-da-construcao/main/logo-ponto-construcao.png"
-  alt="Ponto da Construção"
-  style="
-width: 80px;
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto 8px auto;
-  "
->
-
-
-      <div class="empresa">
-        PONTO DA CONSTRUÇÃO
-      </div>
-
-
-      <div class="subtitulo">
-        MATERIAIS DE CONSTRUÇÃO
-      </div>
-
-
-      <div class="dados-empresa">
-        Atendimento e materiais de construção
-      </div>
-
-    </div>
-
-
-    ${
-      isOrcamento
-        ? `
-          <div class="orcamento">
-            ORÇAMENTO
-          </div>
-        `
-        : ''
-    }
-
-
-    <div class="identificacao">
-
-      <div>
-        Venda nº:
-        <strong>${venda.id}</strong>
-      </div>
-
-
-      <div>
-        Data:
-        <strong>
-          ${new Date(venda.data).toLocaleString('pt-BR')}
-        </strong>
-      </div>
-
-    </div>
-
-
-    <div class="cliente">
-
-      <strong>Cliente:</strong>
-      ${cliente.nome || 'Não informado'}
-
-
-      ${
-        cliente.telefone
-          ? `
-            &nbsp;&nbsp; | &nbsp;&nbsp;
-
-            <strong>Tel.:</strong>
-            ${cliente.telefone}
-          `
-          : ''
-      }
-
-
-      ${
-        cliente.endereço
-          ? `
-            <br>
-
-            <strong>End.:</strong>
-            ${cliente.endereço}
-          `
-          : ''
-      }
-
-    </div>
-
-
-    <table class="tabela">
-
-      <thead>
-
-        <tr>
-
-          <th>
-            MATERIAL
-          </th>
-
-          <th>
-            QUANTIDADE
-          </th>
-
-          <th style="text-align:right">
-            TOTAL
-          </th>
-
-        </tr>
-
-      </thead>
-
-
-      <tbody>
-
-        ${linhasItens}
-
-      </tbody>
-
-    </table>
-
-
-    <div class="total">
-
-      <span>
-        TOTAL GERAL:
-      </span>
-
-      <span>
-       ${money(totalFinal)}
-      </span>
-
-    </div>
-
-
-    <div class="abatido">
-
-      <span>
-        VALOR ABATIDO:
-      </span>
-
-      <span>
-       ${money(valorAbatido)}
-      </span>
-
-    </div>
-
-
-    ${
-      !isOrcamento
-        ? `
-          <div class="pagamento">
-
-            <strong>
-              Forma de pagamento:
-            </strong>
-
-            ${venda.forma_pagamento || '-'}
-
-          </div>
-        `
-        : ''
-    }
-
-
-    <div class="rodape">
-
-      Obrigado pela preferência!
-
-    </div>
-
-
-  </div>
-
-
-  <!-- ========================= -->
-  <!-- CORTE -->
-  <!-- ========================= -->
+  ${montarVia(
+    'VIA CLIENTE',
+    'Obrigado pela preferência!'
+  )}
 
   <div class="linha-corte">
-
-    ✂
-    ------------------------------------------------------------
-    ✂
-
+    ✂ ------------------------------------------------ ✂
   </div>
 
-
-  <!-- ========================= -->
-  <!-- VIA EMPRESA -->
-  <!-- ========================= -->
-
-  <div class="via">
-
-
-    <div class="via-titulo">
-
-      VIA EMPRESA -
-      CONFERÊNCIA / COMPRAS
-
-    </div>
-
-
-    ${carimbo}
-
-
-    <div class="cabecalho">
-
-      <div
-        style="
-          font-size:18px;
-          font-weight:bold;
-          margin-bottom:5px;
-        "
-      >
-        PONTO DA CONSTRUÇÃO
-      </div>
-
-
-      <div class="empresa">
-        PONTO DA CONSTRUÇÃO
-      </div>
-
-
-      <div class="subtitulo">
-        MATERIAIS DE CONSTRUÇÃO
-      </div>
-
-
-      <div class="dados-empresa">
-        Controle interno
-      </div>
-
-    </div>
-
-
-    ${
-      isOrcamento
-        ? `
-          <div class="orcamento">
-            ORÇAMENTO
-          </div>
-        `
-        : ''
-    }
-
-
-    <div class="identificacao">
-
-      <div>
-        Venda nº:
-        <strong>${venda.id}</strong>
-      </div>
-
-
-      <div>
-        Data:
-        <strong>
-          ${new Date(venda.data).toLocaleString('pt-BR')}
-        </strong>
-      </div>
-
-    </div>
-
-
-    <div class="cliente">
-
-      <strong>Cliente:</strong>
-      ${cliente.nome || 'Não informado'}
-
-
-      ${
-        cliente.telefone
-          ? `
-            &nbsp;&nbsp; | &nbsp;&nbsp;
-
-            <strong>Tel.:</strong>
-            ${cliente.telefone}
-          `
-          : ''
-      }
-
-
-      ${
-        cliente.endereço
-          ? `
-            <br>
-
-            <strong>End.:</strong>
-            ${cliente.endereço}
-          `
-          : ''
-      }
-
-    </div>
-
-
-    <table class="tabela">
-
-      <thead>
-
-        <tr>
-
-          <th>
-            MATERIAL
-          </th>
-
-          <th>
-            QUANTIDADE
-          </th>
-
-          <th style="text-align:right">
-            TOTAL
-          </th>
-
-        </tr>
-
-      </thead>
-
-
-      <tbody>
-
-        ${linhasItens}
-
-      </tbody>
-
-    </table>
-
-
-    <div class="total">
-
-      <span>
-        TOTAL GERAL:
-      </span>
-
-      <span>
-        ${money(totalFinal)}
-      </span>
-
-    </div>
-
-
-    <div class="abatido">
-
-      <span>
-        VALOR ABATIDO:
-      </span>
-
-      <span>
-  ${money(valorAbatido)}
-      </span>
-
-    </div>
-
-
-    ${
-      !isOrcamento
-        ? `
-          <div class="pagamento">
-
-            <strong>
-              Forma de pagamento:
-            </strong>
-
-            ${venda.forma_pagamento || '-'}
-
-          </div>
-        `
-        : ''
-    }
-
-
-    <div class="rodape">
-
-      Controle interno — Via da empresa
-
-    </div>
-
-
-  </div>
-
+  ${montarVia(
+    'VIA EMPRESA - CONFERÊNCIA / COMPRAS',
+    'Controle interno — Via da empresa'
+  )}
 
 </div>
 
-
 <script>
+  window.onload = function() {
+    window.focus();
 
-window.onload = function(){
-
-  window.focus();
-
-  setTimeout(function(){
-
-    window.print();
-
-  }, 400);
-
-};
-
+    setTimeout(function() {
+      window.print();
+    }, 500);
+  };
 </script>
 
-
 </body>
-
-</html>
-
-  `;
-
+</html>`;
 
   // ==============================
   // ABRIR IMPRESSÃO
   // ==============================
 
-  const janela =
-    window.open(
-      '',
-      '_blank',
-      'width=900,height=700'
-    );
+  const janela = window.open(
+    '',
+    '_blank',
+    'width=900,height=700'
+  );
 
-
-  if(!janela){
-
+  if (!janela) {
     alert(
-      'O navegador bloqueou a janela de impressão. Permita pop-ups para este site.'
+      'O navegador bloqueou a janela de impressão. ' +
+      'Permita pop-ups para este site.'
     );
-
     return;
   }
 
-
   janela.document.open();
-
   janela.document.write(html);
-
   janela.document.close();
-
 }
+
 async function renderProducts(el){
 
   el.innerHTML = `
