@@ -8840,13 +8840,31 @@ async function saveClient() {
     document.getElementById('content')
   );
 }
-function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
+async function abrirConfirmacaoCancelamento(vendaId, formaPagamento) {
 
   if (state.user?.tipo !== 'admin') {
     alert('Somente administradores podem cancelar vendas.');
     return;
   }
+const { data: entregas, error: erroEntregas } =
+  await supabaseClient
+    .from('entregas')
+    .select('id')
+    .eq('venda_id', vendaId)
+    .limit(1);
 
+if (erroEntregas) {
+  console.error('Erro ao verificar entregas:', erroEntregas);
+  alert('Não foi possível verificar as entregas desta venda. Tente novamente.');
+  return;
+}
+
+if (entregas && entregas.length > 0) {
+  alert(
+    `A venda #${vendaId} possui uma entrega vinculada e não pode ser cancelada.`
+  );
+  return;
+}
   const pagamento = String(formaPagamento || '')
     .trim()
     .toLowerCase();
