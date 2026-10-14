@@ -4541,6 +4541,57 @@ window.currentProducts = data;
 list.innerHTML = productRows(data);
 }
 
+function filterProducts() {
+
+  const input = document.getElementById('productSearch');
+  const lista = document.getElementById('productList');
+
+  if (!input || !lista) {
+    return;
+  }
+
+  const normalizar = texto =>
+    String(texto ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const busca = normalizar(input.value);
+
+  const produtos = window.currentProducts || [];
+
+  const filtrados = produtos.filter(produto => {
+
+    const nome = normalizar(produto.nome);
+    const categoria = normalizar(produto.categoria);
+    const codigo = String(produto.id ?? '');
+
+    return (
+      nome.includes(busca) ||
+      categoria.includes(busca) ||
+      codigo.includes(busca)
+    );
+
+  });
+
+  if (filtrados.length === 0) {
+
+    lista.innerHTML = `
+      <div class="card">
+        <strong>Nenhum material encontrado.</strong>
+        <p class="muted">
+          Tente pesquisar por outro nome, categoria ou código.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  lista.innerHTML = productRows(filtrados);
+
+}
 
 function openProductForm(){
 
