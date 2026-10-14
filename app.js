@@ -9002,8 +9002,23 @@ function validarCancelamentoVendaTeste() {
     return;
   }
 
-  alert(
-    'Todas as validações foram realizadas com sucesso!\n\n' +
-    'Nenhuma venda foi cancelada. Estamos em modo de teste.'
-  );
+const confirmou = confirm(
+  'ATENÇÃO!\n\n' +
+  'Você está prestes a solicitar o cancelamento de uma venda.\n\n' +
+  'Quando esta função for ativada, a operação poderá:\n' +
+  '• Devolver materiais ao estoque;\n' +
+  '• Cancelar valores pendentes de recebimento;\n' +
+  '• Registrar estornos no caixa;\n' +
+  '• Registrar o motivo e o administrador responsável.\n\n' +
+  'Deseja continuar com a simulação?'
+);
+
+if (!confirmou) {
+  return;
+}
+
+alert(
+  'Simulação concluída com sucesso!\n\n' +
+  'Nenhuma venda foi cancelada.'
+);
 }
