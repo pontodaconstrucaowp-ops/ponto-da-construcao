@@ -8980,21 +8980,40 @@ if (entregas && entregas.length > 0) {
 
   document.body.appendChild(fundo);
 }
-function validarCancelamentoVendaTeste() {
+let cancelamentoVendaEmProcessamento = false;
 
-  const motivo = document
-    .getElementById('motivoCancelamentoVenda')
-    ?.value.trim();
+async function validarCancelamentoVendaTeste() {
+
+  if (cancelamentoVendaEmProcessamento) {
+    return;
+  }
+
+  if (state.user?.tipo !== 'admin') {
+    alert('Somente administradores podem cancelar vendas.');
+    return;
+  }
+
+  const janela = document.getElementById(
+    'janelaCancelamentoVenda'
+  );
+
+  if (!janela) {
+    return;
+  }
+
+  const motivo = document.getElementById(
+    'motivoCancelamentoVenda'
+  )?.value.trim();
 
   if (!motivo || motivo.length < 5) {
     alert('Informe um motivo com pelo menos 5 caracteres.');
     return;
   }
 
-  const campoEstorno =
-    document.getElementById('estornoCancelamentoVenda');
+  const campoEstorno = document.getElementById(
+    'estornoCancelamentoVenda'
+  );
 
-  // Se a confirmação aparece, ela precisa estar marcada.
   if (campoEstorno && !campoEstorno.checked) {
     alert(
       'Antes de continuar, confirme que o valor já foi devolvido ao cliente.'
@@ -9002,23 +9021,101 @@ function validarCancelamentoVendaTeste() {
     return;
   }
 
-const confirmou = confirm(
-  'ATENÇÃO!\n\n' +
-  'Você está prestes a solicitar o cancelamento de uma venda.\n\n' +
-  'Quando esta função for ativada, a operação poderá:\n' +
-  '• Devolver materiais ao estoque;\n' +
-  '• Cancelar valores pendentes de recebimento;\n' +
-  '• Registrar estornos no caixa;\n' +
-  '• Registrar o motivo e o administrador responsável.\n\n' +
-  'Deseja continuar com a simulação?'
-);
+  const confirmou = confirm(
+    'ATENÇÃO!\n\n' +
+    'Estamos testando a comunicação com o servidor.\n\n' +
+    'Nenhuma venda real será cancelada.\n\n' +
+    'Deseja continuar com o teste?'
+  );
 
-if (!confirmou) {
-  return;
-}
+  if (!confirmou) {
+    return;
+  }
 
-alert(
-  'Simulação concluída com sucesso!\n\n' +
-  'Nenhuma venda foi cancelada.'
-);
+  const botao = janela.querySelector(
+    'button[onclick="validarCancelamentoVendaTeste()"]'
+  );
+
+  cancelamentoVendaEmProcessamento = true;
+
+  if (botao) {
+    botao.disabled = true;
+    botao.textContent = 'Verificando...';
+  }
+
+  try {
+
+    // MODO DE TESTE:
+    // Nunca envia o ID da venda selecionada.
+    // Usa um identificador inexistente para testar a conexão.
+    const idTeste = 1000043;
+
+    const { data, error } =
+      await supabaseClient.functions.invoke(
+        'cancelar-venda',
+        {
+          body: {
+            venda_id: idTeste,
+            motivo: motivo,
+            estorno_confirmado: campoEstorno?.checked === true
+          }
+        }
+      );
+
+    if (error) {
+
+      let mensagem = error.message;
+
+      try {
+        const resposta = await error.context.json();
+        mensagem = resposta?.mensagem || mensagem;
+      } catch (_) {
+        // Mantém a mensagem original.
+      }
+
+      if (mensagem === 'Venda nao encontrada.') {
+        alert(
+          'Teste de comunicação aprovado!\n\n' +
+          'O servidor recebeu a solicitação e o banco ' +
+          'recusou corretamente a venda inexistente.\n\n' +
+          'Nenhuma venda real foi cancelada.'
+        );
+      } else {
+        alert('Resposta do servidor: ' + mensagem);
+      }
+
+      return;
+    }
+
+    console.warn(
+      'Resposta inesperada no teste de cancelamento:',
+      data
+    );
+
+    alert(
+      'O servidor retornou uma resposta inesperada.\n\n' +
+      'Não prossiga com a ativação antes de verificarmos.'
+    );
+
+  } catch (erro) {
+
+    console.error(
+      'Erro no teste de cancelamento:',
+      erro
+    );
+
+    alert(
+      'Não foi possível concluir o teste de comunicação.'
+    );
+
+  } finally {
+
+    cancelamentoVendaEmProcessamento = false;
+
+    if (botao) {
+      botao.disabled = false;
+      botao.textContent = 'Confirmar cancelamento';
+    }
+
+  }
 }
