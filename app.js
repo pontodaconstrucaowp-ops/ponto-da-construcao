@@ -8883,9 +8883,18 @@ if (entregas && entregas.length > 0) {
     janelaExistente.remove();
   }
 
-  const fundo = document.createElement('div');
-  fundo.id = 'janelaCancelamentoVenda';
+const fundo = document.createElement('div');
+fundo.id = 'janelaCancelamentoVenda';
 
+// Guardar o número da venda selecionada
+const idVenda = Number(vendaId);
+
+if (!Number.isSafeInteger(idVenda) || idVenda <= 0) {
+  alert('Identificador da venda inválido.');
+  return;
+}
+
+fundo.dataset.vendaId = String(idVenda);
   fundo.style.cssText = `
     position:fixed;
     inset:0;
