@@ -9007,6 +9007,15 @@ async function validarCancelamentoVendaTeste() {
   );
 
   if (!janela) {
+    alert('Janela de cancelamento não encontrada.');
+    return;
+  }
+
+  // Identificar a venda selecionada
+  const vendaId = Number(janela.dataset.vendaId);
+
+  if (!Number.isSafeInteger(vendaId) || vendaId <= 0) {
+    alert('Não foi possível identificar a venda.');
     return;
   }
 
@@ -9030,11 +9039,17 @@ async function validarCancelamentoVendaTeste() {
     return;
   }
 
+  // Confirmação final da operação REAL
   const confirmou = confirm(
-    'ATENÇÃO!\n\n' +
-    'Estamos testando a comunicação com o servidor.\n\n' +
-    'Nenhuma venda real será cancelada.\n\n' +
-    'Deseja continuar com o teste?'
+    'ATENÇÃO: CANCELAMENTO DEFINITIVO!\n\n' +
+    'Venda: #' + vendaId + '\n\n' +
+    'Motivo: ' + motivo + '\n\n' +
+    'Esta operação poderá:\n' +
+    '- Devolver produtos ao estoque;\n' +
+    '- Cancelar valores a receber;\n' +
+    '- Registrar o estorno no caixa.\n\n' +
+    'O histórico da venda será preservado.\n\n' +
+    'Deseja realmente cancelar esta venda?'
   );
 
   if (!confirmou) {
@@ -9049,24 +9064,20 @@ async function validarCancelamentoVendaTeste() {
 
   if (botao) {
     botao.disabled = true;
-    botao.textContent = 'Verificando...';
+    botao.textContent = 'Cancelando venda...';
   }
 
   try {
-
-    // MODO DE TESTE:
-    // Nunca envia o ID da venda selecionada.
-    // Usa um identificador inexistente para testar a conexão.
-    const idTeste = 1000043;
 
     const { data, error } =
       await supabaseClient.functions.invoke(
         'cancelar-venda',
         {
           body: {
-            venda_id: idTeste,
+            venda_id: vendaId,
             motivo: motivo,
-            estorno_confirmado: campoEstorno?.checked === true
+            estorno_confirmado:
+              campoEstorno?.checked === true
           }
         }
       );
@@ -9082,46 +9093,68 @@ async function validarCancelamentoVendaTeste() {
         // Mantém a mensagem original.
       }
 
-      if (mensagem === 'Venda nao encontrada.') {
-        alert(
-          'Teste de comunicação aprovado!\n\n' +
-          'O servidor recebeu a solicitação e o banco ' +
-          'recusou corretamente a venda inexistente.\n\n' +
-          'Nenhuma venda real foi cancelada.'
-        );
-      } else {
-        alert('Resposta do servidor: ' + mensagem);
-      }
+      console.error(
+        'Erro ao cancelar venda:',
+        mensagem
+      );
+
+      alert(
+        'Não foi possível confirmar o cancelamento.\n\n' +
+        mensagem +
+        '\n\nConsulte o relatório antes de tentar novamente.'
+      );
+
+      // Atualizar o relatório mesmo em caso de erro,
+      // pois pode ter ocorrido uma falha de comunicação
+      // após o servidor processar a operação.
+      await carregarRelatorio();
 
       return;
     }
 
-    console.warn(
-      'Resposta inesperada no teste de cancelamento:',
+    console.log(
+      'Cancelamento confirmado pelo servidor:',
       data
     );
 
+    // Fechar a janela de cancelamento
+    janela.remove();
+
+    // Atualizar as vendas e os totais
+    await carregarRelatorio();
+
     alert(
-      'O servidor retornou uma resposta inesperada.\n\n' +
-      'Não prossiga com a ativação antes de verificarmos.'
+      'Venda #' + vendaId +
+      ' cancelada com sucesso!\n\n' +
+      'O histórico foi preservado e o relatório atualizado.'
     );
 
   } catch (erro) {
 
     console.error(
-      'Erro no teste de cancelamento:',
+      'Falha na solicitação de cancelamento:',
       erro
     );
 
     alert(
-      'Não foi possível concluir o teste de comunicação.'
+      'Não foi possível confirmar o resultado da operação.\n\n' +
+      'Verifique o relatório antes de tentar novamente.'
     );
+
+    try {
+      await carregarRelatorio();
+    } catch (erroAtualizacao) {
+      console.error(
+        'Erro ao atualizar relatório:',
+        erroAtualizacao
+      );
+    }
 
   } finally {
 
     cancelamentoVendaEmProcessamento = false;
 
-    if (botao) {
+    if (botao && botao.isConnected) {
       botao.disabled = false;
       botao.textContent = 'Confirmar cancelamento';
     }
