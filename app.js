@@ -186,6 +186,7 @@ function navigate(page) {
     products: 'Estoque',
     deliveries: 'Entregas',
     more: 'Mais opções',
+    observations: 'Observações',
     clients: 'Clientes',
     receivables: 'Contas a receber',
     cash: 'Caixa',
