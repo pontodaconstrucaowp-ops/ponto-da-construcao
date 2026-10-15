@@ -1823,6 +1823,7 @@ function pcTotal() {
 }
 
 
+
 function pcAgruparMateriais(produtos) {
   const grupos = new Map();
 
@@ -1893,6 +1894,7 @@ function pcAgruparMateriais(produtos) {
     }));
   });
 }
+
 
 function pcMostrarProdutos() {
 
