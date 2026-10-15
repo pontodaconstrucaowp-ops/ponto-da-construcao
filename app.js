@@ -5413,6 +5413,38 @@ async function saveProductEdit(id){
     return;
   }
 
+    // =====================================
+  // PROTEÇÃO DO ESTOQUE UNIFICADO
+  // =====================================
+
+  const produtoOriginal = (window.currentProducts || [])
+    .find(p => String(p.id) === String(id));
+
+  if (!produtoOriginal) {
+    alert('Produto original não encontrado. Atualize a página.');
+    return;
+  }
+
+  if (produtoOriginal.estoque_unificado === true) {
+
+    if (!controlaEstoque) {
+      alert(
+        'Este material utiliza estoque unificado e ' +
+        'não pode ter o controle de estoque desativado.'
+      );
+      return;
+    }
+
+    if (!Number.isSafeInteger(estoque) || estoque < 0) {
+      alert(
+        'Estoque unificado: informe a quantidade ' +
+        'total de peças, sem valores fracionados.'
+      );
+      return;
+    }
+
+  }
+  
   const { error } = await supabaseClient
     .from('produtos')
     .update({
