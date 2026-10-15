@@ -245,11 +245,30 @@ function navigate(page) {
 
     renderReports(content);
 
-  } else if (page === 'settings') {
+} else if (page === 'settings') {
 
-    renderSettings(content);
+  renderSettings(content);
 
+} else if (page === 'observations') {
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  if (!ehAdministrador) {
+    content.innerHTML = `
+      <div class="card">
+        <h2>Acesso restrito</h2>
+        <p class="muted">
+          Somente administradores podem acessar observações.
+        </p>
+      </div>
+    `;
+  } else {
+    renderObservations(content);
   }
+
+}
 
   // =====================================
   // VOLTAR AO TOPO
