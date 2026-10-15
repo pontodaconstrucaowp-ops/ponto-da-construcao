@@ -4521,6 +4521,14 @@ async function renderProducts(el){
       </button>
     </div>
 
+          <button
+        type="button"
+        class="secondary"
+        onclick="abrirEntradaMercadorias()"
+      >
+        📦 + Adicionar mercadorias
+      </button>
+
     <div id="productList" class="list">
       <div class="card muted">
         Carregando estoque...
