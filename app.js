@@ -9552,3 +9552,78 @@ async function excluirObservacao(id) {
 
   await carregarObservacoes();
 }
+// =====================================
+// EDITAR ENDEREÇO DO CLIENTE
+// =====================================
+
+async function editarEnderecoCliente(cliente) {
+
+  if (!cliente || !cliente.id) {
+    alert('Cliente não encontrado.');
+    return;
+  }
+
+  const enderecoAtual = String(
+    cliente['endereço'] || ''
+  );
+
+  const novoEndereco = prompt(
+    '✏️ Editar endereço de ' + cliente.nome,
+    enderecoAtual
+  );
+
+  // Cancelou a edição
+  if (novoEndereco === null) {
+    return;
+  }
+
+  const endereco = novoEndereco.trim();
+
+  if (!endereco) {
+    alert('O endereço não pode ficar vazio.');
+    return;
+  }
+
+  if (endereco === enderecoAtual.trim()) {
+    alert('O endereço não foi alterado.');
+    return;
+  }
+
+  try {
+
+    const { data, error } = await supabaseClient
+      .from('clientes')
+      .update({
+        'endereço': endereco
+      })
+      .eq('id', cliente.id)
+      .select('id,endereço')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // Atualizar os dados locais
+    cliente['endereço'] = data['endereço'];
+
+    // Atualizar a lista na tela
+    filterClients();
+
+    alert('✅ Endereço atualizado com sucesso!');
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao atualizar endereço do cliente:',
+      erro
+    );
+
+    alert(
+      'Não foi possível atualizar o endereço: ' +
+      (erro.message || 'Erro desconhecido.')
+    );
+
+  }
+
+}
