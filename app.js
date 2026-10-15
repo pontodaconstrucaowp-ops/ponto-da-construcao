@@ -1822,13 +1822,13 @@ function pcTotal() {
   ) / 100;
 }
 
+
 function pcAgruparMateriais(produtos) {
   const grupos = new Map();
 
   for (const produto of produtos) {
     const nome = String(produto.nome || '').trim();
 
-    // Retira somente a indicação de unidade no final do nome.
     const nomeBase = nome.replace(
       /\s+[-–—]\s*(dúzia|duzia|unidade|milheiro)\s*$/i,
       ''
@@ -1849,43 +1849,43 @@ function pcAgruparMateriais(produtos) {
   }
 
   return [...grupos.values()].flatMap(grupo => {
-    const unidade = produto =>
-      String(produto.unidade || '').trim().toLowerCase();
 
-    const pacotes = grupo.produtos.filter(produto =>
-      ['dúzia', 'duzia', 'milheiro'].includes(
-        unidade(produto)
-      )
+    const principais = grupo.produtos.filter(produto =>
+      produto.unidade &&
+      ['dúzia', 'duzia'].includes(
+        String(produto.unidade).trim().toLowerCase()
+      ) &&
+      produto.preco_avulso != null
     );
 
-    const avulsos = grupo.produtos.filter(produto =>
-      unidade(produto) === 'unidade'
+    const unidades = grupo.produtos.filter(produto =>
+      String(produto.unidade || '')
+        .trim().toLowerCase() === 'unidade'
     );
 
-    // Agrupa quando existe exatamente um cadastro de
-    // dúzia/milheiro e um cadastro de unidade do mesmo material.
+    // Um cadastro de dúzia e seu antigo cadastro
+    // separado de unidade: usar apenas o ID da dúzia.
     if (
       grupo.produtos.length === 2 &&
-      pacotes.length === 1 &&
-      avulsos.length === 1
+      principais.length === 1 &&
+      unidades.length === 1
     ) {
+      const principal = principais[0];
+
       return [{
         nome: grupo.nome,
-        produtos: grupo.produtos,
-
-        opcoes: [pacotes[0], avulsos[0]].map(produto => ({
-          ...pcOpcoes(produto)[0],
-          id: produto.id
+        produtos: [principal],
+        opcoes: pcOpcoes(principal).map(opcao => ({
+          ...opcao,
+          id: principal.id
         }))
       }];
     }
 
-    // Produtos sem par continuam aparecendo normalmente.
-    // Cadastros ambíguos não são unidos automaticamente.
+    // Todos os demais produtos permanecem como antes.
     return grupo.produtos.map(produto => ({
       nome: produto.nome,
       produtos: [produto],
-
       opcoes: pcOpcoes(produto).map(opcao => ({
         ...opcao,
         id: produto.id
