@@ -5108,15 +5108,19 @@ ${produto.estoque_unificado === true ? `
   </p>
 ` : ''}
 
-            <label>Estoque mínimo</label>
+<label>
+  ${produto.estoque_unificado === true
+    ? 'Estoque mínimo (peças individuais)'
+    : 'Estoque mínimo'}
+</label>
 
-            <input
-              id="editProductMinStock"
-              type="number"
-              min="0"
-              step="0.01"
-              value="${Number(produto.estoque_minimo ?? 0)}"
-            >
+<input
+  id="editProductMinStock"
+  type="number"
+  min="0"
+  step="${produto.estoque_unificado === true ? '1' : '0.01'}"
+  value="${Number(produto.estoque_minimo ?? 0)}"
+>
 
           </div>
 
