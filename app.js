@@ -1208,6 +1208,7 @@ async function renderSales(el) {
     'estoque',
     'estoque_minimo',
     'controla_estoque',
+    'estoque_unificado',
     'ativo'
   ];
 
