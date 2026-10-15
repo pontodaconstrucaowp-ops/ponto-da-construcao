@@ -9779,3 +9779,50 @@ async function editarEnderecoCliente(cliente) {
   });
 
 }
+
+// =====================================
+// PADRONIZAR CAMPOS EM LETRAS MAIÚSCULAS
+// =====================================
+
+document.addEventListener('input', function(evento) {
+
+  const campo = evento.target;
+
+  if (!(campo instanceof HTMLInputElement) &&
+      !(campo instanceof HTMLTextAreaElement)) {
+    return;
+  }
+
+  if (campo instanceof HTMLInputElement) {
+    const tipo = campo.type.toLowerCase();
+
+    if (!['text', 'search'].includes(tipo)) {
+      return;
+    }
+  }
+
+  if (
+    campo.matches(
+      '[type="email"], [type="password"], [type="tel"]'
+    )
+  ) {
+    return;
+  }
+
+  const inicio = campo.selectionStart;
+  const fim = campo.selectionEnd;
+
+  const textoMaiusculo =
+    campo.value.toLocaleUpperCase('pt-BR');
+
+  if (campo.value === textoMaiusculo) {
+    return;
+  }
+
+  campo.value = textoMaiusculo;
+
+  if (inicio !== null && fim !== null) {
+    campo.setSelectionRange(inicio, fim);
+  }
+
+}, true);
