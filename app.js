@@ -4605,7 +4605,18 @@ function abrirEntradaMercadorias() {
 
   const modal = document.createElement('div');
   modal.id = 'entradaMercadoriasModal';
-
+Object.assign(modal.style, {
+  position: 'fixed',
+  inset: '0',
+  zIndex: '999999',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(0, 0, 0, 0.65)',
+  padding: '16px',
+  boxSizing: 'border-box',
+  overflowY: 'auto'
+});
   const escapar = valor =>
     String(valor ?? '').replace(/[&<>"']/g, c => ({
       '&': '&amp;',
