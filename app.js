@@ -8308,9 +8308,32 @@ async function renderClients(el) {
   lista.addEventListener('click', async evento => {
 
     // =====================================
-    // EXCLUIR CLIENTE
+    // EDITAR ENDEREÇO DO CLIENTE
     // =====================================
 
+    const botaoEditarEndereco = evento.target.closest(
+      '[data-cliente-editar-endereco]'
+    );
+
+    if (botaoEditarEndereco) {
+
+      const cliente = window.currentClients.find(
+        c => String(c.id) ===
+          botaoEditarEndereco.dataset.clienteEditarEndereco
+      );
+
+      if (!cliente) {
+        alert('Cliente não encontrado.');
+        return;
+      }
+
+      await editarEnderecoCliente(cliente);
+      return;
+    }
+
+    // =====================================
+    // EXCLUIR CLIENTE
+    // =====================================
     const botaoExcluir = evento.target.closest(
       '[data-cliente-excluir]'
     );
