@@ -9556,6 +9556,10 @@ async function excluirObservacao(id) {
 // EDITAR ENDEREÇO DO CLIENTE
 // =====================================
 
+// =====================================
+// EDITAR LOCALIZAÇÃO DO CLIENTE NO MAPA
+// =====================================
+
 async function editarEnderecoCliente(cliente) {
 
   if (!cliente || !cliente.id) {
@@ -9563,67 +9567,215 @@ async function editarEnderecoCliente(cliente) {
     return;
   }
 
-  const enderecoAtual = String(
-    cliente['endereço'] || ''
+  if (typeof L === 'undefined') {
+    alert('Não foi possível carregar o mapa.');
+    return;
+  }
+
+  const content = document.getElementById('content');
+
+  if (!content) return;
+
+  const latitudeAtual = Number(cliente.latitude);
+  const longitudeAtual = Number(cliente.longitude);
+
+  const possuiLocalizacao =
+    cliente.latitude != null &&
+    cliente.longitude != null &&
+    Number.isFinite(latitudeAtual) &&
+    Number.isFinite(longitudeAtual) &&
+    Math.abs(latitudeAtual) <= 90 &&
+    Math.abs(longitudeAtual) <= 180;
+
+  let latitudeSelecionada = possuiLocalizacao
+    ? latitudeAtual
+    : null;
+
+  let longitudeSelecionada = possuiLocalizacao
+    ? longitudeAtual
+    : null;
+
+  content.innerHTML = `
+    <div class="card">
+
+      <h2>📍 Editar localização</h2>
+
+      <p>
+        <strong>${pcEscapar(cliente.nome || 'Cliente')}</strong>
+      </p>
+
+      <p class="muted">
+        ${pcEscapar(cliente['endereço'] || 'Sem endereço informado')}
+      </p>
+
+      <p class="muted">
+        Toque no mapa para escolher a localização correta.
+      </p>
+
+      <div
+        id="mapaEdicaoCliente"
+        style="
+          width:100%;
+          height:400px;
+          border-radius:12px;
+          overflow:hidden;
+          margin:15px 0;
+        "
+      ></div>
+
+      <p id="statusEdicaoLocalizacao" class="muted">
+        ${
+          possuiLocalizacao
+            ? '📍 Localização atual do cliente.'
+            : 'Nenhuma localização cadastrada. Marque um ponto no mapa.'
+        }
+      </p>
+
+      <div
+        class="actions"
+        style="
+          display:flex;
+          gap:10px;
+          flex-wrap:wrap;
+          margin-top:16px;
+        "
+      >
+
+        <button
+          type="button"
+          class="secondary"
+          id="cancelarEdicaoLocalizacao"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="primary"
+          id="salvarEdicaoLocalizacao"
+        >
+          💾 Salvar localização
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  const mapa = L.map('mapaEdicaoCliente').setView(
+    possuiLocalizacao
+      ? [latitudeAtual, longitudeAtual]
+      : [-0.858, -48.141],
+    possuiLocalizacao ? 17 : 15
   );
 
-  const novoEndereco = prompt(
-    '✏️ Editar endereço de ' + cliente.nome,
-    enderecoAtual
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }
+  ).addTo(mapa);
+
+  let marcador = null;
+
+  if (possuiLocalizacao) {
+    marcador = L.marker([
+      latitudeAtual,
+      longitudeAtual
+    ]).addTo(mapa);
+  }
+
+  const status = document.getElementById(
+    'statusEdicaoLocalizacao'
   );
 
-  // Cancelou a edição
-  if (novoEndereco === null) {
-    return;
-  }
+  mapa.on('click', function(evento) {
 
-  const endereco = novoEndereco.trim();
+    latitudeSelecionada = evento.latlng.lat;
+    longitudeSelecionada = evento.latlng.lng;
 
-  if (!endereco) {
-    alert('O endereço não pode ficar vazio.');
-    return;
-  }
-
-  if (endereco === enderecoAtual.trim()) {
-    alert('O endereço não foi alterado.');
-    return;
-  }
-
-  try {
-
-    const { data, error } = await supabaseClient
-      .from('clientes')
-      .update({
-        'endereço': endereco
-      })
-      .eq('id', cliente.id)
-      .select('id,endereço')
-      .single();
-
-    if (error) {
-      throw error;
+    if (marcador) {
+      marcador.setLatLng(evento.latlng);
+    } else {
+      marcador = L.marker(evento.latlng).addTo(mapa);
     }
 
-    // Atualizar os dados locais
-    cliente['endereço'] = data['endereço'];
+    status.textContent =
+      '✅ Nova localização marcada. Clique em Salvar localização.';
 
-    // Atualizar a lista na tela
-    filterClients();
+  });
 
-    alert('✅ Endereço atualizado com sucesso!');
+  setTimeout(() => {
+    if (mapa.getContainer().isConnected) {
+      mapa.invalidateSize();
+    }
+  }, 200);
 
-  } catch (erro) {
-
-    console.error(
-      'Erro ao atualizar endereço do cliente:',
-      erro
-    );
-
-    alert(
-      'Não foi possível atualizar o endereço: ' +
-      (erro.message || 'Erro desconhecido.')
-    );
-
+  function voltarParaClientes() {
+    mapa.remove();
+    navigate('clients');
   }
+
+  document.getElementById(
+    'cancelarEdicaoLocalizacao'
+  ).addEventListener('click', voltarParaClientes);
+
+  document.getElementById(
+    'salvarEdicaoLocalizacao'
+  ).addEventListener('click', async function() {
+
+    if (
+      latitudeSelecionada === null ||
+      longitudeSelecionada === null
+    ) {
+      alert('Marque uma localização no mapa antes de salvar.');
+      return;
+    }
+
+    const botao = this;
+
+    botao.disabled = true;
+    botao.textContent = 'Salvando...';
+
+    try {
+
+      const { data, error } = await supabaseClient
+        .from('clientes')
+        .update({
+          latitude: latitudeSelecionada,
+          longitude: longitudeSelecionada
+        })
+        .eq('id', cliente.id)
+        .select('id,latitude,longitude')
+        .single();
+
+      if (error) throw error;
+
+      cliente.latitude = data.latitude;
+      cliente.longitude = data.longitude;
+
+      alert('✅ Localização atualizada com sucesso!');
+
+      voltarParaClientes();
+
+    } catch (erro) {
+
+      console.error(
+        'Erro ao atualizar localização:',
+        erro
+      );
+
+      alert(
+        'Não foi possível salvar a localização: ' +
+        (erro.message || 'Erro desconhecido.')
+      );
+
+      botao.disabled = false;
+      botao.textContent = '💾 Salvar localização';
+
+    }
+
+  });
 
 }
