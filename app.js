@@ -4573,6 +4573,162 @@ state.products = data || [];
 window.currentProducts = data;
 list.innerHTML = productRows(data);
 }
+function abrirEntradaMercadorias() {
+
+  const ehAdmin =
+    state.user?.tipo === 'admin';
+
+  if (!ehAdmin) {
+    alert('Apenas administradores podem adicionar mercadorias.');
+    return;
+  }
+
+  const produtos = (window.currentProducts || [])
+    .filter(p =>
+      p.ativo === true &&
+      p.estoque_unificado === true &&
+      p.controla_estoque === true &&
+      ['dúzia', 'duzia'].includes(
+        String(p.unidade || '').trim().toLowerCase()
+      )
+    )
+    .sort((a, b) =>
+      a.nome.localeCompare(b.nome, 'pt-BR')
+    );
+
+  if (!produtos.length) {
+    alert('Nenhum produto com estoque unificado disponível.');
+    return;
+  }
+
+  document.getElementById('entradaMercadoriasModal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'entradaMercadoriasModal';
+
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+
+  modal.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-card">
+
+        <div class="modal-header">
+          <h2>📦 Adicionar mercadorias</h2>
+        </div>
+
+        <div class="field">
+          <label>Material</label>
+
+          <select id="entradaProduto">
+            ${produtos.map(p => `
+              <option value="${p.id}">
+                ${escapar(p.nome)}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Quantidade de dúzias</label>
+
+          <input
+            id="entradaDuzias"
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            oninput="calcularEntradaMercadorias()"
+          >
+        </div>
+
+        <div class="field">
+          <label>Quantidade de unidades avulsas</label>
+
+          <input
+            id="entradaUnidades"
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            oninput="calcularEntradaMercadorias()"
+          >
+        </div>
+
+        <div class="card" style="margin-top:15px">
+          <strong>Total a acrescentar</strong>
+
+          <h2 id="entradaTotal">
+            0 peças
+          </h2>
+        </div>
+
+        <div class="actions" style="margin-top:16px">
+
+          <button
+            type="button"
+            class="primary"
+            onclick="salvarEntradaMercadorias()"
+          >
+            Confirmar entrada
+          </button>
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="
+              document.getElementById('entradaMercadoriasModal')?.remove()
+            "
+          >
+            Cancelar
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+
+function calcularEntradaMercadorias() {
+
+  const duzias = Number(
+    document.getElementById('entradaDuzias')?.value || 0
+  );
+
+  const unidades = Number(
+    document.getElementById('entradaUnidades')?.value || 0
+  );
+
+  const total = document.getElementById('entradaTotal');
+
+  if (!total) return;
+
+  if (
+    !Number.isSafeInteger(duzias) ||
+    !Number.isSafeInteger(unidades) ||
+    duzias < 0 ||
+    unidades < 0 ||
+    !Number.isSafeInteger(duzias * 12 + unidades)
+  ) {
+    total.textContent = 'Quantidade inválida';
+    return;
+  }
+
+  const pecas = duzias * 12 + unidades;
+
+  total.textContent =
+    `${pecas} ${pecas === 1 ? 'peça' : 'peças'}`;
+}
 
 function filterProducts() {
 
