@@ -3762,11 +3762,12 @@ async function confirmSale(){
 
   const total = totalMateriais - desconto;
 
-  const itens = state.cart.map(item => ({
-    produtos_id: item.id,
-    quantidade: item.qty,
-    preco_unitario: item.price
-  }));
+const itens = state.cart.map(item => ({
+  produtos_id: item.id,
+  quantidade: item.qty,
+  preco_unitario: item.price,
+  tipo_opcao: item.tipoOpcao || 'principal'
+}));
 
   // ====================================
   // REGISTRAR VENDA
