@@ -7401,6 +7401,15 @@ function renderMore(el) {
         <strong>Relatórios</strong>
         <span class="muted">Resumo de vendas e operação</span>
       </button>
+   
+            ${ehAdministrador ? `
+        <button class="card" onclick="navigate('observations')">
+          <strong>📝 Observações</strong>
+          <span class="muted">
+            Anotações, lembretes, datas e horários
+          </span>
+        </button>
+      ` : ''}
 
       <button class="card" onclick="navigate('settings')">
         <strong>Configurações</strong>
