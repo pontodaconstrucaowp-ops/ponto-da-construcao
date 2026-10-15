@@ -4775,36 +4775,29 @@ async function salvarEntradaMercadorias() {
 
   try {
 
-    // Uma chamada para cada tipo de entrada.
-    // A função SQL soma diretamente ao estoque existente.
+    // =====================================
+    // ENTRADA ÚNICA E ATÔMICA NO ESTOQUE
+    // =====================================
 
-    if (duzias > 0) {
+    const totalPecas = duzias * 12 + unidades;
 
-      const { error } = await supabaseClient.rpc(
+    const { data: novoEstoque, error } =
+      await supabaseClient.rpc(
         'adicionar_mercadoria_estoque',
         {
           p_produto_id: produtoId,
-          p_quantidade: duzias,
-          p_tipo: 'duzia'
-        }
-      );
-
-      if (error) throw error;
-    }
-
-    if (unidades > 0) {
-
-      const { error } = await supabaseClient.rpc(
-        'adicionar_mercadoria_estoque',
-        {
-          p_produto_id: produtoId,
-          p_quantidade: unidades,
+          p_quantidade: totalPecas,
           p_tipo: 'unidade'
         }
       );
 
-      if (error) throw error;
-    }
+    if (error) throw error;
+
+    console.log(
+      'Novo estoque registrado:',
+      novoEstoque,
+      'peças'
+    );
 
     alert('Mercadorias adicionadas ao estoque com sucesso!');
 
