@@ -4729,6 +4729,109 @@ function calcularEntradaMercadorias() {
   total.textContent =
     `${pecas} ${pecas === 1 ? 'peça' : 'peças'}`;
 }
+async function salvarEntradaMercadorias() {
+
+  const botao = document.querySelector(
+    '#entradaMercadoriasModal button.primary'
+  );
+
+  if (botao?.disabled) return;
+
+  if (state.user?.tipo !== 'admin') {
+    alert('Somente administradores podem adicionar mercadorias.');
+    return;
+  }
+
+  const produtoId = Number(
+    document.getElementById('entradaProduto')?.value
+  );
+
+  const duzias = Number(
+    document.getElementById('entradaDuzias')?.value
+  );
+
+  const unidades = Number(
+    document.getElementById('entradaUnidades')?.value
+  );
+
+  if (
+    !Number.isSafeInteger(produtoId) ||
+    produtoId <= 0 ||
+    !Number.isSafeInteger(duzias) ||
+    !Number.isSafeInteger(unidades) ||
+    duzias < 0 ||
+    unidades < 0 ||
+    !Number.isSafeInteger(duzias * 12 + unidades) ||
+    duzias * 12 + unidades <= 0
+  ) {
+    alert('Informe uma quantidade inteira e maior que zero.');
+    return;
+  }
+
+  if (botao) {
+    botao.disabled = true;
+    botao.textContent = 'Salvando...';
+  }
+
+  try {
+
+    // Uma chamada para cada tipo de entrada.
+    // A função SQL soma diretamente ao estoque existente.
+
+    if (duzias > 0) {
+
+      const { error } = await supabaseClient.rpc(
+        'adicionar_mercadoria_estoque',
+        {
+          p_produto_id: produtoId,
+          p_quantidade: duzias,
+          p_tipo: 'duzia'
+        }
+      );
+
+      if (error) throw error;
+    }
+
+    if (unidades > 0) {
+
+      const { error } = await supabaseClient.rpc(
+        'adicionar_mercadoria_estoque',
+        {
+          p_produto_id: produtoId,
+          p_quantidade: unidades,
+          p_tipo: 'unidade'
+        }
+      );
+
+      if (error) throw error;
+    }
+
+    alert('Mercadorias adicionadas ao estoque com sucesso!');
+
+    document.getElementById(
+      'entradaMercadoriasModal'
+    )?.remove();
+
+    navigate('products');
+
+  } catch (erro) {
+
+    console.error('Erro ao adicionar mercadorias:', erro);
+
+    alert(
+      'Não foi possível concluir a entrada: ' +
+      (erro.message || 'Erro desconhecido.')
+    );
+
+  } finally {
+
+    if (botao?.isConnected) {
+      botao.disabled = false;
+      botao.textContent = 'Confirmar entrada';
+    }
+
+  }
+}
 
 function filterProducts() {
 
