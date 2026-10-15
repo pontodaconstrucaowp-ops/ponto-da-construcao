@@ -8726,6 +8726,14 @@ function filterClients() {
                 <button
                   type="button"
                   class="secondary"
+                  data-cliente-editar-endereco="${id}"
+                >
+                  ✏️ Editar endereço
+                </button>
+
+                <button
+                  type="button"
+                  class="secondary"
                   data-cliente-excluir="${id}"
                   style="
                     color:#b42318;
