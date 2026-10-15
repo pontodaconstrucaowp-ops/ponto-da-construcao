@@ -8728,9 +8728,9 @@ function filterClients() {
                   class="secondary"
                   data-cliente-editar-endereco="${id}"
                 >
-                  ✏️ Editar endereço
+                  📍 Editar localização no mapa
                 </button>
-
+                
                 <button
                   type="button"
                   class="secondary"
