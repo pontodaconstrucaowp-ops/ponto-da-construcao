@@ -1867,11 +1867,12 @@ function pcAgruparMateriais(produtos) {
 
     // Um cadastro de dúzia e seu antigo cadastro
     // separado de unidade: usar apenas o ID da dúzia.
-    if (
-      grupo.produtos.length === 2 &&
-      principais.length === 1 &&
-      unidades.length === 1
-    ) {
+if (
+  grupo.produtos.length === 2 &&
+  principais.length === 1 &&
+  unidades.length === 1 &&
+  principais[0].estoque_unificado === true
+) {
       const principal = principais[0];
 
       return [{
