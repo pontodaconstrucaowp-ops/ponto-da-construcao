@@ -5426,7 +5426,14 @@ async function saveProductEdit(id){
   }
 
   if (produtoOriginal.estoque_unificado === true) {
-
+    // Manter a unidade original do produto unificado
+    if (unidade !== produtoOriginal.unidade) {
+      alert(
+        'Este material utiliza estoque unificado. ' +
+        'A unidade de cadastro não pode ser alterada.'
+      );
+      return;
+    }
     if (!controlaEstoque) {
       alert(
         'Este material utiliza estoque unificado e ' +
