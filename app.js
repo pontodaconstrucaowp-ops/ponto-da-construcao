@@ -9241,3 +9241,283 @@ async function validarCancelamentoVendaTeste() {
 
   }
 }
+// =====================================
+// OBSERVAÇÕES — PONTO DA CONSTRUÇÃO
+// =====================================
+
+async function renderObservations(el) {
+
+  el.innerHTML = `
+    <div class="card">
+
+      <h2>📝 Nova observação</h2>
+
+      <p class="muted">
+        Registre recados, lembretes e informações
+        importantes da loja.
+      </p>
+
+      <div class="field">
+        <label for="obsData">Data e hora</label>
+        <input
+          id="obsData"
+          type="datetime-local"
+        >
+      </div>
+
+      <div class="field">
+        <label for="obsDescricao">Observação</label>
+        <textarea
+          id="obsDescricao"
+          rows="5"
+          maxlength="5000"
+          placeholder="Escreva sua observação aqui..."
+          style="width:100%;box-sizing:border-box"
+        ></textarea>
+      </div>
+
+      <button
+        id="obsSalvar"
+        class="primary"
+        onclick="salvarObservacao()"
+      >
+        💾 Salvar observação
+      </button>
+
+    </div>
+
+    <div class="section-title">
+      <h2>📋 Histórico de observações</h2>
+    </div>
+
+    <div id="obsLista" class="card">
+      Carregando observações...
+    </div>
+  `;
+
+  // Preencher com a data e hora locais
+  const agora = new Date();
+  const local = new Date(
+    agora.getTime() - agora.getTimezoneOffset() * 60000
+  );
+
+  document.getElementById('obsData').value =
+    local.toISOString().slice(0, 16);
+
+  await carregarObservacoes();
+}
+
+
+// =====================================
+// SALVAR OBSERVAÇÃO
+// =====================================
+
+async function salvarObservacao() {
+
+  const descricao =
+    document.getElementById('obsDescricao')?.value.trim();
+
+  const dataInformada =
+    document.getElementById('obsData')?.value;
+
+  if (!descricao) {
+    alert('Escreva uma observação antes de salvar.');
+    return;
+  }
+
+  if (!dataInformada) {
+    alert('Informe a data e a hora.');
+    return;
+  }
+
+  const data = new Date(dataInformada);
+
+  if (Number.isNaN(data.getTime())) {
+    alert('Informe uma data válida.');
+    return;
+  }
+
+  const botao = document.getElementById('obsSalvar');
+
+  if (botao) {
+    botao.disabled = true;
+    botao.textContent = 'Salvando...';
+  }
+
+  try {
+
+    const { error } = await supabaseClient
+      .from('observacoes')
+      .insert({
+        descricao,
+        data_observacao: data.toISOString(),
+        criado_por: state.user.id
+      });
+
+    if (error) throw error;
+
+    alert('Observação salva com sucesso!');
+
+    navigate('observations');
+
+  } catch (erro) {
+
+    console.error('Erro ao salvar observação:', erro);
+    alert('Não foi possível salvar: ' + erro.message);
+
+  } finally {
+
+    if (botao && botao.isConnected) {
+      botao.disabled = false;
+      botao.textContent = '💾 Salvar observação';
+    }
+
+  }
+}
+
+
+// =====================================
+// CARREGAR HISTÓRICO
+// =====================================
+
+async function carregarObservacoes() {
+
+  const lista = document.getElementById('obsLista');
+
+  if (!lista) return;
+
+  const { data, error } = await supabaseClient
+    .from('observacoes')
+    .select('id,descricao,data_observacao')
+    .order('data_observacao', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (!lista.isConnected) return;
+
+  if (error) {
+    lista.textContent =
+      'Erro ao carregar observações: ' + error.message;
+    return;
+  }
+
+  if (!data?.length) {
+    lista.innerHTML = `
+      <p class="muted">
+        Nenhuma observação registrada ainda.
+      </p>
+    `;
+    return;
+  }
+
+  lista.innerHTML = data.map(obs => {
+
+    const dataFormatada = new Date(
+      obs.data_observacao
+    ).toLocaleString('pt-BR');
+
+    return `
+      <div style="
+        padding:14px 0;
+        border-bottom:1px solid #e2e8f0;
+      ">
+
+        <strong>📅 ${pcEscapar(dataFormatada)}</strong>
+
+        <p style="
+          white-space:pre-wrap;
+          overflow-wrap:anywhere;
+          margin:10px 0;
+        ">${pcEscapar(obs.descricao)}</p>
+
+        <div class="actions">
+
+          <button
+            class="secondary"
+            onclick="editarObservacao(${Number(obs.id)})"
+          >
+            ✏️ Editar
+          </button>
+
+          <button
+            class="danger"
+            onclick="excluirObservacao(${Number(obs.id)})"
+          >
+            🗑️ Excluir
+          </button>
+
+        </div>
+
+      </div>
+    `;
+
+  }).join('');
+}
+
+
+// =====================================
+// EDITAR OBSERVAÇÃO
+// =====================================
+
+async function editarObservacao(id) {
+
+  const { data, error } = await supabaseClient
+    .from('observacoes')
+    .select('descricao')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    alert('Não foi possível abrir a observação.');
+    return;
+  }
+
+  const novoTexto = prompt(
+    'Editar observação:',
+    data.descricao
+  );
+
+  if (novoTexto === null) return;
+
+  if (!novoTexto.trim()) {
+    alert('A observação não pode ficar vazia.');
+    return;
+  }
+
+  const { error: erroSalvar } = await supabaseClient
+    .from('observacoes')
+    .update({
+      descricao: novoTexto.trim()
+    })
+    .eq('id', id);
+
+  if (erroSalvar) {
+    alert('Erro ao editar: ' + erroSalvar.message);
+    return;
+  }
+
+  await carregarObservacoes();
+}
+
+
+// =====================================
+// EXCLUIR OBSERVAÇÃO
+// =====================================
+
+async function excluirObservacao(id) {
+
+  if (!confirm('Deseja realmente excluir esta observação?')) {
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('observacoes')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    alert('Erro ao excluir: ' + error.message);
+    return;
+  }
+
+  await carregarObservacoes();
+}
