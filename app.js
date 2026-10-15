@@ -5087,15 +5087,26 @@ function openProductEdit(id){
 
           <div id="editStockFields">
 
-            <label>Estoque atual</label>
+<label>
+  ${produto.estoque_unificado === true
+    ? 'Estoque atual (peças individuais)'
+    : 'Estoque atual'}
+</label>
 
-            <input
-              id="editProductStock"
-              type="number"
-              min="0"
-              step="0.01"
-              value="${Number(produto.estoque ?? 0)}"
-            >
+<input
+  id="editProductStock"
+  type="number"
+  min="0"
+  step="${produto.estoque_unificado === true ? '1' : '0.01'}"
+  value="${Number(produto.estoque ?? 0)}"
+>
+
+${produto.estoque_unificado === true ? `
+  <p class="muted" style="font-size:12px;margin-top:6px">
+    📦 Estoque unificado: informe a quantidade total de peças.
+    Cada dúzia corresponde a 12 peças.
+  </p>
+` : ''}
 
             <label>Estoque mínimo</label>
 
