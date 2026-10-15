@@ -568,3 +568,14 @@ select:focus-visible {
 #pcEspacoCarrinho {
   display: block;
 }
+
+/* =====================================
+   TEXTOS EM LETRAS MAIÚSCULAS
+===================================== */
+
+input[type="text"],
+input[type="search"],
+input:not([type]),
+textarea {
+  text-transform: uppercase;
+}
