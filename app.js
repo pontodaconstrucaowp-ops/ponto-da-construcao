@@ -5430,6 +5430,20 @@ async function saveProductEdit(id){
   }
 
   if (produtoOriginal.estoque_unificado === true) {
+        // =====================================
+    // VALIDAR ESTOQUE MÍNIMO EM PEÇAS
+    // =====================================
+
+    if (
+      !Number.isSafeInteger(estoqueMinimo) ||
+      estoqueMinimo < 0
+    ) {
+      alert(
+        'Estoque mínimo unificado: informe uma ' +
+        'quantidade inteira de peças.'
+      );
+      return;
+    }
     // Manter a unidade original do produto unificado
     if (unidade !== produtoOriginal.unidade) {
       alert(
