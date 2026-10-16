@@ -94,6 +94,9 @@ function toggleUserMenu() {
 
 async function restaurarSessao() {
 
+  const telaLogin = document.getElementById('loginScreen');
+  const aplicativo = document.getElementById('app');
+
   try {
 
     const { data: sessao, error: erroSessao } =
@@ -123,18 +126,16 @@ async function restaurarSessao() {
         .eq('id', autenticacao.user.id)
         .maybeSingle();
 
-    if (erroCadastro || !usuario || !usuario.ativo) {
+    if (erroCadastro) {
+      throw erroCadastro;
+    }
+
+    if (!usuario || !usuario.ativo) {
       return;
     }
 
     // Restaurar o usuário no aplicativo
     state.user = usuario;
-
-    document.getElementById('loginScreen')
-      ?.classList.add('hidden');
-
-    document.getElementById('app')
-      ?.classList.remove('hidden');
 
     const nomeUsuario =
       document.getElementById('loggedUser');
@@ -142,6 +143,9 @@ async function restaurarSessao() {
     if (nomeUsuario) {
       nomeUsuario.textContent = usuario.nome;
     }
+
+    telaLogin?.classList.add('hidden');
+    aplicativo?.classList.remove('hidden');
 
     // Respeitar a restrição dos entregadores
     if (usuario.tipo === 'entregador') {
@@ -156,6 +160,14 @@ async function restaurarSessao() {
       'Erro ao restaurar sessão:',
       erro
     );
+
+  } finally {
+
+    // Exibir o login somente se nenhum usuário foi restaurado
+    if (!state.user) {
+      aplicativo?.classList.add('hidden');
+      telaLogin?.classList.remove('hidden');
+    }
 
   }
 
