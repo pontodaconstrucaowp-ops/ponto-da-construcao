@@ -10518,3 +10518,16 @@ document.addEventListener('input', function(evento) {
   }
 
 }, true);
+if (document.readyState === 'loading') {
+
+  document.addEventListener(
+    'DOMContentLoaded',
+    restaurarSessao,
+    { once: true }
+  );
+
+} else {
+
+  restaurarSessao();
+
+}
