@@ -6082,316 +6082,480 @@ ${produto.estoque_unificado === true ? `
 
 }
 
-async function saveProductEdit(id) {
 
-  const campo = nome => document.getElementById(nome);
+function openProductEdit(id) {
 
-  const botaoSalvar = campo('saveProductEditButton');
+  const produto = (window.currentProducts || []).find(
+    p => String(p.id) === String(id)
+  );
 
-  // Impedir salvamentos simultâneos
-  if (botaoSalvar?.disabled) {
+  if (!produto) {
+    alert('Produto não encontrado.');
     return;
   }
 
-  const produtoOriginal = (window.currentProducts || [])
-    .find(p => String(p.id) === String(id));
+  document.getElementById('productModal')?.remove();
 
-  if (!produtoOriginal) {
-    alert('Produto original não encontrado. Atualize a página.');
-    return;
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+
+  const modal = document.createElement('div');
+  modal.id = 'productModal';
+
+  const unidadeOriginal = String(
+    produto.unidade || 'unidade'
+  ).trim().toLowerCase();
+
+  const precoAvulsoOriginal =
+    produto.preco_avulso == null
+      ? ''
+      : String(produto.preco_avulso);
+
+  modal.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-card">
+
+        <div class="modal-header">
+          <h2>Editar produto</h2>
+
+          <button
+            type="button"
+            onclick="document.getElementById('productModal')?.remove()"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="modal-body">
+
+          <label>Nome do produto</label>
+          <input
+            id="editProductName"
+            type="text"
+            value="${escapar(produto.nome)}"
+          >
+
+          <label>Categoria</label>
+          <input
+            id="editProductCategory"
+            type="text"
+            value="${escapar(produto.categoria)}"
+          >
+
+          <label>Unidade principal</label>
+          <select id="editProductUnit">
+            ${[
+              'm³',
+              'kg',
+              'carrada',
+              'balde',
+              'lata',
+              'saco',
+              'unidade',
+              'dúzia',
+              'milheiro'
+            ].map(unidade => `
+              <option
+                value="${unidade}"
+                ${unidadeOriginal === unidade ? 'selected' : ''}
+              >
+                ${unidade}
+              </option>
+            `).join('')}
+          </select>
+
+          <!-- PREÇOS DE VENDA -->
+
+          <div style="
+            margin-top:18px;
+            padding:15px;
+            border:1px solid #dbe5ee;
+            border-radius:12px;
+            background:#f8fafc;
+          ">
+
+            <h3 style="margin:0 0 12px">
+              💰 Preços de venda
+            </h3>
+
+            <label id="editProductPriceLabel">
+              Preço principal
+            </label>
+
+            <input
+              id="editProductPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${escapar(produto.preco ?? '')}"
+            >
+
+            <div
+              id="editProductAvulsoSection"
+              style="margin-top:14px"
+            >
+
+              <label>
+                Preço da unidade avulsa (R$)
+              </label>
+
+              <input
+                id="editProductAvulsoPrice"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Informe o preço por unidade"
+                value="${escapar(precoAvulsoOriginal)}"
+              >
+
+              <p
+                class="muted"
+                style="font-size:12px;margin-top:6px"
+              >
+                Este preço será utilizado na opção
+                de venda por unidade, dentro do
+                mesmo material.
+              </p>
+
+            </div>
+
+          </div>
+
+          <label style="margin-top:18px">
+            Tipo de produto
+          </label>
+
+          <select id="editProductStockType">
+            <option
+              value="estoque"
+              ${produto.controla_estoque !== false ? 'selected' : ''}
+            >
+              📦 Tem no estoque
+            </option>
+
+            <option
+              value="revenda"
+              ${produto.controla_estoque === false ? 'selected' : ''}
+            >
+              🛒 Item de revenda
+            </option>
+          </select>
+
+          <!-- ESTOQUE -->
+
+          <div id="editStockFields">
+
+            <div style="
+              margin-top:18px;
+              padding:15px;
+              border:1px solid #dbe5ee;
+              border-radius:12px;
+            ">
+
+              <h3 style="margin:0 0 12px">
+                📦 Controle de estoque
+              </h3>
+
+              <label>
+                ${produto.estoque_unificado === true
+                  ? 'Estoque atual (peças individuais)'
+                  : 'Estoque atual'}
+              </label>
+
+              <input
+                id="editProductStock"
+                type="number"
+                min="0"
+                step="${produto.estoque_unificado === true ? '1' : '0.01'}"
+                value="${escapar(produto.estoque ?? 0)}"
+              >
+
+              ${produto.estoque_unificado === true ? `
+                <p class="muted"
+                   style="font-size:12px;margin-top:6px">
+                  Estoque compartilhado entre dúzias
+                  e unidades avulsas.
+                  Cada dúzia corresponde a 12 peças.
+                </p>
+              ` : ''}
+
+              <label>Estoque mínimo</label>
+
+              <input
+                id="editProductMinStock"
+                type="number"
+                min="0"
+                step="${produto.estoque_unificado === true ? '1' : '0.01'}"
+                value="${escapar(produto.estoque_minimo ?? 0)}"
+              >
+
+            </div>
+
+          </div>
+
+          <!-- INFORMAÇÕES DE REVENDA -->
+
+          <div
+            id="editProductResaleSection"
+            style="
+              margin-top:20px;
+              padding:15px;
+              border:1px solid #ddd;
+              border-radius:12px;
+              background:#f8fafc;
+            "
+          >
+
+            <h3 style="margin:0 0 15px">
+              💰 Informações de Revenda
+            </h3>
+
+            <label>Custo do fornecedor (R$)</label>
+            <input
+              id="editProductCost"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${escapar(produto.custo_referencia ?? 0)}"
+            >
+
+            <label>Frete por unidade (R$)</label>
+            <input
+              id="editProductFreight"
+              type="number"
+              min="0"
+              step="0.01"
+              value="${escapar(produto.frete_referencia ?? 0)}"
+            >
+
+            <label>Margem desejada (%)</label>
+            <input
+              id="editProductMargin"
+              type="number"
+              min="0"
+              max="99.99"
+              step="0.01"
+              value="${escapar(produto.margem_desejada ?? 0)}"
+            >
+
+            <label>Fornecedor habitual</label>
+            <input
+              id="editProductSupplier"
+              type="text"
+              value="${escapar(produto.fornecedor_referencia)}"
+              placeholder="Nome do fornecedor"
+            >
+
+            <label>Observações</label>
+            <textarea
+              id="editProductResaleNotes"
+              rows="3"
+              style="
+                width:100%;
+                box-sizing:border-box;
+                padding:12px;
+                border:1px solid #ddd;
+                border-radius:8px;
+                resize:vertical;
+              "
+              placeholder="Informações sobre a revenda..."
+            >${escapar(produto.observacoes_revenda)}</textarea>
+
+            <div style="
+              margin-top:15px;
+              padding:14px;
+              border-radius:10px;
+              background:#e8f5e9;
+              color:#1b5e20;
+            ">
+
+              <div style="margin-bottom:8px">
+                <strong>Custo completo:</strong>
+                <span id="editProductTotalCost">
+                  R$ 0,00
+                </span>
+              </div>
+
+              <div style="margin-bottom:8px">
+                <strong>Lucro bruto estimado:</strong>
+                <span id="editProductProfit">
+                  R$ 0,00
+                </span>
+              </div>
+
+              <div>
+                <strong>Margem bruta:</strong>
+                <span id="editProductProfitMargin">
+                  0,00%
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- BOTÕES -->
+
+          <div class="actions">
+
+            <button
+              type="button"
+              class="secondary"
+              onclick="document.getElementById('productModal')?.remove()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              id="saveProductEditButton"
+              class="primary"
+            >
+              Salvar alterações
+            </button>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const stockType =
+    modal.querySelector('#editProductStockType');
+
+  const stockFields =
+    modal.querySelector('#editStockFields');
+
+  const resaleSection =
+    modal.querySelector('#editProductResaleSection');
+
+  const unidadeSelect =
+    modal.querySelector('#editProductUnit');
+
+  const avulsoSection =
+    modal.querySelector('#editProductAvulsoSection');
+
+  const precoLabel =
+    modal.querySelector('#editProductPriceLabel');
+
+  function atualizarTipoProduto() {
+
+    const revenda = stockType.value === 'revenda';
+
+    stockFields.style.display =
+      revenda ? 'none' : 'block';
+
+    resaleSection.style.display =
+      revenda ? 'block' : 'none';
+
   }
 
-  const nome = campo('editProductName')?.value.trim() || '';
-  const categoria = campo('editProductCategory')?.value.trim() || '';
-  const unidade = campo('editProductUnit')?.value || '';
+  function atualizarUnidade() {
 
-  const controlaEstoque =
-    campo('editProductStockType')?.value === 'estoque';
+    const unidade = unidadeSelect.value;
 
-  // =====================================
-  // VALIDAR CAMPOS OBRIGATÓRIOS
-  // =====================================
+    const permiteAvulso =
+      ['dúzia', 'duzia', 'milheiro'].includes(unidade);
 
-  if (!nome || !categoria || !unidade) {
-    alert('Preencha nome, categoria e unidade.');
-    return;
-  }
+    avulsoSection.style.display =
+      permiteAvulso ? 'block' : 'none';
 
-  // =====================================
-  // VALIDAR PREÇO
-  // =====================================
-
-  const campoPreco = campo('editProductPrice');
-  const precoTexto = campoPreco?.value.trim() || '';
-
-  if (precoTexto === '') {
-    alert('Informe o preço do produto.');
-    campoPreco?.focus();
-    return;
-  }
-
-  const preco = Number(precoTexto);
-
-  if (
-    !Number.isFinite(preco) ||
-    preco < 0 ||
-    !campoPreco.validity.valid
-  ) {
-    alert('Informe um preço válido.');
-    campoPreco.focus();
-    return;
-  }
-
-  // =====================================
-  // VALIDAR INFORMAÇÕES DE REVENDA
-  // =====================================
-
-  const lerNumero = (idCampo, descricao) => {
-    const elemento = campo(idCampo);
-    const texto = elemento?.value.trim() || '';
-
-    if (texto === '') {
-      return 0;
+    if (unidade === 'dúzia' || unidade === 'duzia') {
+      precoLabel.textContent = 'Preço da dúzia (R$)';
+    } else if (unidade === 'milheiro') {
+      precoLabel.textContent = 'Preço do milheiro (R$)';
+    } else {
+      precoLabel.textContent =
+        'Preço por ' + unidade + ' (R$)';
     }
 
-    const valor = Number(texto);
+  }
 
-    if (
-      !Number.isFinite(valor) ||
-      valor < 0 ||
-      !elemento.validity.valid
-    ) {
-      throw new Error('Verifique o campo: ' + descricao);
-    }
+  stockType.addEventListener(
+    'change',
+    atualizarTipoProduto
+  );
 
-    return valor;
-  };
+  unidadeSelect.addEventListener(
+    'change',
+    atualizarUnidade
+  );
 
-  let custoReferencia;
-  let freteReferencia;
-  let margemDesejada;
+  // CÁLCULO DE REVENDA
 
-  try {
-    custoReferencia = lerNumero(
-      'editProductCost',
-      'Custo do fornecedor'
+  function calcularLucroRevenda() {
+
+    const preco = Number(
+      modal.querySelector('#editProductPrice').value
     );
 
-    freteReferencia = lerNumero(
-      'editProductFreight',
-      'Frete por unidade'
+    const custo = Number(
+      modal.querySelector('#editProductCost').value
     );
 
-    margemDesejada = lerNumero(
-      'editProductMargin',
-      'Margem desejada'
-    );
-  } catch (erro) {
-    alert(erro.message);
-    return;
-  }
-
-  if (margemDesejada >= 100) {
-    alert('A margem desejada deve ser menor que 100%.');
-    return;
-  }
-
-  const fornecedorReferencia =
-    campo('editProductSupplier')?.value.trim() || '';
-
-  const observacoesRevenda =
-    campo('editProductResaleNotes')?.value.trim() || '';
-
-  // =====================================
-  // VALIDAR ESTOQUE
-  // =====================================
-
-  let estoque = null;
-  let estoqueMinimo = null;
-
-  if (controlaEstoque) {
-
-    const campoEstoque = campo('editProductStock');
-    const campoMinimo = campo('editProductMinStock');
-
-    const textoEstoque = campoEstoque?.value.trim() || '';
-    const textoMinimo = campoMinimo?.value.trim() || '';
-
-    if (textoEstoque === '') {
-      alert('Informe o estoque atual.');
-      campoEstoque?.focus();
-      return;
-    }
-
-    if (textoMinimo === '') {
-      alert('Informe o estoque mínimo.');
-      campoMinimo?.focus();
-      return;
-    }
-
-    estoque = Number(textoEstoque);
-    estoqueMinimo = Number(textoMinimo);
-
-    if (
-      !Number.isFinite(estoque) ||
-      estoque < 0 ||
-      !campoEstoque.validity.valid
-    ) {
-      alert('Informe um estoque atual válido.');
-      campoEstoque.focus();
-      return;
-    }
-
-    if (
-      !Number.isFinite(estoqueMinimo) ||
-      estoqueMinimo < 0 ||
-      !campoMinimo.validity.valid
-    ) {
-      alert('Informe um estoque mínimo válido.');
-      campoMinimo.focus();
-      return;
-    }
-
-  }
-
-  // =====================================
-  // PROTEGER ESTOQUE UNIFICADO
-  // =====================================
-
-  if (produtoOriginal.estoque_unificado === true) {
-
-    if (unidade !== produtoOriginal.unidade) {
-      alert(
-        'Este material utiliza estoque unificado. ' +
-        'A unidade de cadastro não pode ser alterada.'
-      );
-      return;
-    }
-
-    if (!controlaEstoque) {
-      alert(
-        'Este material utiliza estoque unificado e ' +
-        'não pode ter o controle de estoque desativado.'
-      );
-      return;
-    }
-
-    if (!Number.isSafeInteger(estoque) || estoque < 0) {
-      alert(
-        'Estoque unificado: informe a quantidade ' +
-        'total de peças, sem valores fracionados.'
-      );
-      return;
-    }
-
-    if (
-      !Number.isSafeInteger(estoqueMinimo) ||
-      estoqueMinimo < 0
-    ) {
-      alert(
-        'Estoque mínimo unificado: informe uma ' +
-        'quantidade inteira de peças.'
-      );
-      return;
-    }
-
-  }
-
-  // =====================================
-  // PREPARAR SOMENTE OS DADOS NECESSÁRIOS
-  // =====================================
-
-  const atualizacao = {
-    nome,
-    categoria,
-    unidade,
-    preco,
-    controla_estoque: controlaEstoque,
-    custo_referencia: custoReferencia,
-    frete_referencia: freteReferencia,
-    margem_desejada: margemDesejada,
-    fornecedor_referencia: fornecedorReferencia,
-    observacoes_revenda: observacoesRevenda
-  };
-
-  // Não zerar o estoque de produtos de revenda.
-  // Para produtos com controle, enviar o estoque
-  // somente quando houve alteração no formulário.
-  if (controlaEstoque) {
-
-    if (
-      Number(produtoOriginal.estoque ?? 0) !== estoque
-    ) {
-      atualizacao.estoque = estoque;
-    }
-
-    if (
-      Number(produtoOriginal.estoque_minimo ?? 0) !==
-      estoqueMinimo
-    ) {
-      atualizacao.estoque_minimo = estoqueMinimo;
-    }
-
-  }
-
-  // =====================================
-  // SALVAR NO SUPABASE
-  // =====================================
-
-  if (botaoSalvar) {
-    botaoSalvar.disabled = true;
-    botaoSalvar.textContent = 'Salvando...';
-  }
-
-  try {
-
-    const { data, error } = await supabaseClient
-      .from('produtos')
-      .update(atualizacao)
-      .eq('id', id)
-      .select('id');
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data || data.length !== 1) {
-      throw new Error(
-        'A atualização não foi confirmada pelo banco de dados.'
-      );
-    }
-
-    alert('Produto atualizado com sucesso!');
-
-    document.getElementById('productModal')?.remove();
-
-    if (state.page === 'products') {
-      const conteudo = document.getElementById('content');
-
-      if (conteudo) {
-        await renderProducts(conteudo);
-      }
-    }
-
-  } catch (erro) {
-
-    console.error('Erro ao atualizar produto:', erro);
-
-    alert(
-      'Não foi possível salvar o produto.\n\n' +
-      (erro.message || 'Erro desconhecido.')
+    const frete = Number(
+      modal.querySelector('#editProductFreight').value
     );
 
-  } finally {
+    const custoTotal = custo + frete;
+    const lucro = preco - custoTotal;
 
-    if (botaoSalvar?.isConnected) {
-      botaoSalvar.disabled = false;
-      botaoSalvar.textContent = 'Salvar alterações';
-    }
+    const margem = preco > 0
+      ? (lucro / preco) * 100
+      : 0;
+
+    const moeda = valor =>
+      valor.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+
+    modal.querySelector(
+      '#editProductTotalCost'
+    ).textContent = moeda(custoTotal);
+
+    modal.querySelector(
+      '#editProductProfit'
+    ).textContent = moeda(lucro);
+
+    modal.querySelector(
+      '#editProductProfitMargin'
+    ).textContent =
+      margem.toFixed(2).replace('.', ',') + '%';
 
   }
+
+  [
+    'editProductPrice',
+    'editProductCost',
+    'editProductFreight'
+  ].forEach(idCampo => {
+
+    modal.querySelector('#' + idCampo)
+      .addEventListener('input', calcularLucroRevenda);
+
+  });
+
+  atualizarTipoProduto();
+  atualizarUnidade();
+  calcularLucroRevenda();
+
+  modal.querySelector('#saveProductEditButton')
+    .addEventListener('click', () => {
+      saveProductEdit(id);
+    });
 
 }
+
 
 async function renderDeliveries(el){
 
