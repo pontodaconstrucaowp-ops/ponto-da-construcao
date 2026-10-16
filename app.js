@@ -6926,18 +6926,6 @@ async function saveProductEdit(id) {
 
 async function renderDeliveries(el){
 
-  const escaparHTML = valor => String(valor ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-  const formatarQuantidade = valor =>
-    Number(valor || 0).toLocaleString('pt-BR', {
-      maximumFractionDigits: 3
-    });
-
   el.innerHTML = `
     <div class="card">
       <strong>Fila de entregas</strong>
@@ -6946,10 +6934,6 @@ async function renderDeliveries(el){
       </p>
     </div>
   `;
-
-  // =====================================
-  // CARREGAR ENTREGAS
-  // =====================================
 
   const { data, error } = await supabaseClient
     .from('entregas')
@@ -6986,7 +6970,7 @@ async function renderDeliveries(el){
       <div class="card">
         <strong>Erro ao carregar entregas</strong>
         <p class="muted">
-          ${escaparHTML(error.message)}
+          ${error.message}
         </p>
       </div>
     `;
@@ -7008,182 +6992,12 @@ async function renderDeliveries(el){
     return;
   }
 
-  // =====================================
-  // IDENTIFICAR VENDAS DAS ENTREGAS
-  // =====================================
-
-  const vendasIds = [
-    ...new Set(
-      data
-        .map(entrega => entrega.venda_id)
-        .filter(id => id !== null && id !== undefined)
-    )
-  ];
-
-  const comprasPorVenda = {};
-  const mapaProdutos = {};
-
-  // =====================================
-  // BUSCAR ITENS COM COMPRA EXTERNA
-  // =====================================
-
-  if(vendasIds.length){
-
-    const { data: itens, error: erroItens } =
-      await supabaseClient
-        .from('itens_venda')
-        .select(`
-          vendas_id,
-          produtos_id,
-          quantidade,
-          unidade_venda,
-          fator_estoque,
-          quantidade_compra_externa
-        `)
-        .in('vendas_id', vendasIds)
-        .gt('quantidade_compra_externa', 0);
-
-    if(erroItens){
-
-      console.error(
-        'ERRO AO CARREGAR COMPRAS EXTERNAS:',
-        erroItens
-      );
-
-      el.innerHTML = `
-        <div class="card">
-          <strong>
-            Não foi possível carregar a fila completa.
-          </strong>
-
-          <p class="muted">
-            O sistema não conseguiu verificar
-            os materiais de compra externa.
-          </p>
-
-          <p class="muted">
-            ${escaparHTML(erroItens.message)}
-          </p>
-        </div>
-      `;
-
-      return;
-    }
-
-    const itensExternos = itens || [];
-
-    // =====================================
-    // BUSCAR DADOS DOS PRODUTOS
-    // =====================================
-
-    const produtosIds = [
-      ...new Set(
-        itensExternos
-          .map(item => item.produtos_id)
-          .filter(id =>
-            id !== null &&
-            id !== undefined
-          )
-      )
-    ];
-
-    if(produtosIds.length){
-
-      const {
-        data: produtos,
-        error: erroProdutos
-      } = await supabaseClient
-        .from('produtos')
-        .select(`
-          id,
-          nome,
-          unidade,
-          estoque_unificado
-        `)
-        .in('id', produtosIds);
-
-      if(erroProdutos){
-
-        console.error(
-          'ERRO AO CARREGAR PRODUTOS:',
-          erroProdutos
-        );
-
-        el.innerHTML = `
-          <div class="card">
-            <strong>
-              Não foi possível carregar os materiais.
-            </strong>
-
-            <p class="muted">
-              ${escaparHTML(erroProdutos.message)}
-            </p>
-          </div>
-        `;
-
-        return;
-      }
-
-      (produtos || []).forEach(produto => {
-        mapaProdutos[produto.id] = produto;
-      });
-
-    }
-
-    // =====================================
-    // AGRUPAR COMPRAS EXTERNAS POR VENDA
-    // =====================================
-
-    itensExternos.forEach(item => {
-
-      if(!comprasPorVenda[item.vendas_id]){
-        comprasPorVenda[item.vendas_id] = [];
-      }
-
-      comprasPorVenda[item.vendas_id].push(item);
-
-    });
-
-  }
-
-  // =====================================
-  // CONTAR ENTREGAS COM COMPRA EXTERNA
-  // =====================================
-
-  const entregasComCompraExterna = data.filter(
-    entrega =>
-      (comprasPorVenda[entrega.venda_id] || []).length > 0
-  ).length;
-
-  // =====================================
-  // MONTAR TELA
-  // =====================================
-
   el.innerHTML = `
     <div class="card">
-
       <strong>Fila de entregas</strong>
-
       <p class="muted">
         ${data.length} entrega(s) na fila.
       </p>
-
-      ${
-        entregasComCompraExterna > 0
-          ? `
-            <p style="
-              margin-top:10px;
-              color:#b45309;
-              font-weight:700;
-            ">
-              ⚠️ ${entregasComCompraExterna}
-              entrega(s) com necessidade
-              de compra externa.
-            </p>
-          `
-          : ''
-      }
-
     </div>
 
     <div class="list" style="margin-top:12px">
@@ -7209,212 +7023,92 @@ async function renderDeliveries(el){
         const valor =
           Number(venda?.valor_total || 0);
 
-        const comprasExternas =
-          comprasPorVenda[d.venda_id] || [];
+        return `
 
-        // =====================================
-        // MONTAR AVISO DE COMPRA EXTERNA
-        // =====================================
+          <div class="card">
 
-        let avisoCompraExterna = '';
+            <div class="row">
+              <strong>
+                #${d.id} · ${nomeCliente}
+              </strong>
 
-        if(comprasExternas.length){
+              <span class="badge ${d.status}">
+                ${d.status}
+              </span>
+            </div>
 
-          const linhasMateriais =
-            comprasExternas.map(item => {
+            <p class="muted">
+              📍 ${endereco}
+            </p>
 
-              const produto =
-                mapaProdutos[item.produtos_id];
+            <p class="muted">
+              ☎ ${telefone}
+            </p>
 
-              const nomeProduto =
-                produto?.nome ||
-                `Produto #${item.produtos_id}`;
+            <div class="row">
+              <span>
+                ${money(valor)}
+              </span>
 
-              const unidadeCadastro = String(
-                produto?.unidade || ''
-              ).trim().toLowerCase();
+              <span class="muted">
+                ${venda?.forma_pagamento || ''}
+              </span>
+            </div>
 
-              const unidadeVenda = String(
-                item.unidade_venda || ''
-              ).trim().toLowerCase();
+            <div class="actions">
+            
+<button
+  type="button"
+  class="secondary"
+  onclick="abrirMapaEntrega('${encodeURIComponent(endereco)}')"
+>
+  🗺️ Ver no mapa
+</button>
 
-              const estoqueUnificado =
-                produto?.estoque_unificado === true &&
-                (
-                  unidadeCadastro === 'dúzia' ||
-                  unidadeCadastro === 'duzia'
-                );
+            ${d.status !== 'entregue' ? `
 
-              // O campo
-function abrirMapaEntrega(endereco){
+  ${i > 0 ? `
+    <button
+      class="secondary"
+      onclick="moveDelivery(${d.id},-1)"
+    >
+      ↑ Colocar na frente
+    </button>
+  ` : ''}
 
-  const enderecoDecodificado =
-    decodeURIComponent(endereco);
+  ${i < data.length - 1 ? `
+    <button
+      class="secondary"
+      onclick="moveDelivery(${d.id},1)"
+    >
+      ↓
+    </button>
+  ` : ''}
 
-  if(
-    !enderecoDecodificado ||
-    enderecoDecodificado === 'Endereço não informado'
-  ){
-    alert('Esta entrega não possui endereço cadastrado.');
-    return;
-  }
+` : ''}
 
-  const url =
-    'https://www.google.com/maps/search/?api=1&query=' +
-    encodeURIComponent(enderecoDecodificado);
+              ${d.status !== 'entregue' ? `
+                <button
+                  class="primary"
+                  onclick="nextDelivery(${d.id})"
+                >
+                  ${d.status === 'pendente'
+                    ? 'Iniciar rota'
+                    : 'Marcar entregue'}
+                </button>
+              ` : ''}
 
-  window.open(url, '_blank');
+            </div>
+
+          </div>
+
+        `;
+
+      }).join('')}
+
+    </div>
+  `;
 }
-
-window.abrirMapaEntrega = abrirMapaEntrega;
-
-async function moveDelivery(id, direction){
-
-  const { data, error } = await supabaseClient
-    .from('entregas')
-    .select('id, posicao_fila, prioridade, status')
-    .neq('status', 'entregue')
-    .order('posicao_fila', { ascending: true });
-
-  if(error){
-
-    console.error(
-      'ERRO AO CARREGAR FILA:',
-      error
-    );
-
-    alert(
-      'Não foi possível organizar a fila:\n\n' +
-      error.message
-    );
-
-    return;
-  }
-
-  if(!data || data.length < 2){
-    return;
-  }
-
-  const index = data.findIndex(
-    entrega => Number(entrega.id) === Number(id)
-  );
-
-  if(index === -1){
-
- console.log(
-  'ID RECEBIDO:',
-  id,
-  'IDS ENCONTRADOS:',
-  data.map(entrega => entrega.id)
-);
-
-  alert(
-    'Entrega não encontrada na fila.\n\n' +
-    'ID recebido: ' + id
-  );
-
-  return;
-}
-  const newIndex = index + direction;
-
-  if(newIndex < 0 || newIndex >= data.length){
-    return;
-  }
-
-  const atual = data[index];
-  const destino = data[newIndex];
-
-  const posicaoAtual = atual.posicao_fila;
-  const posicaoDestino = destino.posicao_fila;
-
-  const { error: errorTemp } =
-    await supabaseClient
-      .from('entregas')
-      .update({
-        posicao_fila: -1
-      })
-      .eq('id', atual.id);
-
-  if(errorTemp){
-
-    console.error(
-      'ERRO AO mover entrega:',
-      errorTemp
-    );
-
-    alert(
-      'Não foi possível mover a entrega:\n\n' +
-      errorTemp.message
-    );
-
-    return;
-  }
-
-  const { error: errorDestino } =
-    await supabaseClient
-      .from('entregas')
-      .update({
-        posicao_fila: posicaoAtual
-      })
-      .eq('id', destino.id);
-
-  console.log('MOVIMENTAÇÃO:', {
-  atual: atual.id,
-  destino: destino.id,
-  posicaoAtual: posicaoAtual,
-  posicaoDestino: posicaoDestino,
-  erro: errorDestino
-});
-  
-  if(errorDestino){
-
-    console.error(
-      'ERRO AO atualizar posição:',
-      errorDestino
-    );
-
-    await supabaseClient
-      .from('entregas')
-      .update({
-        posicao_fila: posicaoAtual
-      })
-      .eq('id', atual.id);
-
-    alert(
-      'Não foi possível reorganizar a fila:\n\n' +
-      errorDestino.message
-    );
-
-    return;
-  }
-
-  const { error: errorAtual } =
-    await supabaseClient
-      .from('entregas')
-      .update({
-        posicao_fila: posicaoDestino
-      })
-      .eq('id', atual.id);
-
-  if(errorAtual){
-
-    console.error(
-      'ERRO AO finalizar movimentação:',
-      errorAtual
-    );
-
-    alert(
-      'A fila pode não ter sido atualizada corretamente.'
-    );
-
-    return;
-  }
-
-await renderDeliveries(
-  document.getElementById('content')
-);
-}
-
 async function nextDelivery(id){
 
   const { data, error } = await supabaseClient
