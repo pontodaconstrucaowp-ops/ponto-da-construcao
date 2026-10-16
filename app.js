@@ -79,14 +79,67 @@ async function login(){
   }
 }
 
-function logout(){
-  state.user=null;
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('loginScreen').classList.remove('hidden');
-}
+async function logout() {
 
-function toggleUserMenu(){
-  document.getElementById('userMenu').classList.toggle('hidden');
+  const confirmou = window.confirm(
+    'Deseja realmente sair do sistema?'
+  );
+
+  if (!confirmou) {
+    return;
+  }
+
+  try {
+
+    // Encerrar a sessão de autenticação
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      throw error;
+    }
+
+    // Limpar os dados da sessão no aplicativo
+    state.user = null;
+    state.cart = [];
+    state.selectedClient = null;
+    state.saleDiscount = 0;
+    state.cartOpen = false;
+    state.page = 'home';
+
+    window.salePayment = null;
+    window.saleType = null;
+    window.saleProducts = [];
+
+    // Fechar o menu do usuário, caso esteja aberto
+    document.getElementById('userMenu')
+      ?.classList.add('hidden');
+
+    // Ocultar o aplicativo
+    document.getElementById('app')
+      ?.classList.add('hidden');
+
+    // Exibir a tela de login
+    document.getElementById('loginScreen')
+      ?.classList.remove('hidden');
+
+    // Limpar o campo de senha
+    const campoSenha = document.getElementById('loginPass');
+
+    if (campoSenha) {
+      campoSenha.value = '';
+    }
+
+  } catch (erro) {
+
+    console.error('Erro ao encerrar sessão:', erro);
+
+    alert(
+      'Não foi possível encerrar a sessão. ' +
+      'Verifique sua conexão e tente novamente.'
+    );
+
+  }
+
 }
 
 
