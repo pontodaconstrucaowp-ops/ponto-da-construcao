@@ -6557,6 +6557,373 @@ function openProductEdit(id) {
 }
 
 
+async function saveProductEdit(id) {
+
+  const campo = nome => document.getElementById(nome);
+  const botao = campo('saveProductEditButton');
+
+  // Evitar cliques repetidos
+  if (!botao || botao.disabled) return;
+
+  const produtoOriginal = (window.currentProducts || [])
+    .find(p => String(p.id) === String(id));
+
+  if (!produtoOriginal) {
+    alert('Produto não encontrado. Atualize a página.');
+    return;
+  }
+
+  // =====================================
+  // 1. DADOS BÁSICOS
+  // =====================================
+
+  const nome = campo('editProductName')?.value.trim() || '';
+  const categoria = campo('editProductCategory')?.value.trim() || '';
+  const unidade = campo('editProductUnit')?.value || '';
+
+  const controlaEstoque =
+    campo('editProductStockType')?.value === 'estoque';
+
+  if (!nome || !categoria || !unidade) {
+    alert('Preencha nome, categoria e unidade.');
+    return;
+  }
+
+  // =====================================
+  // 2. PREÇO PRINCIPAL
+  // =====================================
+
+  const campoPreco = campo('editProductPrice');
+  const textoPreco = campoPreco?.value.trim() || '';
+
+  if (!textoPreco) {
+    alert('Informe o preço do produto.');
+    campoPreco?.focus();
+    return;
+  }
+
+  const preco = Number(textoPreco);
+
+  if (
+    !Number.isFinite(preco) ||
+    preco < 0 ||
+    !campoPreco.validity.valid
+  ) {
+    alert('Informe um preço válido.');
+    campoPreco.focus();
+    return;
+  }
+
+  // =====================================
+  // 3. PREÇO DA UNIDADE AVULSA
+  // =====================================
+
+  const permiteAvulso = [
+    'dúzia',
+    'duzia',
+    'milheiro'
+  ].includes(unidade.trim().toLowerCase());
+
+  const campoAvulso = campo('editProductAvulsoPrice');
+
+  if (!campoAvulso) {
+    alert(
+      'Campo de preço avulso não encontrado. ' +
+      'Atualize a página.'
+    );
+    return;
+  }
+
+  let precoAvulso = null;
+
+  if (permiteAvulso) {
+
+    const textoAvulso = campoAvulso.value.trim();
+
+    if (textoAvulso !== '') {
+
+      precoAvulso = Number(textoAvulso);
+
+      if (
+        !Number.isFinite(precoAvulso) ||
+        precoAvulso < 0 ||
+        !campoAvulso.validity.valid
+      ) {
+        alert(
+          'Informe um preço válido para a unidade avulsa.'
+        );
+        campoAvulso.focus();
+        return;
+      }
+
+    }
+
+  }
+
+  // =====================================
+  // 4. INFORMAÇÕES DE REVENDA
+  // =====================================
+
+  function lerNumero(idCampo, descricao) {
+
+    const elemento = campo(idCampo);
+
+    if (!elemento) {
+      throw new Error('Campo não encontrado: ' + descricao);
+    }
+
+    const texto = elemento.value.trim();
+
+    if (texto === '') return 0;
+
+    const valor = Number(texto);
+
+    if (
+      !Number.isFinite(valor) ||
+      valor < 0 ||
+      !elemento.validity.valid
+    ) {
+      throw new Error('Verifique o campo: ' + descricao);
+    }
+
+    return valor;
+  }
+
+  let custoReferencia;
+  let freteReferencia;
+  let margemDesejada;
+
+  try {
+
+    custoReferencia = lerNumero(
+      'editProductCost',
+      'Custo do fornecedor'
+    );
+
+    freteReferencia = lerNumero(
+      'editProductFreight',
+      'Frete por unidade'
+    );
+
+    margemDesejada = lerNumero(
+      'editProductMargin',
+      'Margem desejada'
+    );
+
+  } catch (erro) {
+
+    alert(erro.message);
+    return;
+
+  }
+
+  if (margemDesejada >= 100) {
+    alert('A margem desejada deve ser menor que 100%.');
+    return;
+  }
+
+  const fornecedorReferencia =
+    campo('editProductSupplier')?.value.trim() || '';
+
+  const observacoesRevenda =
+    campo('editProductResaleNotes')?.value.trim() || '';
+
+  // =====================================
+  // 5. ESTOQUE
+  // =====================================
+
+  let estoque = null;
+  let estoqueMinimo = null;
+
+  if (controlaEstoque) {
+
+    const campoEstoque = campo('editProductStock');
+    const campoMinimo = campo('editProductMinStock');
+
+    const textoEstoque = campoEstoque?.value.trim() || '';
+    const textoMinimo = campoMinimo?.value.trim() || '';
+
+    if (!textoEstoque) {
+      alert('Informe o estoque atual.');
+      campoEstoque?.focus();
+      return;
+    }
+
+    if (!textoMinimo) {
+      alert('Informe o estoque mínimo.');
+      campoMinimo?.focus();
+      return;
+    }
+
+    estoque = Number(textoEstoque);
+    estoqueMinimo = Number(textoMinimo);
+
+    if (
+      !Number.isFinite(estoque) ||
+      estoque < 0 ||
+      !campoEstoque.validity.valid
+    ) {
+      alert('Informe um estoque atual válido.');
+      campoEstoque.focus();
+      return;
+    }
+
+    if (
+      !Number.isFinite(estoqueMinimo) ||
+      estoqueMinimo < 0 ||
+      !campoMinimo.validity.valid
+    ) {
+      alert('Informe um estoque mínimo válido.');
+      campoMinimo.focus();
+      return;
+    }
+
+  }
+
+  // =====================================
+  // 6. PROTEGER ESTOQUE UNIFICADO
+  // =====================================
+
+  if (produtoOriginal.estoque_unificado === true) {
+
+    if (unidade !== produtoOriginal.unidade) {
+      alert(
+        'A unidade de um material com estoque ' +
+        'unificado não pode ser alterada.'
+      );
+      return;
+    }
+
+    if (!controlaEstoque) {
+      alert(
+        'Não é permitido desativar o controle ' +
+        'de estoque deste material.'
+      );
+      return;
+    }
+
+    if (
+      !Number.isSafeInteger(estoque) ||
+      !Number.isSafeInteger(estoqueMinimo)
+    ) {
+      alert(
+        'O estoque unificado deve ser informado ' +
+        'em peças inteiras.'
+      );
+      return;
+    }
+
+  }
+
+  // =====================================
+  // 7. PREPARAR DADOS PARA O SUPABASE
+  // =====================================
+
+  const atualizacao = {
+    nome,
+    categoria,
+    unidade,
+    preco,
+    controla_estoque: controlaEstoque,
+    custo_referencia: custoReferencia,
+    frete_referencia: freteReferencia,
+    margem_desejada: margemDesejada,
+    fornecedor_referencia: fornecedorReferencia,
+    observacoes_revenda: observacoesRevenda
+  };
+
+  // Atualizar o preço avulso somente quando
+  // a unidade principal permitir venda avulsa.
+  if (permiteAvulso) {
+
+    const precoAnterior =
+      produtoOriginal.preco_avulso == null
+        ? null
+        : Number(produtoOriginal.preco_avulso);
+
+    if (precoAnterior !== precoAvulso) {
+      atualizacao.preco_avulso = precoAvulso;
+    }
+
+  }
+
+  // Não enviar estoque de itens de revenda.
+  // Preservar valores que não foram alterados.
+  if (controlaEstoque) {
+
+    if (
+      Number(produtoOriginal.estoque ?? 0) !== estoque
+    ) {
+      atualizacao.estoque = estoque;
+    }
+
+    if (
+      Number(produtoOriginal.estoque_minimo ?? 0) !==
+      estoqueMinimo
+    ) {
+      atualizacao.estoque_minimo = estoqueMinimo;
+    }
+
+  }
+
+  // =====================================
+  // 8. SALVAR
+  // =====================================
+
+  botao.disabled = true;
+  botao.textContent = 'Salvando...';
+
+  try {
+
+    const { data, error } = await supabaseClient
+      .from('produtos')
+      .update(atualizacao)
+      .eq('id', id)
+      .select('id');
+
+    if (error) throw error;
+
+    if (!data || data.length !== 1) {
+      throw new Error(
+        'O banco não confirmou a atualização.'
+      );
+    }
+
+    alert('Produto atualizado com sucesso!');
+
+    document.getElementById('productModal')?.remove();
+
+    if (state.page === 'products') {
+
+      const conteudo = document.getElementById('content');
+
+      if (conteudo) {
+        await renderProducts(conteudo);
+      }
+
+    }
+
+  } catch (erro) {
+
+    console.error('Erro ao salvar produto:', erro);
+
+    alert(
+      'Não foi possível salvar o produto.\n\n' +
+      (erro.message || 'Erro desconhecido.')
+    );
+
+  } finally {
+
+    if (botao.isConnected) {
+      botao.disabled = false;
+      botao.textContent = 'Salvar alterações';
+    }
+
+  }
+
+}
+
+
 async function renderDeliveries(el){
 
   el.innerHTML = `
