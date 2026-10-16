@@ -90,6 +90,75 @@ function toggleUserMenu() {
   menu.classList.toggle('hidden');
 
 }
+
+async function restaurarSessao() {
+
+  try {
+
+    const { data: sessao, error: erroSessao } =
+      await supabaseClient.auth.getSession();
+
+    if (erroSessao) {
+      throw erroSessao;
+    }
+
+    if (!sessao?.session) {
+      return;
+    }
+
+    // Validar a sessão com o Supabase
+    const { data: autenticacao, error: erroUsuario } =
+      await supabaseClient.auth.getUser();
+
+    if (erroUsuario || !autenticacao?.user) {
+      return;
+    }
+
+    // Recuperar o cadastro do usuário
+    const { data: usuario, error: erroCadastro } =
+      await supabaseClient
+        .from('usuarios')
+        .select('*')
+        .eq('id', autenticacao.user.id)
+        .maybeSingle();
+
+    if (erroCadastro || !usuario || !usuario.ativo) {
+      return;
+    }
+
+    // Restaurar o usuário no aplicativo
+    state.user = usuario;
+
+    document.getElementById('loginScreen')
+      ?.classList.add('hidden');
+
+    document.getElementById('app')
+      ?.classList.remove('hidden');
+
+    const nomeUsuario =
+      document.getElementById('loggedUser');
+
+    if (nomeUsuario) {
+      nomeUsuario.textContent = usuario.nome;
+    }
+
+    // Respeitar a restrição dos entregadores
+    if (usuario.tipo === 'entregador') {
+      navigate('deliveries');
+    } else {
+      navigate('home');
+    }
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao restaurar sessão:',
+      erro
+    );
+
+  }
+
+}
 async function logout() {
 
   const confirmou = window.confirm(
