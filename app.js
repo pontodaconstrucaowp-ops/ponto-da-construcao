@@ -6061,69 +6061,17 @@ ${produto.estoque_unificado === true ? `
     });
 
 }
-async function saveProductEdit(id){
 
-  const campo = nome =>
-    document.getElementById(nome);
+async function saveProductEdit(id) {
 
-  const numero = nome =>
-    Number(campo(nome)?.value);
+  const campo = nome => document.getElementById(nome);
 
-  const nome = campo('editProductName').value.trim();
-  const categoria = campo('editProductCategory').value.trim();
-  const unidade = campo('editProductUnit').value;
-  const preco = numero('editProductPrice');
+  const botaoSalvar = campo('saveProductEditButton');
 
-  const controlaEstoque =
-    campo('editProductStockType').value === 'estoque';
-
-  const estoque = controlaEstoque
-    ? numero('editProductStock')
-    : 0;
-
-  const estoqueMinimo = controlaEstoque
-    ? numero('editProductMinStock')
-    : 0;
-
-  // Informações de revenda
-
-  const custoReferencia = numero('editProductCost');
-  const freteReferencia = numero('editProductFreight');
-  const margemDesejada = numero('editProductMargin');
-
-  const fornecedorReferencia =
-    campo('editProductSupplier').value.trim();
-
-  const observacoesRevenda =
-    campo('editProductResaleNotes').value.trim();
-
-  if(!nome || !categoria || !unidade){
-    alert('Preencha nome, categoria e unidade.');
+  // Impedir salvamentos simultâneos
+  if (botaoSalvar?.disabled) {
     return;
   }
-
-  const valores = [
-    preco,
-    estoque,
-    estoqueMinimo,
-    custoReferencia,
-    freteReferencia,
-    margemDesejada
-  ];
-
-  if(valores.some(v => !Number.isFinite(v) || v < 0)){
-    alert('Verifique os valores informados.');
-    return;
-  }
-
-  if(margemDesejada >= 100){
-    alert('A margem desejada deve ser menor que 100%.');
-    return;
-  }
-
-    // =====================================
-  // PROTEÇÃO DO ESTOQUE UNIFICADO
-  // =====================================
 
   const produtoOriginal = (window.currentProducts || [])
     .find(p => String(p.id) === String(id));
@@ -6133,22 +6081,165 @@ async function saveProductEdit(id){
     return;
   }
 
-  if (produtoOriginal.estoque_unificado === true) {
-        // =====================================
-    // VALIDAR ESTOQUE MÍNIMO EM PEÇAS
-    // =====================================
+  const nome = campo('editProductName')?.value.trim() || '';
+  const categoria = campo('editProductCategory')?.value.trim() || '';
+  const unidade = campo('editProductUnit')?.value || '';
+
+  const controlaEstoque =
+    campo('editProductStockType')?.value === 'estoque';
+
+  // =====================================
+  // VALIDAR CAMPOS OBRIGATÓRIOS
+  // =====================================
+
+  if (!nome || !categoria || !unidade) {
+    alert('Preencha nome, categoria e unidade.');
+    return;
+  }
+
+  // =====================================
+  // VALIDAR PREÇO
+  // =====================================
+
+  const campoPreco = campo('editProductPrice');
+  const precoTexto = campoPreco?.value.trim() || '';
+
+  if (precoTexto === '') {
+    alert('Informe o preço do produto.');
+    campoPreco?.focus();
+    return;
+  }
+
+  const preco = Number(precoTexto);
+
+  if (
+    !Number.isFinite(preco) ||
+    preco < 0 ||
+    !campoPreco.validity.valid
+  ) {
+    alert('Informe um preço válido.');
+    campoPreco.focus();
+    return;
+  }
+
+  // =====================================
+  // VALIDAR INFORMAÇÕES DE REVENDA
+  // =====================================
+
+  const lerNumero = (idCampo, descricao) => {
+    const elemento = campo(idCampo);
+    const texto = elemento?.value.trim() || '';
+
+    if (texto === '') {
+      return 0;
+    }
+
+    const valor = Number(texto);
 
     if (
-      !Number.isSafeInteger(estoqueMinimo) ||
-      estoqueMinimo < 0
+      !Number.isFinite(valor) ||
+      valor < 0 ||
+      !elemento.validity.valid
     ) {
-      alert(
-        'Estoque mínimo unificado: informe uma ' +
-        'quantidade inteira de peças.'
-      );
+      throw new Error('Verifique o campo: ' + descricao);
+    }
+
+    return valor;
+  };
+
+  let custoReferencia;
+  let freteReferencia;
+  let margemDesejada;
+
+  try {
+    custoReferencia = lerNumero(
+      'editProductCost',
+      'Custo do fornecedor'
+    );
+
+    freteReferencia = lerNumero(
+      'editProductFreight',
+      'Frete por unidade'
+    );
+
+    margemDesejada = lerNumero(
+      'editProductMargin',
+      'Margem desejada'
+    );
+  } catch (erro) {
+    alert(erro.message);
+    return;
+  }
+
+  if (margemDesejada >= 100) {
+    alert('A margem desejada deve ser menor que 100%.');
+    return;
+  }
+
+  const fornecedorReferencia =
+    campo('editProductSupplier')?.value.trim() || '';
+
+  const observacoesRevenda =
+    campo('editProductResaleNotes')?.value.trim() || '';
+
+  // =====================================
+  // VALIDAR ESTOQUE
+  // =====================================
+
+  let estoque = null;
+  let estoqueMinimo = null;
+
+  if (controlaEstoque) {
+
+    const campoEstoque = campo('editProductStock');
+    const campoMinimo = campo('editProductMinStock');
+
+    const textoEstoque = campoEstoque?.value.trim() || '';
+    const textoMinimo = campoMinimo?.value.trim() || '';
+
+    if (textoEstoque === '') {
+      alert('Informe o estoque atual.');
+      campoEstoque?.focus();
       return;
     }
-    // Manter a unidade original do produto unificado
+
+    if (textoMinimo === '') {
+      alert('Informe o estoque mínimo.');
+      campoMinimo?.focus();
+      return;
+    }
+
+    estoque = Number(textoEstoque);
+    estoqueMinimo = Number(textoMinimo);
+
+    if (
+      !Number.isFinite(estoque) ||
+      estoque < 0 ||
+      !campoEstoque.validity.valid
+    ) {
+      alert('Informe um estoque atual válido.');
+      campoEstoque.focus();
+      return;
+    }
+
+    if (
+      !Number.isFinite(estoqueMinimo) ||
+      estoqueMinimo < 0 ||
+      !campoMinimo.validity.valid
+    ) {
+      alert('Informe um estoque mínimo válido.');
+      campoMinimo.focus();
+      return;
+    }
+
+  }
+
+  // =====================================
+  // PROTEGER ESTOQUE UNIFICADO
+  // =====================================
+
+  if (produtoOriginal.estoque_unificado === true) {
+
     if (unidade !== produtoOriginal.unidade) {
       alert(
         'Este material utiliza estoque unificado. ' +
@@ -6156,6 +6247,7 @@ async function saveProductEdit(id){
       );
       return;
     }
+
     if (!controlaEstoque) {
       alert(
         'Este material utiliza estoque unificado e ' +
@@ -6172,38 +6264,115 @@ async function saveProductEdit(id){
       return;
     }
 
-  }
-  
-  const { error } = await supabaseClient
-    .from('produtos')
-    .update({
-      nome,
-      categoria,
-      unidade,
-      preco,
-      estoque,
-      estoque_minimo: estoqueMinimo,
-      controla_estoque: controlaEstoque,
-      custo_referencia: custoReferencia,
-      frete_referencia: freteReferencia,
-      margem_desejada: margemDesejada,
-      fornecedor_referencia: fornecedorReferencia,
-      observacoes_revenda: observacoesRevenda
-    })
-    .eq('id', id);
+    if (
+      !Number.isSafeInteger(estoqueMinimo) ||
+      estoqueMinimo < 0
+    ) {
+      alert(
+        'Estoque mínimo unificado: informe uma ' +
+        'quantidade inteira de peças.'
+      );
+      return;
+    }
 
-  if(error){
-    console.error('Erro ao atualizar produto:', error);
-    alert('Erro ao salvar:\n\n' + error.message);
-    return;
   }
 
-  alert('Produto atualizado com sucesso!');
+  // =====================================
+  // PREPARAR SOMENTE OS DADOS NECESSÁRIOS
+  // =====================================
 
-  document.getElementById('productModal')?.remove();
+  const atualizacao = {
+    nome,
+    categoria,
+    unidade,
+    preco,
+    controla_estoque: controlaEstoque,
+    custo_referencia: custoReferencia,
+    frete_referencia: freteReferencia,
+    margem_desejada: margemDesejada,
+    fornecedor_referencia: fornecedorReferencia,
+    observacoes_revenda: observacoesRevenda
+  };
 
-  renderProducts(document.getElementById('content'));
+  // Não zerar o estoque de produtos de revenda.
+  // Para produtos com controle, enviar o estoque
+  // somente quando houve alteração no formulário.
+  if (controlaEstoque) {
+
+    if (
+      Number(produtoOriginal.estoque ?? 0) !== estoque
+    ) {
+      atualizacao.estoque = estoque;
+    }
+
+    if (
+      Number(produtoOriginal.estoque_minimo ?? 0) !==
+      estoqueMinimo
+    ) {
+      atualizacao.estoque_minimo = estoqueMinimo;
+    }
+
+  }
+
+  // =====================================
+  // SALVAR NO SUPABASE
+  // =====================================
+
+  if (botaoSalvar) {
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = 'Salvando...';
+  }
+
+  try {
+
+    const { data, error } = await supabaseClient
+      .from('produtos')
+      .update(atualizacao)
+      .eq('id', id)
+      .select('id');
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length !== 1) {
+      throw new Error(
+        'A atualização não foi confirmada pelo banco de dados.'
+      );
+    }
+
+    alert('Produto atualizado com sucesso!');
+
+    document.getElementById('productModal')?.remove();
+
+    if (state.page === 'products') {
+      const conteudo = document.getElementById('content');
+
+      if (conteudo) {
+        await renderProducts(conteudo);
+      }
+    }
+
+  } catch (erro) {
+
+    console.error('Erro ao atualizar produto:', erro);
+
+    alert(
+      'Não foi possível salvar o produto.\n\n' +
+      (erro.message || 'Erro desconhecido.')
+    );
+
+  } finally {
+
+    if (botaoSalvar?.isConnected) {
+      botaoSalvar.disabled = false;
+      botaoSalvar.textContent = 'Salvar alterações';
+    }
+
+  }
+
 }
+
 async function renderDeliveries(el){
 
   el.innerHTML = `
