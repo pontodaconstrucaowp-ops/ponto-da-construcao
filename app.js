@@ -4892,16 +4892,28 @@ function calcularEntradaMercadorias() {
 }
 async function salvarEntradaMercadorias() {
 
+  // =====================================
+  // 1. EVITAR CLIQUES DUPLICADOS
+  // =====================================
+
   const botao = document.querySelector(
     '#entradaMercadoriasModal button.primary'
   );
 
-  if (botao?.disabled) return;
+  if (!botao || botao.disabled) return;
+
+  // =====================================
+  // 2. VERIFICAR ADMINISTRADOR
+  // =====================================
 
   if (state.user?.tipo !== 'admin') {
     alert('Somente administradores podem adicionar mercadorias.');
     return;
   }
+
+  // =====================================
+  // 3. LER OS DADOS DA JANELA
+  // =====================================
 
   const produtoId = Number(
     document.getElementById('entradaProduto')?.value
@@ -4915,6 +4927,12 @@ async function salvarEntradaMercadorias() {
     document.getElementById('entradaUnidades')?.value
   );
 
+  // =====================================
+  // 4. VALIDAR QUANTIDADES
+  // =====================================
+
+  const totalPecas = duzias * 12 + unidades;
+
   if (
     !Number.isSafeInteger(produtoId) ||
     produtoId <= 0 ||
@@ -4922,25 +4940,72 @@ async function salvarEntradaMercadorias() {
     !Number.isSafeInteger(unidades) ||
     duzias < 0 ||
     unidades < 0 ||
-    !Number.isSafeInteger(duzias * 12 + unidades) ||
-    duzias * 12 + unidades <= 0
+    !Number.isSafeInteger(totalPecas) ||
+    totalPecas <= 0
   ) {
     alert('Informe uma quantidade inteira e maior que zero.');
     return;
   }
 
-  if (botao) {
-    botao.disabled = true;
-    botao.textContent = 'Salvando...';
+  // =====================================
+  // 5. IDENTIFICAR O PRODUTO
+  // =====================================
+
+  const produto = (window.currentProducts || []).find(
+    p => Number(p.id) === produtoId
+  );
+
+  if (
+    !produto ||
+    produto.ativo !== true ||
+    produto.estoque_unificado !== true ||
+    produto.controla_estoque !== true ||
+    !['dúzia', 'duzia'].includes(
+      String(produto.unidade || '').trim().toLowerCase()
+    )
+  ) {
+    alert('Produto inválido para entrada de mercadorias.');
+    return;
   }
+
+  // =====================================
+  // 6. CONFIRMAÇÃO DE SEGURANÇA
+  // =====================================
+
+  const mensagemConfirmacao = [
+    '📦 CONFIRMAR ENTRADA DE MERCADORIAS',
+    '',
+    'Material:',
+    produto.nome,
+    '',
+    `Dúzias: ${duzias}`,
+    `Unidades avulsas: ${unidades}`,
+    '',
+    `TOTAL A ACRESCENTAR: ${totalPecas} peças`,
+    '',
+    'Esta operação aumentará o estoque do produto.',
+    '',
+    'Deseja realmente confirmar?'
+  ].join('\n');
+
+  const confirmado = window.confirm(mensagemConfirmacao);
+
+  if (!confirmado) {
+    return;
+  }
+
+  // =====================================
+  // 7. BLOQUEAR BOTÃO DURANTE SALVAMENTO
+  // =====================================
+
+  botao.disabled = true;
+  botao.textContent = 'Salvando...';
 
   try {
 
     // =====================================
-    // ENTRADA ÚNICA E ATÔMICA NO ESTOQUE
+    // 8. REGISTRAR ENTRADA NO SUPABASE
     // =====================================
-
-    const totalPecas = duzias * 12 + unidades;
 
     const { data: novoEstoque, error } =
       await supabaseClient.rpc(
@@ -4952,39 +5017,69 @@ async function salvarEntradaMercadorias() {
         }
       );
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
+
+    // =====================================
+    // 9. INFORMAR RESULTADO
+    // =====================================
 
     console.log(
-      'Novo estoque registrado:',
-      novoEstoque,
-      'peças'
+      'Entrada registrada:',
+      {
+        produto: produto.nome,
+        duzias,
+        unidades,
+        totalPecas,
+        novoEstoque
+      }
     );
 
-    alert('Mercadorias adicionadas ao estoque com sucesso!');
+    alert(
+      '✅ MERCADORIAS ADICIONADAS!\n\n' +
+      `Material: ${produto.nome}\n` +
+      `Quantidade adicionada: ${totalPecas} peças\n` +
+      `Novo estoque: ${novoEstoque} peças`
+    );
 
-    document.getElementById(
-      'entradaMercadoriasModal'
-    )?.remove();
+    // =====================================
+    // 10. FECHAR JANELA E ATUALIZAR PRODUTOS
+    // =====================================
 
-    navigate('products');
+    document
+      .getElementById('entradaMercadoriasModal')
+      ?.remove();
+
+    await renderProducts(
+      document.getElementById('content')
+    );
 
   } catch (erro) {
 
-    console.error('Erro ao adicionar mercadorias:', erro);
+    console.error(
+      'Erro ao adicionar mercadorias:',
+      erro
+    );
 
     alert(
-      'Não foi possível concluir a entrada: ' +
+      'Não foi possível concluir a entrada.\n\n' +
       (erro.message || 'Erro desconhecido.')
     );
 
   } finally {
 
-    if (botao?.isConnected) {
+    // =====================================
+    // 11. LIBERAR BOTÃO
+    // =====================================
+
+    if (botao.isConnected) {
       botao.disabled = false;
       botao.textContent = 'Confirmar entrada';
     }
 
   }
+
 }
 
 function filterProducts() {
