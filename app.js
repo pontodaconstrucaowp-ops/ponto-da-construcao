@@ -6926,6 +6926,18 @@ async function saveProductEdit(id) {
 
 async function renderDeliveries(el){
 
+  const escaparHTML = valor => String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const formatarQuantidade = valor =>
+    Number(valor || 0).toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
+
   el.innerHTML = `
     <div class="card">
       <strong>Fila de entregas</strong>
@@ -6934,6 +6946,10 @@ async function renderDeliveries(el){
       </p>
     </div>
   `;
+
+  // =====================================
+  // CARREGAR ENTREGAS
+  // =====================================
 
   const { data, error } = await supabaseClient
     .from('entregas')
@@ -6970,7 +6986,7 @@ async function renderDeliveries(el){
       <div class="card">
         <strong>Erro ao carregar entregas</strong>
         <p class="muted">
-          ${error.message}
+          ${escaparHTML(error.message)}
         </p>
       </div>
     `;
@@ -6992,12 +7008,182 @@ async function renderDeliveries(el){
     return;
   }
 
+  // =====================================
+  // IDENTIFICAR VENDAS DAS ENTREGAS
+  // =====================================
+
+  const vendasIds = [
+    ...new Set(
+      data
+        .map(entrega => entrega.venda_id)
+        .filter(id => id !== null && id !== undefined)
+    )
+  ];
+
+  const comprasPorVenda = {};
+  const mapaProdutos = {};
+
+  // =====================================
+  // BUSCAR ITENS COM COMPRA EXTERNA
+  // =====================================
+
+  if(vendasIds.length){
+
+    const { data: itens, error: erroItens } =
+      await supabaseClient
+        .from('itens_venda')
+        .select(`
+          vendas_id,
+          produtos_id,
+          quantidade,
+          unidade_venda,
+          fator_estoque,
+          quantidade_compra_externa
+        `)
+        .in('vendas_id', vendasIds)
+        .gt('quantidade_compra_externa', 0);
+
+    if(erroItens){
+
+      console.error(
+        'ERRO AO CARREGAR COMPRAS EXTERNAS:',
+        erroItens
+      );
+
+      el.innerHTML = `
+        <div class="card">
+          <strong>
+            Não foi possível carregar a fila completa.
+          </strong>
+
+          <p class="muted">
+            O sistema não conseguiu verificar
+            os materiais de compra externa.
+          </p>
+
+          <p class="muted">
+            ${escaparHTML(erroItens.message)}
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const itensExternos = itens || [];
+
+    // =====================================
+    // BUSCAR DADOS DOS PRODUTOS
+    // =====================================
+
+    const produtosIds = [
+      ...new Set(
+        itensExternos
+          .map(item => item.produtos_id)
+          .filter(id =>
+            id !== null &&
+            id !== undefined
+          )
+      )
+    ];
+
+    if(produtosIds.length){
+
+      const {
+        data: produtos,
+        error: erroProdutos
+      } = await supabaseClient
+        .from('produtos')
+        .select(`
+          id,
+          nome,
+          unidade,
+          estoque_unificado
+        `)
+        .in('id', produtosIds);
+
+      if(erroProdutos){
+
+        console.error(
+          'ERRO AO CARREGAR PRODUTOS:',
+          erroProdutos
+        );
+
+        el.innerHTML = `
+          <div class="card">
+            <strong>
+              Não foi possível carregar os materiais.
+            </strong>
+
+            <p class="muted">
+              ${escaparHTML(erroProdutos.message)}
+            </p>
+          </div>
+        `;
+
+        return;
+      }
+
+      (produtos || []).forEach(produto => {
+        mapaProdutos[produto.id] = produto;
+      });
+
+    }
+
+    // =====================================
+    // AGRUPAR COMPRAS EXTERNAS POR VENDA
+    // =====================================
+
+    itensExternos.forEach(item => {
+
+      if(!comprasPorVenda[item.vendas_id]){
+        comprasPorVenda[item.vendas_id] = [];
+      }
+
+      comprasPorVenda[item.vendas_id].push(item);
+
+    });
+
+  }
+
+  // =====================================
+  // CONTAR ENTREGAS COM COMPRA EXTERNA
+  // =====================================
+
+  const entregasComCompraExterna = data.filter(
+    entrega =>
+      (comprasPorVenda[entrega.venda_id] || []).length > 0
+  ).length;
+
+  // =====================================
+  // MONTAR TELA
+  // =====================================
+
   el.innerHTML = `
     <div class="card">
+
       <strong>Fila de entregas</strong>
+
       <p class="muted">
         ${data.length} entrega(s) na fila.
       </p>
+
+      ${
+        entregasComCompraExterna > 0
+          ? `
+            <p style="
+              margin-top:10px;
+              color:#b45309;
+              font-weight:700;
+            ">
+              ⚠️ ${entregasComCompraExterna}
+              entrega(s) com necessidade
+              de compra externa.
+            </p>
+          `
+          : ''
+      }
+
     </div>
 
     <div class="list" style="margin-top:12px">
@@ -7023,92 +7209,43 @@ async function renderDeliveries(el){
         const valor =
           Number(venda?.valor_total || 0);
 
-        return `
+        const comprasExternas =
+          comprasPorVenda[d.venda_id] || [];
 
-          <div class="card">
+        // =====================================
+        // MONTAR AVISO DE COMPRA EXTERNA
+        // =====================================
 
-            <div class="row">
-              <strong>
-                #${d.id} · ${nomeCliente}
-              </strong>
+        let avisoCompraExterna = '';
 
-              <span class="badge ${d.status}">
-                ${d.status}
-              </span>
-            </div>
+        if(comprasExternas.length){
 
-            <p class="muted">
-              📍 ${endereco}
-            </p>
+          const linhasMateriais =
+            comprasExternas.map(item => {
 
-            <p class="muted">
-              ☎ ${telefone}
-            </p>
+              const produto =
+                mapaProdutos[item.produtos_id];
 
-            <div class="row">
-              <span>
-                ${money(valor)}
-              </span>
+              const nomeProduto =
+                produto?.nome ||
+                `Produto #${item.produtos_id}`;
 
-              <span class="muted">
-                ${venda?.forma_pagamento || ''}
-              </span>
-            </div>
+              const unidadeCadastro = String(
+                produto?.unidade || ''
+              ).trim().toLowerCase();
 
-            <div class="actions">
-            
-<button
-  type="button"
-  class="secondary"
-  onclick="abrirMapaEntrega('${encodeURIComponent(endereco)}')"
->
-  🗺️ Ver no mapa
-</button>
+              const unidadeVenda = String(
+                item.unidade_venda || ''
+              ).trim().toLowerCase();
 
-            ${d.status !== 'entregue' ? `
+              const estoqueUnificado =
+                produto?.estoque_unificado === true &&
+                (
+                  unidadeCadastro === 'dúzia' ||
+                  unidadeCadastro === 'duzia'
+                );
 
-  ${i > 0 ? `
-    <button
-      class="secondary"
-      onclick="moveDelivery(${d.id},-1)"
-    >
-      ↑ Colocar na frente
-    </button>
-  ` : ''}
-
-  ${i < data.length - 1 ? `
-    <button
-      class="secondary"
-      onclick="moveDelivery(${d.id},1)"
-    >
-      ↓
-    </button>
-  ` : ''}
-
-` : ''}
-
-              ${d.status !== 'entregue' ? `
-                <button
-                  class="primary"
-                  onclick="nextDelivery(${d.id})"
-                >
-                  ${d.status === 'pendente'
-                    ? 'Iniciar rota'
-                    : 'Marcar entregue'}
-                </button>
-              ` : ''}
-
-            </div>
-
-          </div>
-
-        `;
-
-      }).join('')}
-
-    </div>
-  `;
-}
+              // O campo
 function abrirMapaEntrega(endereco){
 
   const enderecoDecodificado =
