@@ -4624,7 +4624,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
   janela.document.close();
 }
 
-async function renderProducts(el){
+async function renderProducts(el) {
 
   el.innerHTML = `
     <div class="row" style="margin-bottom:12px">
@@ -4643,13 +4643,13 @@ async function renderProducts(el){
       </button>
     </div>
 
-          <button
-        type="button"
-        class="secondary"
-        onclick="abrirEntradaMercadorias()"
-      >
-        📦 + Adicionar mercadorias
-      </button>
+    <button
+      type="button"
+      class="secondary"
+      onclick="abrirEntradaMercadorias()"
+    >
+      📦 + Adicionar mercadorias
+    </button>
 
     <div id="productList" class="list">
       <div class="card muted">
@@ -4658,42 +4658,74 @@ async function renderProducts(el){
     </div>
   `;
 
-  const { data, error } = await supabaseClient
-    .from('produtos')
-    .select('*')
-.order('nome', { ascending: true });
+  try {
 
-  const list = document.getElementById('productList');
+    const { data, error } = await supabaseClient
+      .from('produtos')
+      .select('*')
+      .order('nome', { ascending: true });
 
-  if(error){
-    console.error(error);
+    // Verificar se a página ainda está aberta
+    const list = el.querySelector('#productList');
+
+    if (!list || !list.isConnected) {
+      return;
+    }
+
+    if (error) {
+      throw error;
+    }
+
+    // Atualizar os produtos disponíveis
+    state.products = data || [];
+    window.currentProducts = data || [];
+
+    if (!data || data.length === 0) {
+
+      list.innerHTML = `
+        <div class="card">
+          <strong>Nenhum produto cadastrado</strong>
+          <p class="muted">
+            Clique em "+ Produto" para cadastrar.
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    // Exibir os produtos
+    list.innerHTML = productRows(data);
+
+  } catch (erro) {
+
+    console.error('Erro ao carregar estoque:', erro);
+
+    const list = el.querySelector('#productList');
+
+    if (!list || !list.isConnected) {
+      return;
+    }
 
     list.innerHTML = `
       <div class="card">
         <strong>Erro ao carregar estoque</strong>
-        <p class="muted">${error.message}</p>
-      </div>
-    `;
-
-    return;
-  }
-state.products = data || [];
-  
-  if(!data || data.length === 0){
-    list.innerHTML = `
-      <div class="card">
-        <strong>Nenhum produto cadastrado</strong>
         <p class="muted">
-          Clique em "+ Produto" para cadastrar.
+          Não foi possível carregar os produtos.
+          Verifique sua conexão e tente novamente.
         </p>
+        <button
+          type="button"
+          class="secondary"
+          onclick="navigate('products')"
+        >
+          Tentar novamente
+        </button>
       </div>
     `;
 
-    return;
   }
 
-window.currentProducts = data;
-list.innerHTML = productRows(data);
 }
 function abrirEntradaMercadorias() {
 
