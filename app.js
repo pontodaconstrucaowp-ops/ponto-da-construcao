@@ -5044,46 +5044,72 @@ function calcularEntradaMercadorias() {
   total.textContent =
     `${pecas} ${pecas === 1 ? 'peça' : 'peças'}`;
 }
+
 async function salvarEntradaMercadorias() {
 
-  // =====================================
-  // 1. EVITAR CLIQUES DUPLICADOS
-  // =====================================
+  const modal = document.getElementById('entradaMercadoriasModal');
 
-  const botao = document.querySelector(
-    '#entradaMercadoriasModal button.primary'
-  );
+  if (!modal) return;
+
+  const botao = modal.querySelector('button.primary');
 
   if (!botao || botao.disabled) return;
 
   // =====================================
-  // 2. VERIFICAR ADMINISTRADOR
+  // 1. VERIFICAR PERMISSÃO
   // =====================================
 
-  if (state.user?.tipo !== 'admin') {
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  if (!ehAdministrador) {
     alert('Somente administradores podem adicionar mercadorias.');
     return;
   }
 
   // =====================================
-  // 3. LER OS DADOS DA JANELA
+  // 2. IDENTIFICAR OS CAMPOS
   // =====================================
 
-  const produtoId = Number(
-    document.getElementById('entradaProduto')?.value
-  );
+  const campoProduto = modal.querySelector('#entradaProduto');
+  const campoDuzias = modal.querySelector('#entradaDuzias');
+  const campoUnidades = modal.querySelector('#entradaUnidades');
 
-  const duzias = Number(
-    document.getElementById('entradaDuzias')?.value
-  );
+  if (!campoProduto || !campoDuzias || !campoUnidades) {
+    alert('Não foi possível identificar os campos da entrada.');
+    return;
+  }
 
-  const unidades = Number(
-    document.getElementById('entradaUnidades')?.value
-  );
+  // =====================================
+  // 3. IMPEDIR CAMPOS VAZIOS
+  // =====================================
+
+  if (!campoProduto.value.trim()) {
+    alert('Selecione um material.');
+    campoProduto.focus();
+    return;
+  }
+
+  if (campoDuzias.value.trim() === '') {
+    alert('Informe a quantidade de dúzias. Use 0 se não houver.');
+    campoDuzias.focus();
+    return;
+  }
+
+  if (campoUnidades.value.trim() === '') {
+    alert('Informe a quantidade de unidades. Use 0 se não houver.');
+    campoUnidades.focus();
+    return;
+  }
 
   // =====================================
   // 4. VALIDAR QUANTIDADES
   // =====================================
+
+  const produtoId = Number(campoProduto.value);
+  const duzias = Number(campoDuzias.value);
+  const unidades = Number(campoUnidades.value);
 
   const totalPecas = duzias * 12 + unidades;
 
@@ -5095,14 +5121,16 @@ async function salvarEntradaMercadorias() {
     duzias < 0 ||
     unidades < 0 ||
     !Number.isSafeInteger(totalPecas) ||
-    totalPecas <= 0
+    totalPecas <= 0 ||
+    !campoDuzias.validity.valid ||
+    !campoUnidades.validity.valid
   ) {
-    alert('Informe uma quantidade inteira e maior que zero.');
+    alert('Informe quantidades inteiras e um total maior que zero.');
     return;
   }
 
   // =====================================
-  // 5. IDENTIFICAR O PRODUTO
+  // 5. VERIFICAR PRODUTO
   // =====================================
 
   const produto = (window.currentProducts || []).find(
@@ -5123,10 +5151,10 @@ async function salvarEntradaMercadorias() {
   }
 
   // =====================================
-  // 6. CONFIRMAÇÃO DE SEGURANÇA
+  // 6. CONFIRMAÇÃO
   // =====================================
 
-  const mensagemConfirmacao = [
+  const mensagem = [
     '📦 CONFIRMAR ENTRADA DE MERCADORIAS',
     '',
     'Material:',
@@ -5142,14 +5170,12 @@ async function salvarEntradaMercadorias() {
     'Deseja realmente confirmar?'
   ].join('\n');
 
-  const confirmado = window.confirm(mensagemConfirmacao);
-
-  if (!confirmado) {
+  if (!window.confirm(mensagem)) {
     return;
   }
 
   // =====================================
-  // 7. BLOQUEAR BOTÃO DURANTE SALVAMENTO
+  // 7. BLOQUEAR CLIQUES REPETIDOS
   // =====================================
 
   botao.disabled = true;
@@ -5176,19 +5202,16 @@ async function salvarEntradaMercadorias() {
     }
 
     // =====================================
-    // 9. INFORMAR RESULTADO
+    // 9. CONFIRMAR RESULTADO
     // =====================================
 
-    console.log(
-      'Entrada registrada:',
-      {
-        produto: produto.nome,
-        duzias,
-        unidades,
-        totalPecas,
-        novoEstoque
-      }
-    );
+    console.log('Entrada registrada:', {
+      produto: produto.nome,
+      duzias,
+      unidades,
+      totalPecas,
+      novoEstoque
+    });
 
     alert(
       '✅ MERCADORIAS ADICIONADAS!\n\n' +
@@ -5197,24 +5220,25 @@ async function salvarEntradaMercadorias() {
       `Novo estoque: ${novoEstoque} peças`
     );
 
+    modal.remove();
+
     // =====================================
-    // 10. FECHAR JANELA E ATUALIZAR PRODUTOS
+    // 10. ATUALIZAR LISTA
     // =====================================
 
-    document
-      .getElementById('entradaMercadoriasModal')
-      ?.remove();
+    if (state.page === 'products') {
 
-    await renderProducts(
-      document.getElementById('content')
-    );
+      const conteudo = document.getElementById('content');
+
+      if (conteudo) {
+        await renderProducts(conteudo);
+      }
+
+    }
 
   } catch (erro) {
 
-    console.error(
-      'Erro ao adicionar mercadorias:',
-      erro
-    );
+    console.error('Erro ao adicionar mercadorias:', erro);
 
     alert(
       'Não foi possível concluir a entrada.\n\n' +
@@ -5222,10 +5246,6 @@ async function salvarEntradaMercadorias() {
     );
 
   } finally {
-
-    // =====================================
-    // 11. LIBERAR BOTÃO
-    // =====================================
 
     if (botao.isConnected) {
       botao.disabled = false;
