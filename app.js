@@ -5,7 +5,8 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
 );
-
+// Ocultar a tela de login enquanto a sessão é verificada
+document.getElementById('loginScreen')?.classList.add('hidden');
 const state={
   page:'home',
   user:null,
