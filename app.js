@@ -78,7 +78,18 @@ async function login(){
     navigate('home');
   }
 }
+function toggleUserMenu() {
 
+  const menu = document.getElementById('userMenu');
+
+  if (!menu) {
+    console.error('Menu do usuário não encontrado.');
+    return;
+  }
+
+  menu.classList.toggle('hidden');
+
+}
 async function logout() {
 
   const confirmou = window.confirm(
