@@ -4575,13 +4575,20 @@ list.innerHTML = productRows(data);
 }
 function abrirEntradaMercadorias() {
 
-  const ehAdmin =
-    state.user?.tipo === 'admin';
+  // =====================================
+  // VERIFICAR PERMISSÃO
+  // =====================================
+
+  const ehAdmin = state.user?.tipo === 'admin';
 
   if (!ehAdmin) {
     alert('Apenas administradores podem adicionar mercadorias.');
     return;
   }
+
+  // =====================================
+  // CARREGAR PRODUTOS UNIFICADOS
+  // =====================================
 
   const produtos = (window.currentProducts || [])
     .filter(p =>
@@ -4593,7 +4600,10 @@ function abrirEntradaMercadorias() {
       )
     )
     .sort((a, b) =>
-      a.nome.localeCompare(b.nome, 'pt-BR')
+      String(a.nome || '').localeCompare(
+        String(b.nome || ''),
+        'pt-BR'
+      )
     );
 
   if (!produtos.length) {
@@ -4601,22 +4611,37 @@ function abrirEntradaMercadorias() {
     return;
   }
 
-  document.getElementById('entradaMercadoriasModal')?.remove();
+  // =====================================
+  // REMOVER JANELA ANTERIOR
+  // =====================================
+
+  document
+    .getElementById('entradaMercadoriasModal')
+    ?.remove();
+
+  // =====================================
+  // CRIAR JANELA
+  // =====================================
 
   const modal = document.createElement('div');
+
   modal.id = 'entradaMercadoriasModal';
-Object.assign(modal.style, {
-  position: 'fixed',
-  inset: '0',
-  zIndex: '999999',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'rgba(0, 0, 0, 0.65)',
-  padding: '16px',
-  boxSizing: 'border-box',
-  overflowY: 'auto'
-});
+
+  // Fundo escurecido e janela centralizada
+  Object.assign(modal.style, {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '999999',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0, 0, 0, 0.60)',
+    padding: '16px',
+    boxSizing: 'border-box',
+    overflowY: 'auto'
+  });
+
+  // Proteção dos nomes dos produtos
   const escapar = valor =>
     String(valor ?? '').replace(/[&<>"']/g, c => ({
       '&': '&amp;',
@@ -4626,28 +4651,93 @@ Object.assign(modal.style, {
       "'": '&#39;'
     }[c]));
 
-  modal.innerHTML = `
-    <div class="modal-backdrop">
-      <div class="modal-card">
+  // =====================================
+  // CONTEÚDO DA JANELA
+  // =====================================
 
-        <div class="modal-header">
-          <h2>📦 Adicionar mercadorias</h2>
+  modal.innerHTML = `
+
+    <div
+      class="modal-backdrop"
+      style="
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+      "
+    >
+
+      <div
+        class="modal-card"
+        style="
+          background: #ffffff;
+          color: #17243b;
+          width: 100%;
+          max-width: 520px;
+          max-height: 90vh;
+          overflow-y: auto;
+          padding: 26px;
+          border-radius: 18px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+          box-sizing: border-box;
+        "
+      >
+
+        <div
+          class="modal-header"
+          style="margin-bottom: 20px;"
+        >
+
+          <h2 style="
+            color: #073b91;
+            margin: 0;
+          ">
+            📦 Adicionar mercadorias
+          </h2>
+
         </div>
 
-        <div class="field">
-          <label>Material</label>
+        <div class="field" style="margin-bottom: 16px;">
 
-          <select id="entradaProduto">
+          <label
+            for="entradaProduto"
+            style="display:block; margin-bottom:7px;"
+          >
+            Material
+          </label>
+
+          <select
+            id="entradaProduto"
+            style="
+              width: 100%;
+              padding: 12px;
+              border: 1px solid #d7deea;
+              border-radius: 10px;
+              background: #ffffff;
+              color: #17243b;
+              box-sizing: border-box;
+            "
+          >
+
             ${produtos.map(p => `
               <option value="${p.id}">
                 ${escapar(p.nome)}
               </option>
             `).join('')}
+
           </select>
+
         </div>
 
-        <div class="field">
-          <label>Quantidade de dúzias</label>
+        <div class="field" style="margin-bottom: 16px;">
+
+          <label
+            for="entradaDuzias"
+            style="display:block; margin-bottom:7px;"
+          >
+            Quantidade de dúzias
+          </label>
 
           <input
             id="entradaDuzias"
@@ -4656,11 +4746,27 @@ Object.assign(modal.style, {
             step="1"
             value="0"
             oninput="calcularEntradaMercadorias()"
+            style="
+              width: 100%;
+              padding: 12px;
+              border: 1px solid #d7deea;
+              border-radius: 10px;
+              background: #ffffff;
+              color: #17243b;
+              box-sizing: border-box;
+            "
           >
+
         </div>
 
-        <div class="field">
-          <label>Quantidade de unidades avulsas</label>
+        <div class="field" style="margin-bottom: 16px;">
+
+          <label
+            for="entradaUnidades"
+            style="display:block; margin-bottom:7px;"
+          >
+            Quantidade de unidades avulsas
+          </label>
 
           <input
             id="entradaUnidades"
@@ -4669,18 +4775,57 @@ Object.assign(modal.style, {
             step="1"
             value="0"
             oninput="calcularEntradaMercadorias()"
+            style="
+              width: 100%;
+              padding: 12px;
+              border: 1px solid #d7deea;
+              border-radius: 10px;
+              background: #ffffff;
+              color: #17243b;
+              box-sizing: border-box;
+            "
           >
+
         </div>
 
-        <div class="card" style="margin-top:15px">
-          <strong>Total a acrescentar</strong>
+        <div
+          class="card"
+          style="
+            margin-top: 18px;
+            padding: 18px;
+            background: #f1f5fa;
+            border: 1px solid #e1e8f2;
+            border-radius: 12px;
+            box-shadow: none;
+          "
+        >
 
-          <h2 id="entradaTotal">
+          <strong style="color:#526176;">
+            Total a acrescentar
+          </strong>
+
+          <h2
+            id="entradaTotal"
+            style="
+              margin: 10px 0 0;
+              color: #073b91;
+              font-size: 28px;
+            "
+          >
             0 peças
           </h2>
+
         </div>
 
-        <div class="actions" style="margin-top:16px">
+        <div
+          class="actions"
+          style="
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 22px;
+          "
+        >
 
           <button
             type="button"
@@ -4693,9 +4838,7 @@ Object.assign(modal.style, {
           <button
             type="button"
             class="secondary"
-            onclick="
-              document.getElementById('entradaMercadoriasModal')?.remove()
-            "
+            onclick="document.getElementById('entradaMercadoriasModal')?.remove()"
           >
             Cancelar
           </button>
@@ -4703,10 +4846,17 @@ Object.assign(modal.style, {
         </div>
 
       </div>
+
     </div>
+
   `;
 
+  // =====================================
+  // EXIBIR JANELA
+  // =====================================
+
   document.body.appendChild(modal);
+
 }
 
 
