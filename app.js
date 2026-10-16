@@ -97,6 +97,14 @@ async function restaurarSessao() {
   const telaLogin = document.getElementById('loginScreen');
   const aplicativo = document.getElementById('app');
 
+  // Evitar mostrar o login enquanto verificamos a sessão
+  const mostrarLogin = () => {
+    state.user = null;
+    aplicativo?.classList.add('hidden');
+    telaLogin?.classList.remove('hidden');
+    document.documentElement.classList.remove('verificando-sessao');
+  };
+
   try {
 
     const { data: sessao, error: erroSessao } =
@@ -107,18 +115,20 @@ async function restaurarSessao() {
     }
 
     if (!sessao?.session) {
+      mostrarLogin();
       return;
     }
 
-    // Validar a sessão com o Supabase
+    // Validar a autenticação no Supabase
     const { data: autenticacao, error: erroUsuario } =
       await supabaseClient.auth.getUser();
 
     if (erroUsuario || !autenticacao?.user) {
+      mostrarLogin();
       return;
     }
 
-    // Recuperar o cadastro do usuário
+    // Consultar o cadastro do usuário
     const { data: usuario, error: erroCadastro } =
       await supabaseClient
         .from('usuarios')
@@ -130,44 +140,40 @@ async function restaurarSessao() {
       throw erroCadastro;
     }
 
+    // Impedir acesso de usuários inexistentes ou inativos
     if (!usuario || !usuario.ativo) {
+      mostrarLogin();
       return;
     }
 
-    // Restaurar o usuário no aplicativo
+    // Restaurar o usuário autenticado
     state.user = usuario;
 
-    const nomeUsuario =
-      document.getElementById('loggedUser');
+    const nomeUsuario = document.getElementById('loggedUser');
 
     if (nomeUsuario) {
-      nomeUsuario.textContent = usuario.nome;
+      nomeUsuario.textContent = usuario.nome || '';
     }
 
+    // Mostrar o aplicativo
     telaLogin?.classList.add('hidden');
     aplicativo?.classList.remove('hidden');
 
-    // Respeitar a restrição dos entregadores
+    // Direcionar para a página permitida
     if (usuario.tipo === 'entregador') {
       navigate('deliveries');
     } else {
       navigate('home');
     }
 
+    // Liberar a visualização depois da restauração
+    document.documentElement.classList.remove('verificando-sessao');
+
   } catch (erro) {
 
-    console.error(
-      'Erro ao restaurar sessão:',
-      erro
-    );
+    console.error('Erro ao restaurar sessão:', erro);
 
-  } finally {
-
-    // Exibir o login somente se nenhum usuário foi restaurado
-    if (!state.user) {
-      aplicativo?.classList.add('hidden');
-      telaLogin?.classList.remove('hidden');
-    }
+    mostrarLogin();
 
   }
 
