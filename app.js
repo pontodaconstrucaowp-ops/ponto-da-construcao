@@ -7411,6 +7411,18 @@ async function carregarRelatorio(){
     return;
   }
 
+  const escaparHTML = valor => String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const formatarQuantidade = valor =>
+    Number(valor || 0).toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
+
   lista.innerHTML = `
     <div class="muted">
       Carregando vendas...
@@ -7445,7 +7457,7 @@ async function carregarRelatorio(){
     lista.innerHTML = `
       <div class="card">
         <strong>Erro ao carregar vendas</strong>
-        <p class="muted">${error.message}</p>
+        <p class="muted">${escaparHTML(error.message)}</p>
       </div>
     `;
 
@@ -7475,6 +7487,8 @@ async function carregarRelatorio(){
     )
   ];
 
+  const vendasIds = vendas.map(v => v.id);
+
   let clientes = [];
 
   if(clientesIds.length){
@@ -7485,6 +7499,13 @@ async function carregarRelatorio(){
         .select('id,nome,telefone')
         .in('id', clientesIds);
 
+    if(respostaClientes.error){
+      console.error(
+        'Erro ao carregar clientes do relatório:',
+        respostaClientes.error
+      );
+    }
+
     clientes = respostaClientes.data || [];
   }
 
@@ -7493,6 +7514,115 @@ async function carregarRelatorio(){
   clientes.forEach(cliente => {
     mapaClientes[cliente.id] = cliente;
   });
+
+  // =====================================
+  // CONSULTAR COMPRAS EXTERNAS
+  // =====================================
+
+  let itensExternos = [];
+
+  const { data: itens, error: erroItens } =
+    await supabaseClient
+      .from('itens_venda')
+      .select(`
+        vendas_id,
+        produtos_id,
+        quantidade_compra_externa,
+        custo_compra_externa
+      `)
+      .in('vendas_id', vendasIds)
+      .gt('quantidade_compra_externa', 0);
+
+  if(erroItens){
+
+    console.error(
+      'Erro ao consultar compras externas:',
+      erroItens
+    );
+
+    lista.innerHTML = `
+      <div class="card">
+        <strong>Não foi possível carregar o relatório completo.</strong>
+        <p class="muted">
+          A consulta das compras externas apresentou um erro.
+          Nenhuma venda foi alterada.
+        </p>
+        <p class="muted">
+          ${escaparHTML(erroItens.message)}
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  itensExternos = itens || [];
+
+  // =====================================
+  // BUSCAR NOMES DOS PRODUTOS
+  // =====================================
+
+  const produtosIds = [
+    ...new Set(
+      itensExternos
+        .map(item => item.produtos_id)
+        .filter(id => id !== null && id !== undefined)
+    )
+  ];
+
+  const mapaProdutos = {};
+
+  if(produtosIds.length){
+
+    const { data: produtos, error: erroProdutos } =
+      await supabaseClient
+        .from('produtos')
+        .select('id,nome,unidade,estoque_unificado')
+        .in('id', produtosIds);
+
+    if(erroProdutos){
+
+      console.error(
+        'Erro ao carregar produtos:',
+        erroProdutos
+      );
+
+      lista.innerHTML = `
+        <div class="card">
+          <strong>Não foi possível carregar os materiais.</strong>
+          <p class="muted">
+            ${escaparHTML(erroProdutos.message)}
+          </p>
+        </div>
+      `;
+
+      return;
+    }
+
+    (produtos || []).forEach(produto => {
+      mapaProdutos[produto.id] = produto;
+    });
+  }
+
+  // =====================================
+  // AGRUPAR COMPRAS POR VENDA
+  // =====================================
+
+  const comprasPorVenda = {};
+
+  itensExternos.forEach(item => {
+
+    if(!comprasPorVenda[item.vendas_id]){
+      comprasPorVenda[item.vendas_id] = [];
+    }
+
+    comprasPorVenda[item.vendas_id].push(item);
+
+  });
+
+  // =====================================
+  // RESUMO
+  // =====================================
 
   const vendasValidas = vendas.filter(
     venda => venda.status === 'concluida'
@@ -7503,6 +7633,11 @@ async function carregarRelatorio(){
       soma + Number(venda.valor_total || 0),
     0
   );
+
+  const vendasComCompraExterna =
+    vendasValidas.filter(venda =>
+      (comprasPorVenda[venda.id] || []).length > 0
+    ).length;
 
   document.getElementById('reportSummary').innerHTML = `
     <div class="card" style="margin-bottom:15px;">
@@ -7519,87 +7654,195 @@ async function carregarRelatorio(){
         </strong>
       </div>
 
+      <div class="row">
+        <span>Vendas com compra externa</span>
+        <strong style="color:#b45309;">
+          ${vendasComCompraExterna}
+        </strong>
+      </div>
+
     </div>
   `;
 
-  lista.innerHTML =
-    vendas.map(venda => {
+  // =====================================
+  // LISTAGEM DE VENDAS
+  // =====================================
 
-      const cliente =
-        mapaClientes[venda.cliente_id];
+  lista.innerHTML = vendas.map(venda => {
 
-      const nomeCliente =
-        cliente?.nome || 'Cliente não informado';
+    const cliente = mapaClientes[venda.cliente_id];
 
-      const formaPagamento =
-        venda.forma_pagamento || 'Não informado';
+    const nomeCliente =
+      cliente?.nome || 'Cliente não informado';
 
-      const dataVenda =
-        venda.data
-          ? new Date(venda.data).toLocaleString('pt-BR')
-          : 'Data não informada';
+    const formaPagamento =
+      venda.forma_pagamento || 'Não informado';
 
-      return `
-        <div class="card">
+    const dataVenda = venda.data
+      ? new Date(venda.data).toLocaleString('pt-BR')
+      : 'Data não informada';
 
-          <div class="row">
+    const compras = comprasPorVenda[venda.id] || [];
 
-            <strong>
-              Venda #${venda.id}
-            </strong>
+    const avisoCompraExterna = compras.length
+      ? `
+        <div style="
+          margin-top:14px;
+          padding:14px;
+          border:2px solid #d97706;
+          border-radius:10px;
+          background:#fffbeb;
+          color:#78350f;
+        ">
 
-            <strong class="total">
-              ${money(Number(venda.valor_total || 0))}
-            </strong>
+          <strong>
+            ⚠️ COMPRA EXTERNA NECESSÁRIA
+          </strong>
 
-          </div>
+          <p style="margin:8px 0;">
+            Esta venda possui materiais que precisam
+            ser adquiridos em outra loja.
+          </p>
 
-          <div class="muted">
-            ${nomeCliente}
-          </div>
+          ${compras.map(item => {
 
-          <div class="muted">
-            ${dataVenda}
-          </div>
+            const produto =
+              mapaProdutos[item.produtos_id];
 
-          <div class="muted">
-            Pagamento: ${formaPagamento}
-          </div>
+            const nomeProduto =
+              produto?.nome ||
+              `Produto #${item.produtos_id}`;
 
-          <div class="row" style="margin-top:12px;">
+            const unidadeProduto =
+              produto?.estoque_unificado &&
+              ['dúzia','duzia'].includes(
+                String(produto?.unidade || '')
+                  .trim()
+                  .toLowerCase()
+              )
+                ? 'unidade(s)'
+                : produto?.unidade || 'unidade(s)';
 
-            <span class="muted">
-              Status: ${venda.status || '—'}
-            </span>
+            const custo =
+              item.custo_compra_externa;
 
-            <button
-              class="btn primary"
-              onclick="abrirImpressaoVenda(${venda.id}, 'pago')"
-            >
-              Imprimir
-            </button>
+            return `
+              <div style="
+                margin-top:10px;
+                padding-top:10px;
+                border-top:1px solid #fcd34d;
+              ">
 
-            ${state.user?.tipo === 'admin' &&
-              venda.status === 'concluida' ? `
+                <strong>
+                  ${escaparHTML(nomeProduto)}
+                </strong>
 
-              <button
-                class="btn secondary"
-                style="color:#b91c1c;"
-                onclick="abrirConfirmacaoCancelamento(${venda.id}, '${formaPagamento.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
-              >
-                Cancelar venda
-              </button>
+                <div>
+                  Quantidade a comprar:
+                  <strong>
+                    ${formatarQuantidade(
+                      item.quantidade_compra_externa
+                    )}
+                    ${escaparHTML(unidadeProduto)}
+                  </strong>
+                </div>
 
-            ` : ''}
+                <div>
+                  Custo externo:
+                  <strong>
+                    ${
+                      custo === null ||
+                      custo === undefined
+                        ? 'Não informado'
+                        : money(Number(custo))
+                    }
+                  </strong>
+                </div>
 
-          </div>
+              </div>
+            `;
+
+          }).join('')}
+
+          <p style="
+            margin:10px 0 0;
+            font-size:12px;
+          ">
+            Aviso interno. A quantidade representa
+            a necessidade identificada no registro
+            da venda, não a confirmação da compra.
+          </p>
 
         </div>
-      `;
+      `
+      : '';
 
-    }).join('');
+    return `
+      <div class="card">
+
+        <div class="row">
+
+          <strong>
+            Venda #${venda.id}
+          </strong>
+
+          <strong class="total">
+            ${money(Number(venda.valor_total || 0))}
+          </strong>
+
+        </div>
+
+        <div class="muted">
+          ${escaparHTML(nomeCliente)}
+        </div>
+
+        <div class="muted">
+          ${escaparHTML(dataVenda)}
+        </div>
+
+        <div class="muted">
+          Pagamento: ${escaparHTML(formaPagamento)}
+        </div>
+
+        ${avisoCompraExterna}
+
+        <div class="row" style="margin-top:12px;">
+
+          <span class="muted">
+            Status:
+            ${escaparHTML(venda.status || '—')}
+          </span>
+
+          <button
+            class="btn primary"
+            onclick="abrirImpressaoVenda(${Number(venda.id)}, 'pago')"
+          >
+            Imprimir
+          </button>
+
+          ${
+            state.user?.tipo === 'admin' &&
+            venda.status === 'concluida'
+              ? `
+                <button
+                  class="btn secondary"
+                  style="color:#b91c1c;"
+                  onclick="abrirConfirmacaoCancelamento(${Number(venda.id)}, '${String(formaPagamento).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"
+                >
+                  Cancelar venda
+                </button>
+              `
+              : ''
+          }
+
+        </div>
+
+      </div>
+    `;
+
+  }).join('');
+
 }
-
 
 
 
