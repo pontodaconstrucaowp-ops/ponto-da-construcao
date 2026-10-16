@@ -5288,12 +5288,11 @@ function filterProducts() {
 
 }
 
-function openProductForm(){
 
-  // Evita criar vários modais ao mesmo tempo
-  document
-    .getElementById('productModal')
-    ?.remove();
+function openProductForm() {
+
+  // Evitar abrir vários formulários
+  document.getElementById('productModal')?.remove();
 
   const modal = document.createElement('div');
 
@@ -5302,7 +5301,7 @@ function openProductForm(){
   modal.style.position = 'fixed';
   modal.style.inset = '0';
   modal.style.zIndex = '9999';
-  
+
   modal.innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-card">
@@ -5316,14 +5315,11 @@ function openProductForm(){
           >
             ✕
           </button>
-
         </div>
 
         <div class="modal-body">
 
-          <label>
-            Nome do produto
-          </label>
+          <label>Nome do produto</label>
 
           <input
             id="newProductName"
@@ -5331,9 +5327,7 @@ function openProductForm(){
             placeholder="Ex.: Cimento Poty"
           >
 
-          <label>
-            Categoria
-          </label>
+          <label>Categoria</label>
 
           <input
             id="newProductCategory"
@@ -5341,12 +5335,9 @@ function openProductForm(){
             placeholder="Ex.: Cimento"
           >
 
-          <label>
-            Unidade
-          </label>
+          <label>Unidade</label>
 
           <select id="newProductUnit">
-
             <option value="m³">m³</option>
             <option value="kg">kg</option>
             <option value="carrada">carrada</option>
@@ -5355,12 +5346,9 @@ function openProductForm(){
             <option value="saco">saco</option>
             <option value="unidade">unidade</option>
             <option value="milheiro">milheiro</option>
-
           </select>
 
-          <label>
-            Preço
-          </label>
+          <label>Preço</label>
 
           <input
             id="newProductPrice"
@@ -5368,14 +5356,12 @@ function openProductForm(){
             min="0"
             step="0.01"
             placeholder="0,00"
+            required
           >
 
-          <label>
-            Tipo de produto
-          </label>
+          <label>Tipo de produto</label>
 
           <select id="newProductStockType">
-
             <option value="estoque">
               📦 Tem no estoque
             </option>
@@ -5383,14 +5369,11 @@ function openProductForm(){
             <option value="revenda">
               🛒 Item de revenda
             </option>
-
           </select>
 
           <div id="stockFields">
 
-            <label>
-              Estoque atual
-            </label>
+            <label>Estoque atual</label>
 
             <input
               id="newProductStock"
@@ -5400,9 +5383,7 @@ function openProductForm(){
               value="0"
             >
 
-            <label>
-              Estoque mínimo
-            </label>
+            <label>Estoque mínimo</label>
 
             <input
               id="newProductMinStock"
@@ -5431,22 +5412,20 @@ function openProductForm(){
   document.body.appendChild(modal);
 
   const stockType =
-    document.getElementById('newProductStockType');
+    modal.querySelector('#newProductStockType');
 
   const stockFields =
-    document.getElementById('stockFields');
+    modal.querySelector('#stockFields');
 
-  function updateStockFields(){
+  const botaoSalvar =
+    modal.querySelector('#saveNewProductButton');
 
-    if(stockType.value === 'revenda'){
+  function updateStockFields() {
 
-      stockFields.style.display = 'none';
-
-    }else{
-
-      stockFields.style.display = 'block';
-
-    }
+    stockFields.style.display =
+      stockType.value === 'revenda'
+        ? 'none'
+        : 'block';
 
   }
 
@@ -5457,100 +5436,146 @@ function openProductForm(){
 
   updateStockFields();
 
-  document
-    .getElementById('saveNewProductButton')
-    .addEventListener('click', async () => {
+  // Impedir vários salvamentos simultâneos
+  let salvando = false;
 
-      const nome =
-        document
-          .getElementById('newProductName')
-          .value
-          .trim();
+  botaoSalvar.addEventListener('click', async () => {
 
-      const categoria =
-        document
-          .getElementById('newProductCategory')
-          .value
-          .trim();
+    if (salvando) {
+      return;
+    }
 
-      const unidade =
-        document
-          .getElementById('newProductUnit')
-          .value;
+    const nome =
+      modal.querySelector('#newProductName')
+        .value.trim();
 
-      const preco =
-        Number(
-          document
-            .getElementById('newProductPrice')
-            .value
-        );
+    const categoria =
+      modal.querySelector('#newProductCategory')
+        .value.trim();
 
-      const tipoProduto =
-        document
-          .getElementById('newProductStockType')
-          .value;
+    const unidade =
+      modal.querySelector('#newProductUnit')
+        .value;
 
-      const controlaEstoque =
-        tipoProduto === 'estoque';
+    const campoPreco =
+      modal.querySelector('#newProductPrice');
 
-      const estoque =
-        controlaEstoque
-          ? Number(
-              document
-                .getElementById('newProductStock')
-                .value
-            )
-          : 0;
+    const precoTexto =
+      campoPreco.value.trim();
 
-      const estoqueMinimo =
-        controlaEstoque
-          ? Number(
-              document
-                .getElementById('newProductMinStock')
-                .value
-            )
-          : 0;
+    const tipoProduto =
+      stockType.value;
 
-      if(!nome){
+    const controlaEstoque =
+      tipoProduto === 'estoque';
 
-        alert('Informe o nome do produto.');
+    const campoEstoque =
+      modal.querySelector('#newProductStock');
+
+    const campoEstoqueMinimo =
+      modal.querySelector('#newProductMinStock');
+
+    // =====================================
+    // VALIDAR NOME E CATEGORIA
+    // =====================================
+
+    if (!nome) {
+      alert('Informe o nome do produto.');
+      return;
+    }
+
+    if (!categoria) {
+      alert('Informe a categoria.');
+      return;
+    }
+
+    // =====================================
+    // VALIDAR PREÇO
+    // =====================================
+
+    if (precoTexto === '') {
+      alert('Informe o preço do produto.');
+      campoPreco.focus();
+      return;
+    }
+
+    const preco = Number(precoTexto);
+
+    if (
+      !Number.isFinite(preco) ||
+      preco < 0 ||
+      !campoPreco.validity.valid
+    ) {
+      alert('Informe um preço válido.');
+      campoPreco.focus();
+      return;
+    }
+
+    // =====================================
+    // VALIDAR ESTOQUE
+    // =====================================
+
+    let estoque = 0;
+    let estoqueMinimo = 0;
+
+    if (controlaEstoque) {
+
+      const estoqueTexto =
+        campoEstoque.value.trim();
+
+      const minimoTexto =
+        campoEstoqueMinimo.value.trim();
+
+      if (estoqueTexto === '') {
+        alert('Informe o estoque atual.');
+        campoEstoque.focus();
         return;
-
       }
 
-      if(!categoria){
-
-        alert('Informe a categoria.');
+      if (minimoTexto === '') {
+        alert('Informe o estoque mínimo.');
+        campoEstoqueMinimo.focus();
         return;
-
       }
 
-      if(!Number.isFinite(preco) || preco < 0){
+      estoque = Number(estoqueTexto);
+      estoqueMinimo = Number(minimoTexto);
 
-        alert('Informe um preço válido.');
-        return;
-
-      }
-
-      if(
+      if (
         !Number.isFinite(estoque) ||
-        estoque < 0
-      ){
-
+        estoque < 0 ||
+        !campoEstoque.validity.valid
+      ) {
         alert('Informe um estoque válido.');
+        campoEstoque.focus();
         return;
-
       }
 
-      if(
+      if (
         !Number.isFinite(estoqueMinimo) ||
-        estoqueMinimo < 0
-      ){
-
+        estoqueMinimo < 0 ||
+        !campoEstoqueMinimo.validity.valid
+      ) {
         alert('Informe um estoque mínimo válido.');
+        campoEstoqueMinimo.focus();
         return;
-
       }
+
+    }
+
+    // =====================================
+    // BLOQUEAR CLIQUES REPETIDOS
+    // =====================================
+
+    salvando = true;
+    botaoSalvar.disabled = true;
+    botaoSalvar.textContent = 'Salvando...';
+
+    try {
+
+      // =====================================
+      // CADASTRAR NO SUPABASE
+      // =====================================
 
       const { error } =
         await supabaseClient
@@ -5558,50 +5583,59 @@ function openProductForm(){
           .insert({
 
             nome: nome,
-
             categoria: categoria,
-
             unidade: unidade,
-
             preco: preco,
-
             estoque: estoque,
-
             estoque_minimo: estoqueMinimo,
-
-            controla_estoque:
-              controlaEstoque
+            controla_estoque: controlaEstoque
 
           });
 
-      if(error){
+      if (error) {
+        throw error;
+      }
 
-        console.error(
-          'Erro ao cadastrar produto:',
-          error
-        );
+      alert('Produto cadastrado com sucesso!');
 
-        alert(
-          'Não foi possível cadastrar o produto.'
-        );
+      modal.remove();
 
-        return;
+      // Atualizar somente se ainda estiver no estoque
+      if (state.page === 'products') {
+
+        const content =
+          document.getElementById('content');
+
+        if (content) {
+          await renderProducts(content);
+        }
 
       }
 
+    } catch (erro) {
+
+      console.error(
+        'Erro ao cadastrar produto:',
+        erro
+      );
+
       alert(
-        'Produto cadastrado com sucesso!'
+        'Não foi possível cadastrar o produto. ' +
+        'Verifique os dados e tente novamente.'
       );
 
-      document
-        .getElementById('productModal')
-        ?.remove();
+    } finally {
 
-      renderProducts(
-        document.getElementById('content')
-      );
+      salvando = false;
 
-    });
+      if (botaoSalvar.isConnected) {
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = 'Cadastrar produto';
+      }
+
+    }
+
+  });
 
 }
 
