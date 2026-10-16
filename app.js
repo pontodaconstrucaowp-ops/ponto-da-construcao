@@ -7464,20 +7464,47 @@ async function carregarRelatorio(){
     return;
   }
 
-  if(!vendas || vendas.length === 0){
+if(!vendas || vendas.length === 0){
 
-    document.getElementById('reportSummary').innerHTML = '';
+  const resumo = document.getElementById('reportSummary');
 
-    lista.innerHTML = `
-      <div class="card">
-        <p class="muted">
-          Nenhuma venda encontrada nesse período.
-        </p>
+  if(resumo){
+    resumo.innerHTML = `
+      <div class="card" style="margin-bottom:15px;">
+
+        <div class="row">
+          <span>Quantidade de vendas</span>
+          <strong>0</strong>
+        </div>
+
+        <div class="row">
+          <span>Total vendido</span>
+          <strong class="total">
+            ${money(0)}
+          </strong>
+        </div>
+
+        <div class="row">
+          <span>Vendas com compra externa</span>
+          <strong style="color:#b45309;">
+            0
+          </strong>
+        </div>
+
       </div>
     `;
-
-    return;
   }
+
+  lista.innerHTML = `
+    <div class="card">
+      <p class="muted">
+        Nenhuma venda encontrada nesse período.
+      </p>
+    </div>
+  `;
+
+  return;
+}
 
   const clientesIds = [
     ...new Set(
