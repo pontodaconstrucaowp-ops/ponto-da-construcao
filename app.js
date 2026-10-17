@@ -418,6 +418,7 @@ function money(v){
 
 
 
+
 async function renderHome(el) {
 
   if (!el) return;
@@ -515,8 +516,12 @@ async function renderHome(el) {
 
       <div class="card stat">
         <div class="label">Entregas pendentes</div>
-        <div class="value">—</div>
-        <small class="muted">Integração pendente</small>
+        <div class="value" id="dashEntregasPendentes">
+          Carregando...
+        </div>
+        <small class="muted">
+          Aguardando ou em rota
+        </small>
       </div>
 
       <div class="card stat">
@@ -572,7 +577,8 @@ async function renderHome(el) {
     </div>
 
     <div class="section-title">
-      <h2>Próximas entregas</h2>
+      <h2>🚚 Próximas entregas</h2>
+
       <button
         class="secondary"
         onclick="navigate('deliveries')"
@@ -582,10 +588,11 @@ async function renderHome(el) {
     </div>
 
     <div class="card">
-      <p class="muted">
-        As próximas entregas serão exibidas
-        aqui quando integrarmos os registros reais.
-      </p>
+      <div id="dashProximasEntregas">
+        <p class="muted">
+          Consultando fila de entregas...
+        </p>
+      </div>
     </div>
   `;
 
@@ -831,6 +838,248 @@ async function renderHome(el) {
   }
 
   // =====================================
+  // ENTREGAS PENDENTES — DADOS REAIS
+  // =====================================
+
+  try {
+
+    const entregas = await consultarTodos(
+      'entregas',
+      `
+        id,
+        venda_id,
+        status,
+        prioridade,
+        posicao_fila,
+        endereço,
+        created_at,
+        vendas (
+          id,
+          valor_total,
+          clientes (
+            nome,
+            endereço
+          )
+        )
+      `,
+      consulta => consulta
+        .in('status', ['pendente', 'em_rota'])
+        .order('posicao_fila', {
+          ascending: true,
+          nullsFirst: false
+        })
+        .order('id', { ascending: true })
+    );
+
+    if (!paginaAtual()) return;
+
+    const campoQuantidade =
+      el.querySelector('#dashEntregasPendentes');
+
+    const campoLista =
+      el.querySelector('#dashProximasEntregas');
+
+    campoQuantidade.textContent =
+      String(entregas.length);
+
+    // =====================================
+    // NENHUMA ENTREGA PENDENTE
+    // =====================================
+
+    if (entregas.length === 0) {
+
+      campoLista.innerHTML = `
+        <p
+          style="
+            color:#166534;
+            font-weight:600;
+            margin-bottom:8px;
+          "
+        >
+          ✅ Nenhuma entrega pendente.
+        </p>
+
+        <p class="muted">
+          Não existem entregas aguardando
+          ou em rota neste momento.
+        </p>
+      `;
+
+    } else {
+
+      // =====================================
+      // MOSTRAR AS PRIMEIRAS CINCO
+      // =====================================
+
+      const proximas = entregas.slice(0, 5);
+
+      campoLista.innerHTML = `
+
+        <p
+          class="muted"
+          style="margin-bottom:14px"
+        >
+          ${entregas.length}
+          entrega(s) aguardando
+          ou em andamento.
+        </p>
+
+        ${proximas.map(entrega => {
+
+          const venda = entrega.vendas;
+          const cliente = venda?.clientes;
+
+          const nomeCliente = escapar(
+            cliente?.nome || 'Cliente não informado'
+          );
+
+          const endereco = escapar(
+            entrega.endereço ||
+            cliente?.endereço ||
+            'Endereço não informado'
+          );
+
+          const emRota =
+            entrega.status === 'em_rota';
+
+          const statusTexto = emRota
+            ? '🚚 Em rota'
+            : '⏳ Pendente';
+
+          const statusCor = emRota
+            ? '#1d4ed8'
+            : '#b45309';
+
+          const valorVenda =
+            Number(venda?.valor_total);
+
+          const valorTexto =
+            venda?.valor_total != null &&
+            Number.isFinite(valorVenda)
+              ? money(valorVenda)
+              : 'Valor não informado';
+
+          const prioridadeTexto =
+            entrega.prioridade === true
+              ? '🔴 Prioritária'
+              : '';
+
+          return `
+
+            <div
+              style="
+                border:1px solid #e2e8f0;
+                border-radius:10px;
+                padding:14px;
+                margin-bottom:10px;
+              "
+            >
+
+              <div
+                class="row"
+                style="
+                  align-items:flex-start;
+                  gap:10px;
+                "
+              >
+
+                <strong>
+                  #${escapar(entrega.id)}
+                  · ${nomeCliente}
+                </strong>
+
+                <span
+                  style="
+                    color:${statusCor};
+                    font-size:12px;
+                    font-weight:700;
+                  "
+                >
+                  ${statusTexto}
+                </span>
+
+              </div>
+
+              <p
+                class="muted"
+                style="margin-top:8px"
+              >
+                📍 ${endereco}
+              </p>
+
+              ${prioridadeTexto ? `
+                <p
+                  style="
+                    color:#b91c1c;
+                    font-size:12px;
+                    font-weight:700;
+                    margin-top:6px;
+                  "
+                >
+                  ${prioridadeTexto}
+                </p>
+              ` : ''}
+
+              <div
+                class="row"
+                style="
+                  margin-top:10px;
+                  gap:10px;
+                "
+              >
+
+                <strong>
+                  ${valorTexto}
+                </strong>
+
+                <span class="muted">
+                  ${entrega.posicao_fila != null
+                    ? 'Posição ' +
+                      escapar(entrega.posicao_fila)
+                    : 'Sem posição definida'}
+                </span>
+
+              </div>
+
+            </div>
+          `;
+
+        }).join('')}
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="navigate('deliveries')"
+          style="margin-top:8px"
+        >
+          🚚 Abrir fila de entregas
+        </button>
+
+      `;
+    }
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao carregar entregas do Dashboard:',
+      erro
+    );
+
+    if (!paginaAtual()) return;
+
+    el.querySelector('#dashEntregasPendentes')
+      .textContent = 'Indisponível';
+
+    el.querySelector('#dashProximasEntregas')
+      .innerHTML = `
+        <p class="muted">
+          Não foi possível consultar as entregas.
+          Verifique o Console para mais detalhes.
+        </p>
+      `;
+  }
+
+  // =====================================
   // ESTOQUE BAIXO — DADOS REAIS
   // =====================================
 
@@ -1010,6 +1259,7 @@ async function renderHome(el) {
     `;
   }
 }
+
 
 
 function deliveryCard(d){
