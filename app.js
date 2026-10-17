@@ -11539,7 +11539,7 @@ fundo.dataset.vendaId = String(idVenda);
 
         <button
           class="btn primary"
-          onclick="validarCancelamentoVendaTeste()"
+          onclick="validarCancelamentoVenda()"
         >
           Confirmar cancelamento
         </button>
@@ -11552,7 +11552,7 @@ fundo.dataset.vendaId = String(idVenda);
 }
 let cancelamentoVendaEmProcessamento = false;
 
-async function validarCancelamentoVendaTeste() {
+async function validarCancelamentoVenda() {
 
   if (cancelamentoVendaEmProcessamento) {
     return;
