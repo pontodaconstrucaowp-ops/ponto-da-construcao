@@ -3226,58 +3226,7 @@ async function saveSaleNewClient() {
 }
 
 
-      return `
-        <div class="card">
 
-          <div class="row">
-
-            <div>
-
-              <div class="product-name">
-                ${nome}
-              </div>
-
-              <div class="muted">
-
-${preco} / ${unidade}
-
-${
-  precoAvulso
-    ? ` · ${precoAvulso} / unidade`
-    : ''
-}
-
-·
-
-                ${
-                  controlaEstoque
-                    ? `ESTOQUE ${p.estoque}`
-                    : `🛒 REVENDA`
-                }
-
-              </div>
-
-            </div>
-
-
-          </div>
-
-          <div class="actions">
-
-            <button
-              class="secondary"
-              onclick="addToCart(${p.id})"
-            >
-              ADICIONAR
-            </button>
-
-          </div>
-
-        </div>
-      `;
-
-    }).join('');
-}
 async function searchSaleClients(){
   const input = document.getElementById('saleClient');
   const results = document.getElementById('saleClientResults');
