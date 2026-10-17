@@ -3225,67 +3225,7 @@ async function saveSaleNewClient() {
   }
 }
 
-function filterSaleProducts() {
-  const input = document.getElementById('saleProductSearch');
 
-  if (!input) return;
-
-  const termo = input.value
-    .trim()
-    .toLowerCase();
-
-  const filtrados = window.saleProducts.filter(p =>
-    p.nome.toLowerCase().includes(termo)
-  );
-
-  renderSaleProductItems(filtrados);
-}
-
-function renderSaleProductItems(produtos) {
-  const container =
-    document.getElementById('saleProductItems');
-
-  if (!container) return;
-
-  if (!produtos || produtos.length === 0) {
-    container.innerHTML = `
-      <div class="card">
-        <strong>NENHUM MATERIAL ENCONTRADO</strong>
-
-        <p class="muted">
-          TENTE PESQUISAR POR OUTRO NOME.
-        </p>
-      </div>
-    `;
-
-    return;
-  }
-
-  container.innerHTML =
-    produtos.map(p => {
-
-      const controlaEstoque =
-        p.controla_estoque !== false;
-
-      const nome =
-        String(p.nome || '').toUpperCase();
-
-      const unidade =
-        String(p.unidade || '').toUpperCase();
-
-      const preco =
-        money(Number(p.preco || 0));
-let precoAvulso = '';
-
-if(unidade === 'MILHEIRO'){
-  precoAvulso =
-    money(Number(p.preco || 0) / 1000);
-}
-
-if(unidade === 'DÚZIA'){
-  precoAvulso =
-    money(Number(p.preco || 0) / 12);
-}
       return `
         <div class="card">
 
