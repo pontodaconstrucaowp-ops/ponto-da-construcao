@@ -1060,8 +1060,8 @@ async function renderHome(el) {
     el.querySelector('#dashProximasEntregas')
       .innerHTML = `
         <p class="muted">
-          Não foi possível consultar as entregas.
-          Verifique o Console para mais detalhes.
+Não foi possível consultar o estoque.
+Tente novamente em alguns instantes.
         </p>
       `;
   }
