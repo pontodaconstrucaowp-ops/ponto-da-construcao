@@ -11436,13 +11436,13 @@ if (document.readyState === 'loading') {
 
 
 
+
 async function renderSettings(el) {
 
   if (!el) return;
 
   const ehAdministrador =
-    state.user?.tipo === 'admin' ||
-    state.user?.tipo === 'administrador';
+    state.user?.tipo === 'admin';
 
   const escapar = valor =>
     String(valor ?? '').replace(/[&<>"']/g, c => ({
@@ -11479,6 +11479,107 @@ async function renderSettings(el) {
         seus acessos ao sistema.
       </p>
 
+      <button
+        type="button"
+        class="primary"
+        id="settingsNovoFuncionario"
+        style="margin:12px 0"
+      >
+        + Novo funcionário
+      </button>
+
+      <div
+        id="settingsFormularioFuncionario"
+        style="display:none"
+      >
+        <form
+          id="settingsFormConvite"
+          style="
+            border:1px solid #e2e8f0;
+            border-radius:12px;
+            padding:16px;
+            margin:12px 0 20px;
+          "
+        >
+          <h3>Convidar entregador</h3>
+
+          <p class="muted">
+            O funcionário receberá um convite
+            no e-mail informado.
+          </p>
+
+          <label for="settingsFuncionarioNome">
+            Nome completo
+          </label>
+          <input
+            id="settingsFuncionarioNome"
+            type="text"
+            maxlength="150"
+            autocomplete="name"
+            required
+            style="width:100%;margin:6px 0 12px"
+          >
+
+          <label for="settingsFuncionarioEmail">
+            E-mail
+          </label>
+          <input
+            id="settingsFuncionarioEmail"
+            type="email"
+            maxlength="254"
+            autocomplete="email"
+            required
+            style="width:100%;margin:6px 0 12px"
+          >
+
+          <label for="settingsFuncionarioTelefone">
+            Telefone (opcional)
+          </label>
+          <input
+            id="settingsFuncionarioTelefone"
+            type="tel"
+            maxlength="30"
+            autocomplete="tel"
+            style="width:100%;margin:6px 0 12px"
+          >
+
+          <p>
+            <strong>Perfil:</strong> Entregador
+          </p>
+
+          <div
+            style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+              margin-top:14px;
+            "
+          >
+            <button
+              type="submit"
+              class="primary"
+              id="settingsEnviarConvite"
+            >
+              Enviar convite
+            </button>
+
+            <button
+              type="button"
+              id="settingsCancelarConvite"
+            >
+              Cancelar
+            </button>
+          </div>
+
+          <p
+            id="settingsMensagemConvite"
+            class="muted"
+            role="status"
+            style="margin-top:12px"
+          ></p>
+        </form>
+      </div>
+
       <div id="settingsUsers">
         Carregando usuários...
       </div>
@@ -11486,6 +11587,174 @@ async function renderSettings(el) {
   `;
 
   const lista = el.querySelector('#settingsUsers');
+
+  const botaoNovo =
+    el.querySelector('#settingsNovoFuncionario');
+
+  const areaFormulario =
+    el.querySelector('#settingsFormularioFuncionario');
+
+  const formulario =
+    el.querySelector('#settingsFormConvite');
+
+  const botaoCancelar =
+    el.querySelector('#settingsCancelarConvite');
+
+  const botaoEnviar =
+    el.querySelector('#settingsEnviarConvite');
+
+  const mensagem =
+    el.querySelector('#settingsMensagemConvite');
+
+  botaoNovo.addEventListener('click', () => {
+    areaFormulario.style.display = 'block';
+    botaoNovo.style.display = 'none';
+    mensagem.textContent = '';
+
+    el.querySelector('#settingsFuncionarioNome')
+      .focus();
+  });
+
+  botaoCancelar.addEventListener('click', () => {
+    areaFormulario.style.display = 'none';
+    botaoNovo.style.display = '';
+    formulario.reset();
+    mensagem.textContent = '';
+  });
+
+  formulario.addEventListener('submit', async evento => {
+
+    evento.preventDefault();
+
+    if (botaoEnviar.disabled) return;
+
+    const nome =
+      el.querySelector('#settingsFuncionarioNome')
+        .value.trim();
+
+    const email =
+      el.querySelector('#settingsFuncionarioEmail')
+        .value.trim().toLowerCase();
+
+    const telefone =
+      el.querySelector('#settingsFuncionarioTelefone')
+        .value.trim();
+
+    if (nome.length < 3) {
+      mensagem.textContent =
+        'Informe um nome com pelo menos 3 caracteres.';
+      return;
+    }
+
+    if (!email) {
+      mensagem.textContent =
+        'Informe um e-mail válido.';
+      return;
+    }
+
+    const confirmou = window.confirm(
+      `Deseja enviar um convite de acesso para ${nome} (${email})?`
+    );
+
+    if (!confirmou) return;
+
+    botaoEnviar.disabled = true;
+    botaoCancelar.disabled = true;
+    botaoEnviar.textContent = 'Enviando...';
+
+    mensagem.textContent =
+      'Solicitando cadastro e envio do convite...';
+
+    try {
+
+      const { data: sessao, error: erroSessao } =
+        await supabaseClient.auth.getSession();
+
+      if (erroSessao) throw erroSessao;
+
+      const accessToken =
+        sessao?.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error(
+          'Sua sessão expirou. Entre novamente no sistema.'
+        );
+      }
+
+      const { data, error } =
+        await supabaseClient.functions.invoke(
+          'cadastrar-funcionario',
+          {
+            body: {
+              nome,
+              email,
+              telefone,
+              tipo: 'entregador'
+            },
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        );
+
+      if (error) {
+        let detalhe = '';
+
+        if (error.context &&
+            typeof error.context.json === 'function') {
+          try {
+            const respostaErro =
+              await error.context.json();
+
+            detalhe =
+              respostaErro?.error ||
+              respostaErro?.message ||
+              '';
+          } catch (_) {
+            // Mantém a mensagem original.
+          }
+        }
+
+        throw new Error(
+          detalhe ||
+          error.message ||
+          'Não foi possível enviar o convite.'
+        );
+      }
+
+      if (!data?.success) {
+        throw new Error(
+          data?.error ||
+          'O servidor não confirmou o cadastro.'
+        );
+      }
+
+      alert(
+        data.message ||
+        'Convite solicitado com sucesso.'
+      );
+
+      if (state.page === 'settings') {
+        await renderSettings(el);
+      }
+
+    } catch (erro) {
+
+      console.error(
+        'Erro ao cadastrar funcionário:',
+        erro
+      );
+
+      mensagem.textContent =
+        'Não foi possível concluir: ' +
+        (erro.message || 'Erro desconhecido.');
+
+      botaoEnviar.disabled = false;
+      botaoCancelar.disabled = false;
+      botaoEnviar.textContent = 'Enviar convite';
+    }
+
+  });
 
   try {
 
@@ -11582,7 +11851,6 @@ async function renderSettings(el) {
       `;
     }).join('');
 
-    // Associar os botões aos usuários carregados.
     lista.querySelectorAll('[data-alterar-usuario]')
       .forEach(botao => {
 
