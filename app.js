@@ -417,12 +417,14 @@ function money(v){
 
 
 
+
 async function renderHome(el) {
 
   if (!el) return;
 
   const ehAdministrador =
-    state.user?.tipo === 'admin';
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
 
   if (!ehAdministrador) {
     el.innerHTML = `
@@ -460,6 +462,9 @@ async function renderHome(el) {
 
   const inicioMes = new Date(ano, mes, 1);
   const inicioProximoMes = new Date(ano, mes + 1, 1);
+
+  const inicioAno = new Date(ano, 0, 1);
+  const inicioProximoAno = new Date(ano + 1, 0, 1);
 
   // =====================================
   // ESTRUTURA DO DASHBOARD
@@ -499,9 +504,13 @@ async function renderHome(el) {
       </div>
 
       <div class="card stat">
-        <div class="label">Lucro bruto estimado</div>
-        <div class="value">—</div>
-        <small class="muted">Ainda não calculado</small>
+        <div class="label">Faturamento anual</div>
+        <div class="value" id="dashFaturamentoAno">
+          Carregando...
+        </div>
+        <small class="muted">
+          Vendas concluídas em ${ano}
+        </small>
       </div>
 
       <div class="card stat">
@@ -624,15 +633,17 @@ async function renderHome(el) {
     return resultado;
   }
 
-  // Evita atualizar outra página ou
-  // uma nova renderização do Dashboard.
+  // =====================================
+  // VERIFICAR PÁGINA ATUAL
+  // =====================================
+
   const paginaAtual = () =>
     state.page === 'home' &&
     el.isConnected &&
     el.querySelector('#dashEstoqueBaixo') !== null;
 
   // =====================================
-  // VENDAS REAIS
+  // VENDAS E FATURAMENTO ANUAL
   // =====================================
 
   try {
@@ -641,14 +652,19 @@ async function renderHome(el) {
       'vendas',
       'id,data,valor_total,status',
       consulta => consulta
-        .gte('data', inicioMes.toISOString())
-        .lt('data', inicioProximoMes.toISOString())
+        .gte('data', inicioAno.toISOString())
+        .lt('data', inicioProximoAno.toISOString())
         .order('data', { ascending: true })
         .order('id', { ascending: true })
     );
 
     let totalHoje = 0;
     let totalMes = 0;
+    let totalAno = 0;
+
+    let dadosIncompletosHoje = false;
+    let dadosIncompletosMes = false;
+    let dadosIncompletosAno = false;
 
     for (const venda of vendas) {
 
@@ -656,22 +672,57 @@ async function renderHome(el) {
         continue;
       }
 
-      const valor = Number(venda.valor_total || 0);
       const dataVenda = new Date(venda.data);
 
-      if (
-        !Number.isFinite(valor) ||
-        Number.isNaN(dataVenda.getTime())
-      ) {
+      if (Number.isNaN(dataVenda.getTime())) {
+        dadosIncompletosAno = true;
         continue;
       }
 
-      totalMes += valor;
+      const ehHoje =
+        dataVenda >= inicioHoje &&
+        dataVenda < inicioAmanha;
+
+      const ehMes =
+        dataVenda >= inicioMes &&
+        dataVenda < inicioProximoMes;
+
+      const ehAno =
+        dataVenda >= inicioAno &&
+        dataVenda < inicioProximoAno;
+
+      const valor = Number(venda.valor_total);
 
       if (
-        dataVenda >= inicioHoje &&
-        dataVenda < inicioAmanha
+        venda.valor_total === null ||
+        !Number.isFinite(valor) ||
+        valor < 0
       ) {
+
+        if (ehHoje) {
+          dadosIncompletosHoje = true;
+        }
+
+        if (ehMes) {
+          dadosIncompletosMes = true;
+        }
+
+        if (ehAno) {
+          dadosIncompletosAno = true;
+        }
+
+        continue;
+      }
+
+      if (ehAno) {
+        totalAno += valor;
+      }
+
+      if (ehMes) {
+        totalMes += valor;
+      }
+
+      if (ehHoje) {
         totalHoje += valor;
       }
     }
@@ -684,18 +735,31 @@ async function renderHome(el) {
     const campoMes =
       el.querySelector('#dashVendasMes');
 
+    const campoAno =
+      el.querySelector('#dashFaturamentoAno');
+
     if (campoHoje) {
-      campoHoje.textContent = money(totalHoje);
+      campoHoje.textContent = dadosIncompletosHoje
+        ? 'Incompleto'
+        : money(totalHoje);
     }
 
     if (campoMes) {
-      campoMes.textContent = money(totalMes);
+      campoMes.textContent = dadosIncompletosMes
+        ? 'Incompleto'
+        : money(totalMes);
+    }
+
+    if (campoAno) {
+      campoAno.textContent = dadosIncompletosAno
+        ? 'Incompleto'
+        : money(totalAno);
     }
 
   } catch (erro) {
 
     console.error(
-      'Erro ao carregar vendas do Dashboard:',
+      'Erro ao carregar faturamento do Dashboard:',
       erro
     );
 
@@ -705,6 +769,9 @@ async function renderHome(el) {
       'Indisponível';
 
     el.querySelector('#dashVendasMes').textContent =
+      'Indisponível';
+
+    el.querySelector('#dashFaturamentoAno').textContent =
       'Indisponível';
   }
 
@@ -837,6 +904,7 @@ async function renderHome(el) {
           ✅ Nenhum material com estoque
           no mínimo ou abaixo dele.
         </p>
+
         <p class="muted" style="font-size:12px">
           Considerando os produtos ativos
           com controle de estoque e
