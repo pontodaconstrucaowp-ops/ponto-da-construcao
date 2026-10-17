@@ -11434,52 +11434,36 @@ if (document.readyState === 'loading') {
 
 }
 
-function renderSettings(el) {
 
-  if (!el) {
-    console.error('Área de Configurações não encontrada.');
-    return;
-  }
+async function renderSettings(el) {
 
-  const usuario = state.user;
-
-  if (!usuario) {
-    el.innerHTML = `
-      <div class="card">
-        <h2>Sessão não encontrada</h2>
-        <p class="muted">
-          Faça login novamente para acessar as configurações.
-        </p>
-      </div>
-    `;
-    return;
-  }
+  if (!el) return;
 
   const ehAdministrador =
-    usuario.tipo === 'admin' ||
-    usuario.tipo === 'administrador';
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
 
   const escapar = valor =>
-    String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
       "'": '&#39;'
-    }[caractere]));
+    }[c]));
 
-  const nome = escapar(usuario.nome || 'Não informado');
-  const email = escapar(usuario.email || 'Não informado');
-
-  const perfil = ehAdministrador
-    ? 'Administrador'
-    : usuario.tipo === 'entregador'
-      ? 'Entregador'
-      : 'Funcionário';
-
-  const situacao = usuario.ativo
-    ? 'Ativo'
-    : 'Inativo';
+  if (!ehAdministrador) {
+    el.innerHTML = `
+      <div class="card">
+        <h2>Acesso restrito</h2>
+        <p class="muted">
+          Somente administradores podem
+          gerenciar usuários.
+        </p>
+      </div>
+    `;
+    return;
+  }
 
   el.innerHTML = `
     <div class="section-title">
@@ -11487,50 +11471,94 @@ function renderSettings(el) {
     </div>
 
     <div class="card">
-      <h2>Minha conta</h2>
-
-      <p>
-        <strong>Nome:</strong>
-        ${nome}
-      </p>
-
-      <p>
-        <strong>E-mail:</strong>
-        ${email}
-      </p>
-
-      <p>
-        <strong>Perfil:</strong>
-        ${perfil}
-      </p>
-
-      <p>
-        <strong>Situação:</strong>
-        ${situacao}
-      </p>
-    </div>
-
-    ${ehAdministrador ? `
-      <div class="card">
-        <h2>👥 Administração de usuários</h2>
-
-        <p class="muted">
-          O gerenciamento de usuários e permissões
-          será disponibilizado nesta área após
-          a configuração das operações seguras
-          no Supabase.
-        </p>
-      </div>
-    ` : ''}
-
-    <div class="card">
-      <h2>🔒 Segurança</h2>
-
+      <h2>👥 Gerenciar usuários</h2>
       <p class="muted">
-        O acesso às funcionalidades do sistema
-        depende do perfil e das permissões
-        configuradas no banco de dados.
+        Funcionários cadastrados no sistema.
       </p>
+      <div id="settingsUsers">
+        Carregando usuários...
+      </div>
     </div>
   `;
+
+  const lista = document.getElementById('settingsUsers');
+
+  try {
+
+    const { data, error } = await supabaseClient
+      .from('usuarios')
+      .select('id,nome,email,telefone,tipo,ativo')
+      .order('nome', { ascending: true });
+
+    if (error) throw error;
+
+    if (!lista?.isConnected || state.page !== 'settings') {
+      return;
+    }
+
+    const usuarios = data || [];
+
+    if (!usuarios.length) {
+      lista.textContent = 'Nenhum usuário encontrado.';
+      return;
+    }
+
+    lista.innerHTML = usuarios.map(usuario => {
+
+      const perfil = usuario.tipo === 'admin' ||
+                     usuario.tipo === 'administrador'
+        ? 'Administrador'
+        : usuario.tipo === 'entregador'
+          ? 'Entregador'
+          : 'Funcionário';
+
+      return `
+        <div
+          style="
+            border:1px solid #e2e8f0;
+            border-radius:12px;
+            padding:14px;
+            margin-top:12px;
+          "
+        >
+          <strong>${escapar(usuario.nome)}</strong>
+
+          <p class="muted">
+            ${escapar(usuario.email)}
+          </p>
+
+          <p>
+            <strong>Telefone:</strong>
+            ${escapar(usuario.telefone || 'Não informado')}
+          </p>
+
+          <p>
+            <strong>Perfil:</strong>
+            ${perfil}
+          </p>
+
+          <p>
+            <strong>Situação:</strong>
+            <span style="
+              color:${usuario.ativo ? '#166534' : '#b91c1c'};
+              font-weight:bold;
+            ">
+              ${usuario.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </p>
+        </div>
+      `;
+    }).join('');
+
+  } catch (erro) {
+
+    console.error('Erro ao carregar usuários:', erro);
+
+    if (lista?.isConnected && state.page === 'settings') {
+      lista.textContent =
+        'Não foi possível carregar os usuários: ' +
+        (erro.message || 'Erro desconhecido.');
+    }
+
+  }
 }
