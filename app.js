@@ -416,11 +416,13 @@ function money(v){
 
 
 
+
 async function renderHome(el) {
 
+  if (!el) return;
+
   const ehAdministrador =
-    state.user?.tipo === 'admin' ||
-    state.user?.tipo === 'administrador';
+    state.user?.tipo === 'admin';
 
   if (!ehAdministrador) {
     el.innerHTML = `
@@ -433,6 +435,15 @@ async function renderHome(el) {
     `;
     return;
   }
+
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
 
   // =====================================
   // DATAS NO HORÁRIO LOCAL
@@ -460,8 +471,8 @@ async function renderHome(el) {
     </div>
 
     <p class="muted" style="margin-bottom:16px">
-      🧪 Sistema em fase de testes.
-      Os valores das vendas são demonstrativos.
+      Indicadores calculados com os registros
+      disponíveis no sistema.
     </p>
 
     <div class="grid stats">
@@ -489,25 +500,39 @@ async function renderHome(el) {
 
       <div class="card stat">
         <div class="label">Lucro bruto estimado</div>
-        <div class="value">${money(0)}</div>
+        <div class="value">—</div>
+        <small class="muted">Ainda não calculado</small>
       </div>
 
       <div class="card stat">
         <div class="label">Entregas pendentes</div>
-        <div class="value">0</div>
+        <div class="value">—</div>
+        <small class="muted">Integração pendente</small>
       </div>
 
       <div class="card stat">
         <div class="label">Estoque baixo</div>
-        <div class="value">0</div>
+        <div class="value" id="dashEstoqueBaixo">
+          Carregando...
+        </div>
+        <small class="muted">
+          Produtos no mínimo ou abaixo dele
+        </small>
       </div>
 
     </div>
 
-    <p class="muted" style="font-size:12px;margin-top:10px">
-      Os demais indicadores serão conectados
-      nas próximas etapas.
-    </p>
+    <div class="section-title">
+      <h2>📦 Materiais que precisam de atenção</h2>
+    </div>
+
+    <div class="card">
+      <div id="dashListaEstoqueBaixo">
+        <p class="muted">
+          Consultando estoque...
+        </p>
+      </div>
+    </div>
 
     <div class="section-title">
       <h2>Ações rápidas</h2>
@@ -556,51 +581,82 @@ async function renderHome(el) {
   `;
 
   // =====================================
-  // CONSULTAR VENDAS DO MÊS
+  // CONSULTA PAGINADA
   // =====================================
 
-  try {
+  async function consultarTodos(
+    tabela,
+    campos,
+    configurar = consulta => consulta
+  ) {
 
-    let vendas = [];
-    let pagina = 0;
+    const resultado = [];
     const tamanhoPagina = 1000;
+    let pagina = 0;
 
     while (true) {
 
       const inicio = pagina * tamanhoPagina;
       const fim = inicio + tamanhoPagina - 1;
 
-      const { data, error } = await supabaseClient
-        .from('vendas')
- .select('id,data,valor_total,status')
-        .gte('data', inicioMes.toISOString())
-        .lt('data', inicioProximoMes.toISOString())
-        .order('data', { ascending: true })
-        .order('id', { ascending: true })
+      let consulta = supabaseClient
+        .from(tabela)
+        .select(campos);
+
+      consulta = configurar(consulta);
+
+      const { data, error } = await consulta
         .range(inicio, fim);
 
       if (error) throw error;
 
       const lote = data || [];
 
-      vendas.push(...lote);
+      resultado.push(...lote);
 
-      if (lote.length < tamanhoPagina) break;
+      if (lote.length < tamanhoPagina) {
+        break;
+      }
 
       pagina++;
-
     }
+
+    return resultado;
+  }
+
+  // Evita atualizar outra página ou
+  // uma nova renderização do Dashboard.
+  const paginaAtual = () =>
+    state.page === 'home' &&
+    el.isConnected &&
+    el.querySelector('#dashEstoqueBaixo') !== null;
+
+  // =====================================
+  // VENDAS REAIS
+  // =====================================
+
+  try {
+
+    const vendas = await consultarTodos(
+      'vendas',
+      'id,data,valor_total,status',
+      consulta => consulta
+        .gte('data', inicioMes.toISOString())
+        .lt('data', inicioProximoMes.toISOString())
+        .order('data', { ascending: true })
+        .order('id', { ascending: true })
+    );
 
     let totalHoje = 0;
     let totalMes = 0;
 
-for (const venda of vendas) {
+    for (const venda of vendas) {
 
-  if (venda.status !== 'concluida') {
-    continue;
-  }
+      if (venda.status !== 'concluida') {
+        continue;
+      }
 
-  const valor = Number(venda.valor_total || 0);
+      const valor = Number(venda.valor_total || 0);
       const dataVenda = new Date(venda.data);
 
       if (
@@ -618,16 +674,15 @@ for (const venda of vendas) {
       ) {
         totalHoje += valor;
       }
-
     }
 
-    if (state.page !== 'home') return;
+    if (!paginaAtual()) return;
 
     const campoHoje =
-      document.getElementById('dashVendasHoje');
+      el.querySelector('#dashVendasHoje');
 
     const campoMes =
-      document.getElementById('dashVendasMes');
+      el.querySelector('#dashVendasMes');
 
     if (campoHoje) {
       campoHoje.textContent = money(totalHoje);
@@ -644,89 +699,56 @@ for (const venda of vendas) {
       erro
     );
 
-    if (state.page !== 'home') return;
+    if (!paginaAtual()) return;
 
-    const campoHoje =
-      document.getElementById('dashVendasHoje');
+    el.querySelector('#dashVendasHoje').textContent =
+      'Indisponível';
 
-    const campoMes =
-      document.getElementById('dashVendasMes');
-
-    if (campoHoje) {
-      campoHoje.textContent = 'Indisponível';
-    }
-
-    if (campoMes) {
-      campoMes.textContent = 'Indisponível';
-    }
-
+    el.querySelector('#dashVendasMes').textContent =
+      'Indisponível';
   }
 
   // =====================================
-  // CONSULTAR CONTAS A RECEBER
+  // CONTAS A RECEBER
   // =====================================
 
   try {
 
-    let totalAReceber = 0;
-    let pagina = 0;
-    const tamanhoPagina = 1000;
-
-    while (true) {
-
-      const inicio = pagina * tamanhoPagina;
-      const fim = inicio + tamanhoPagina - 1;
-
-      const { data, error } = await supabaseClient
-        .from('contas_receber')
-        .select('id,valor_original,valor_recebido,status')
+    const contas = await consultarTodos(
+      'contas_receber',
+      'id,valor_original,valor_recebido,status',
+      consulta => consulta
         .in('status', ['pendente', 'parcial'])
         .order('id', { ascending: true })
-        .range(inicio, fim);
+    );
 
-      if (error) throw error;
+    let totalAReceber = 0;
 
-      const contas = data || [];
+    for (const conta of contas) {
 
-      for (const conta of contas) {
+      const valorOriginal =
+        Number(conta.valor_original);
 
-        const valorOriginal =
-          Number(conta.valor_original);
+      const valorRecebido =
+        Number(conta.valor_recebido);
 
-        const valorRecebido =
-          Number(conta.valor_recebido);
-
-        if (
-          !Number.isFinite(valorOriginal) ||
-          !Number.isFinite(valorRecebido)
-        ) {
-          continue;
-        }
-
-        const saldo = Math.max(
-          0,
-          valorOriginal - valorRecebido
-        );
-
-        totalAReceber += saldo;
-
+      if (
+        !Number.isFinite(valorOriginal) ||
+        !Number.isFinite(valorRecebido)
+      ) {
+        continue;
       }
 
-      if (contas.length < tamanhoPagina) break;
-
-      pagina++;
-
+      totalAReceber += Math.max(
+        0,
+        valorOriginal - valorRecebido
+      );
     }
 
-    if (state.page !== 'home') return;
+    if (!paginaAtual()) return;
 
-    const campoAReceber =
-      document.getElementById('dashAReceber');
-
-    if (campoAReceber) {
-      campoAReceber.textContent =
-        money(totalAReceber);
-    }
+    el.querySelector('#dashAReceber').textContent =
+      money(totalAReceber);
 
   } catch (erro) {
 
@@ -735,18 +757,192 @@ for (const venda of vendas) {
       erro
     );
 
-    if (state.page !== 'home') return;
+    if (!paginaAtual()) return;
 
-    const campoAReceber =
-      document.getElementById('dashAReceber');
-
-    if (campoAReceber) {
-      campoAReceber.textContent = 'Indisponível';
-    }
-
+    el.querySelector('#dashAReceber').textContent =
+      'Indisponível';
   }
 
+  // =====================================
+  // ESTOQUE BAIXO — DADOS REAIS
+  // =====================================
+
+  try {
+
+    const produtos = await consultarTodos(
+      'produtos',
+      `id,nome,unidade,estoque,
+       estoque_minimo,controla_estoque,ativo`,
+      consulta => consulta
+        .eq('ativo', true)
+        .eq('controla_estoque', true)
+        .order('id', { ascending: true })
+    );
+
+    const materiaisBaixos = produtos.filter(produto => {
+
+      if (
+        produto.estoque === null ||
+        produto.estoque === undefined ||
+        produto.estoque_minimo === null ||
+        produto.estoque_minimo === undefined
+      ) {
+        return false;
+      }
+
+      const estoque = Number(produto.estoque);
+      const minimo = Number(produto.estoque_minimo);
+
+      return (
+        Number.isFinite(estoque) &&
+        Number.isFinite(minimo) &&
+        minimo >= 0 &&
+        estoque <= minimo
+      );
+    });
+
+    materiaisBaixos.sort((a, b) => {
+
+      const estoqueA = Number(a.estoque);
+      const estoqueB = Number(b.estoque);
+
+      const esgotadoA = estoqueA <= 0 ? 0 : 1;
+      const esgotadoB = estoqueB <= 0 ? 0 : 1;
+
+      if (esgotadoA !== esgotadoB) {
+        return esgotadoA - esgotadoB;
+      }
+
+      return String(a.nome || '').localeCompare(
+        String(b.nome || ''),
+        'pt-BR'
+      );
+    });
+
+    if (!paginaAtual()) return;
+
+    const campoQuantidade =
+      el.querySelector('#dashEstoqueBaixo');
+
+    const campoLista =
+      el.querySelector('#dashListaEstoqueBaixo');
+
+    campoQuantidade.textContent =
+      String(materiaisBaixos.length);
+
+    if (!materiaisBaixos.length) {
+
+      campoLista.innerHTML = `
+        <p style="color:#166534;font-weight:600">
+          ✅ Nenhum material com estoque
+          no mínimo ou abaixo dele.
+        </p>
+        <p class="muted" style="font-size:12px">
+          Considerando os produtos ativos
+          com controle de estoque e
+          estoque mínimo informado.
+        </p>
+      `;
+
+      return;
+    }
+
+    campoLista.innerHTML = `
+      <p class="muted" style="margin-bottom:12px">
+        ${materiaisBaixos.length}
+        ${materiaisBaixos.length === 1
+          ? 'material precisa'
+          : 'materiais precisam'}
+        de atenção.
+      </p>
+
+      ${materiaisBaixos.map(produto => {
+
+        const estoque = Number(produto.estoque);
+        const minimo = Number(produto.estoque_minimo);
+
+        const esgotado = estoque <= 0;
+
+        const quantidade = valor =>
+          Number(valor).toLocaleString('pt-BR', {
+            maximumFractionDigits: 3
+          });
+
+        const unidade = escapar(
+          produto.unidade || 'unidade'
+        );
+
+        return `
+          <div style="
+            border:1px solid #e2e8f0;
+            border-radius:10px;
+            padding:12px;
+            margin-bottom:10px;
+          ">
+
+            <strong>
+              ${escapar(produto.nome)}
+            </strong>
+
+            <p style="
+              margin:8px 0 4px;
+              color:${esgotado ? '#b91c1c' : '#b45309'};
+              font-weight:700;
+            ">
+              ${esgotado
+                ? '🔴 Esgotado'
+                : '🟠 Estoque baixo'}
+            </p>
+
+            <p class="muted">
+              Disponível:
+              <strong>
+                ${quantidade(estoque)} ${unidade}
+              </strong>
+            </p>
+
+            <p class="muted">
+              Estoque mínimo:
+              <strong>
+                ${quantidade(minimo)} ${unidade}
+              </strong>
+            </p>
+
+          </div>
+        `;
+      }).join('')}
+
+      <button
+        type="button"
+        class="secondary"
+        onclick="navigate('products')"
+        style="margin-top:8px"
+      >
+        Ver estoque completo
+      </button>
+    `;
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao consultar estoque baixo:',
+      erro
+    );
+
+    if (!paginaAtual()) return;
+
+    el.querySelector('#dashEstoqueBaixo').textContent =
+      'Indisponível';
+
+    el.querySelector('#dashListaEstoqueBaixo').innerHTML = `
+      <p class="muted">
+        Não foi possível consultar o estoque.
+        Verifique o Console para mais detalhes.
+      </p>
+    `;
+  }
 }
+
 
 function deliveryCard(d){
   return `<div class="card"><div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div><p class="muted">${d.address}</p><div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div></div>`
