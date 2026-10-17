@@ -1240,8 +1240,8 @@ async function renderHome(el) {
 
     el.querySelector('#dashListaEstoqueBaixo').innerHTML = `
       <p class="muted">
-        Não foi possível consultar o estoque.
-        Verifique o Console para mais detalhes.
+Não foi possível consultar as entregas.
+Tente novamente em alguns instantes.
       </p>
     `;
   }
