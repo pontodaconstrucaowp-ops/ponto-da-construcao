@@ -11435,6 +11435,7 @@ if (document.readyState === 'loading') {
 }
 
 
+
 async function renderSettings(el) {
 
   if (!el) return;
@@ -11472,16 +11473,19 @@ async function renderSettings(el) {
 
     <div class="card">
       <h2>👥 Gerenciar usuários</h2>
+
       <p class="muted">
-        Funcionários cadastrados no sistema.
+        Consulte os funcionários e gerencie
+        seus acessos ao sistema.
       </p>
+
       <div id="settingsUsers">
         Carregando usuários...
       </div>
     </div>
   `;
 
-  const lista = document.getElementById('settingsUsers');
+  const lista = el.querySelector('#settingsUsers');
 
   try {
 
@@ -11497,6 +11501,7 @@ async function renderSettings(el) {
     }
 
     const usuarios = data || [];
+    const meuId = String(state.user?.id || '');
 
     if (!usuarios.length) {
       lista.textContent = 'Nenhum usuário encontrado.';
@@ -11505,12 +11510,19 @@ async function renderSettings(el) {
 
     lista.innerHTML = usuarios.map(usuario => {
 
-      const perfil = usuario.tipo === 'admin' ||
-                     usuario.tipo === 'administrador'
-        ? 'Administrador'
-        : usuario.tipo === 'entregador'
-          ? 'Entregador'
-          : 'Funcionário';
+      const perfil =
+        ['admin', 'administrador'].includes(usuario.tipo)
+          ? 'Administrador'
+          : usuario.tipo === 'entregador'
+            ? 'Entregador'
+            : 'Funcionário';
+
+      const propriaConta =
+        String(usuario.id) === meuId;
+
+      const acao = usuario.ativo
+        ? 'Desativar'
+        : 'Ativar';
 
       return `
         <div
@@ -11522,6 +11534,10 @@ async function renderSettings(el) {
           "
         >
           <strong>${escapar(usuario.nome)}</strong>
+
+          ${propriaConta ? `
+            <span class="muted">(Você)</span>
+          ` : ''}
 
           <p class="muted">
             ${escapar(usuario.email)}
@@ -11546,9 +11562,104 @@ async function renderSettings(el) {
               ${usuario.ativo ? 'Ativo' : 'Inativo'}
             </span>
           </p>
+
+          ${!propriaConta ? `
+            <button
+              type="button"
+              class="${usuario.ativo ? 'danger' : 'primary'}"
+              data-alterar-usuario="${escapar(usuario.id)}"
+              style="margin-top:10px"
+            >
+              ${acao} acesso
+            </button>
+          ` : `
+            <p class="muted" style="font-size:12px">
+              Sua própria conta não pode ser
+              ativada ou desativada por aqui.
+            </p>
+          `}
         </div>
       `;
     }).join('');
+
+    // Associar os botões aos usuários carregados.
+    lista.querySelectorAll('[data-alterar-usuario]')
+      .forEach(botao => {
+
+        botao.addEventListener('click', async () => {
+
+          if (botao.disabled) return;
+
+          const id = botao.dataset.alterarUsuario;
+
+          const usuario = usuarios.find(
+            u => String(u.id) === String(id)
+          );
+
+          if (!usuario) return;
+
+          const novoStatus = !usuario.ativo;
+
+          const acao = novoStatus
+            ? 'ativar'
+            : 'desativar';
+
+          const confirmou = window.confirm(
+            `Deseja realmente ${acao} o acesso de ` +
+            `${usuario.nome}?`
+          );
+
+          if (!confirmou) return;
+
+          botao.disabled = true;
+          botao.textContent = 'Aguarde...';
+
+          try {
+
+            const { error: erroAlteracao } =
+              await supabaseClient.rpc(
+                'alterar_status_usuario_admin',
+                {
+                  p_usuario_id: usuario.id,
+                  p_ativo: novoStatus
+                }
+              );
+
+            if (erroAlteracao) {
+              throw erroAlteracao;
+            }
+
+            alert(
+              `Acesso de ${usuario.nome} ` +
+              `${novoStatus ? 'ativado' : 'desativado'} com sucesso.`
+            );
+
+            if (state.page === 'settings') {
+              await renderSettings(el);
+            }
+
+          } catch (erro) {
+
+            console.error(
+              'Erro ao alterar acesso do usuário:',
+              erro
+            );
+
+            alert(
+              'Não foi possível alterar o acesso: ' +
+              (erro.message || 'Erro desconhecido.')
+            );
+
+            botao.disabled = false;
+
+            botao.textContent = novoStatus
+              ? 'Ativar acesso'
+              : 'Desativar acesso';
+          }
+
+        });
+
+      });
 
   } catch (erro) {
 
