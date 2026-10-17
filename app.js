@@ -7468,6 +7468,338 @@ async function renderReports(el) {
 }
 
 
+async function carregarLucroAnual() {
+
+  const campoAno = document.getElementById('lucroAno');
+  const painel = document.getElementById('lucroAnualConteudo');
+
+  if (!campoAno || !painel) return;
+
+  const ano = Number(campoAno.value);
+
+  if (
+    !Number.isInteger(ano) ||
+    ano < 2000 ||
+    ano > 2100
+  ) {
+    painel.textContent = 'Informe um ano válido.';
+    return;
+  }
+
+  painel.innerHTML = `
+    <p class="muted">Consultando resultados...</p>
+  `;
+
+  const meses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril',
+    'Maio', 'Junho', 'Julho', 'Agosto',
+    'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const resultados = meses.map(nome => ({
+    nome,
+    receita: 0,
+    custo: 0,
+    vendas: 0,
+    incompleto: false
+  }));
+
+  const formatar = valor =>
+    Number(valor).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+
+  // Consulta todas as páginas, sem depender
+  // do limite padrão de 1.000 registros.
+
+  async function consultarTodos(tabela, campos, filtro) {
+
+    const registros = [];
+    const tamanhoPagina = 1000;
+
+    for (let pagina = 0; ; pagina++) {
+
+      let consulta = supabaseClient
+        .from(tabela)
+        .select(campos);
+
+      consulta = filtro(consulta);
+
+      const inicio = pagina * tamanhoPagina;
+
+      const { data, error } = await consulta
+        .range(inicio, inicio + tamanhoPagina - 1);
+
+      if (error) throw error;
+
+      const lote = data || [];
+
+      registros.push(...lote);
+
+      if (lote.length < tamanhoPagina) break;
+    }
+
+    return registros;
+  }
+
+  try {
+
+    const inicioAno = new Date(ano, 0, 1);
+    const fimAno = new Date(ano + 1, 0, 1);
+
+    const vendas = await consultarTodos(
+      'vendas',
+      'id,data,valor_total,status',
+      consulta => consulta
+        .gte('data', inicioAno.toISOString())
+        .lt('data', fimAno.toISOString())
+        .order('id', { ascending: true })
+    );
+
+    const vendasValidas = vendas.filter(venda =>
+      venda.status === 'concluida'
+    );
+
+    const vendasPorId = new Map();
+
+    for (const venda of vendasValidas) {
+
+      const dataVenda = new Date(venda.data);
+
+      if (Number.isNaN(dataVenda.getTime())) {
+        continue;
+      }
+
+      const mes = dataVenda.getMonth();
+
+      // Confere o ano no horário local.
+      if (dataVenda.getFullYear() !== ano) {
+        continue;
+      }
+
+      const resultado = resultados[mes];
+
+      const receita = Number(venda.valor_total);
+
+      if (
+        venda.valor_total === null ||
+        !Number.isFinite(receita) ||
+        receita < 0
+      ) {
+        resultado.incompleto = true;
+      } else {
+        resultado.receita += receita;
+      }
+
+      resultado.vendas++;
+
+      vendasPorId.set(String(venda.id), {
+        mes,
+        quantidadeItens: 0
+      });
+    }
+
+    const ids = [...vendasPorId.keys()];
+
+    // Consulta os itens em lotes para evitar
+    // consultas muito grandes ao Supabase.
+
+    for (let i = 0; i < ids.length; i += 100) {
+
+      const loteIds = ids.slice(i, i + 100);
+
+      const itens = await consultarTodos(
+        'itens_venda',
+        'vendas_id,quantidade,custo_unitario',
+        consulta => consulta
+          .in('vendas_id', loteIds)
+          .order('id', { ascending: true })
+      );
+
+      for (const item of itens) {
+
+        const venda = vendasPorId.get(
+          String(item.vendas_id)
+        );
+
+        if (!venda) continue;
+
+        const resultado = resultados[venda.mes];
+
+        venda.quantidadeItens++;
+
+        const quantidade = Number(item.quantidade);
+        const custo = Number(item.custo_unitario);
+
+        if (
+          item.quantidade === null ||
+          item.custo_unitario === null ||
+          !Number.isFinite(quantidade) ||
+          !Number.isFinite(custo) ||
+          quantidade <= 0 ||
+          custo < 0
+        ) {
+          resultado.incompleto = true;
+          continue;
+        }
+
+        resultado.custo += quantidade * custo;
+      }
+    }
+
+    // Uma venda sem itens não pode ter
+    // seu lucro considerado completo.
+
+    for (const venda of vendasPorId.values()) {
+
+      if (venda.quantidadeItens === 0) {
+        resultados[venda.mes].incompleto = true;
+      }
+    }
+
+    let receitaAnual = 0;
+    let custoAnual = 0;
+    let vendasAnuais = 0;
+    let anoIncompleto = false;
+
+    const linhas = resultados.map(resultado => {
+
+      receitaAnual += resultado.receita;
+      custoAnual += resultado.custo;
+      vendasAnuais += resultado.vendas;
+
+      if (resultado.incompleto) {
+        anoIncompleto = true;
+      }
+
+      const lucro = resultado.receita - resultado.custo;
+
+      const valorExibido = resultado.incompleto
+        ? 'Incompleto'
+        : formatar(lucro);
+
+      return `
+        <div
+          class="row"
+          style="
+            padding:11px 0;
+            border-bottom:1px solid #e5e7eb;
+            gap:10px;
+          "
+        >
+          <span>${resultado.nome}</span>
+
+          <strong>
+            ${valorExibido}
+          </strong>
+        </div>
+      `;
+    }).join('');
+
+    const lucroAnual = receitaAnual - custoAnual;
+
+    const totalExibido = anoIncompleto
+      ? 'Incompleto'
+      : formatar(lucroAnual);
+
+    // Evita atualizar a tela se o usuário
+    // já selecionou outro ano.
+
+    if (
+      !painel.isConnected ||
+      Number(campoAno.value) !== ano
+    ) {
+      return;
+    }
+
+    painel.innerHTML = `
+
+      <div style="
+        padding:16px;
+        border-radius:12px;
+        background:#f1f5f9;
+        margin-bottom:16px;
+      ">
+
+        <div class="muted">
+          Lucro bruto total de ${ano}
+        </div>
+
+        <div style="
+          font-size:26px;
+          font-weight:800;
+          margin-top:6px;
+        ">
+          ${totalExibido}
+        </div>
+
+        <small class="muted">
+          ${vendasAnuais} venda(s) concluída(s)
+        </small>
+
+      </div>
+
+      <h3 style="margin-bottom:10px">
+        Resultado por mês
+      </h3>
+
+      ${linhas}
+
+      <div
+        class="row"
+        style="
+          padding:16px 0;
+          font-weight:800;
+          gap:10px;
+        "
+      >
+        <span>TOTAL ANUAL</span>
+        <strong>${totalExibido}</strong>
+      </div>
+
+      ${anoIncompleto ? `
+        <p class="muted" style="
+          color:#b45309;
+          margin-top:12px;
+        ">
+          ⚠️ Existem vendas sem informações
+          suficientes de custo ou receita.
+          O lucro desses períodos ainda
+          não pode ser calculado com segurança.
+        </p>
+      ` : `
+        <p class="muted" style="
+          font-size:12px;
+          margin-top:12px;
+        ">
+          Lucro bruto = valor líquido das vendas
+          concluídas menos custo dos materiais
+          vendidos. Não inclui despesas
+          operacionais.
+        </p>
+      `}
+
+    `;
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao calcular lucro bruto anual:',
+      erro
+    );
+
+    if (
+      painel.isConnected &&
+      Number(campoAno.value) === ano
+    ) {
+      painel.textContent =
+        'Não foi possível calcular o lucro bruto. ' +
+        'Verifique os dados e as permissões de consulta.';
+    }
+  }
+}
+
 
 async function carregarRelatorio(){
 
