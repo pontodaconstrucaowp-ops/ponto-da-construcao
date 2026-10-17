@@ -1253,11 +1253,6 @@ async function renderHome(el) {
 
 
 
-function deliveryCard(d){
-  return `<div class="card"><div class="row"><strong>#${d.id} · ${d.client}</strong><span class="badge ${d.priority}">${d.priority}</span></div><p class="muted">${d.address}</p><div class="row"><span>${money(d.value)}</span><span class="badge ${d.status}">${statusName(d.status)}</span></div></div>`
-}
-function statusName(s){return s==='pending'?'Pendente':s==='route'?'Em rota':'Entregue'}
-
 async function renderSales(el) {
 
   const carrinhoEstavaAberto =
