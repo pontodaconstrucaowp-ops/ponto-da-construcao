@@ -1248,7 +1248,6 @@ Tente novamente em alguns instantes.
 }
 
 
-
 async function renderSales(el) {
 
   const carrinhoEstavaAberto =
