@@ -7,28 +7,19 @@ const supabaseClient = window.supabase.createClient(
 );
 // Ocultar a tela de login enquanto a sessão é verificada
 document.getElementById('loginScreen')?.classList.add('hidden');
-const state={
-  page:'home',
-  user:null,
-  cart:[],
-  selectedClient:null,
-  saleDiscount:0,
-  cartOpen:false,
-  products:[
-    {id:1,name:'Cimento Poty',unit:'saco',price:42.00,stock:120},
-    {id:2,name:'Areia',unit:'m³',price:160.00,stock:18},
-    {id:3,name:'Seixo',unit:'m³',price:190.00,stock:11},
-    {id:4,name:'Tijolo',unit:'milheiro',price:850.00,stock:7},
-    {id:5,name:'Madeira',unit:'unidade',price:35.00,stock:95}
-  ],
-  clients:[
-    {id:1,name:'Cliente de demonstração',phone:'(91) 99999-9999',city:'Marituba'}
-  ],
-  deliveries:[
-    {id:1,client:'Cliente de demonstração',address:'Endereço de demonstração',value:1250,priority:'urgente',status:'pending'},
-    {id:2,client:'Obra Centro',address:'Rua Principal, 100',value:680,priority:'alta',status:'route'}
-  ]
+
+const state = {
+  page: 'home',
+  user: null,
+  cart: [],
+  selectedClient: null,
+  saleDiscount: 0,
+  cartOpen: false,
+  products: [],
+  clients: [],
+  deliveries: []
 };
+
 
 async function login(){
   const user=document.getElementById('loginUser').value.trim();
