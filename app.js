@@ -7378,18 +7378,53 @@ async function nextDelivery(id){
     document.getElementById('content')
   );
 }
-async function renderReports(el){
+
+async function renderReports(el) {
+
+  if (!el) return;
+
+  const anoAtual = new Date().getFullYear();
 
   el.innerHTML = `
+    <div class="section-title">
+      <h2>📊 Lucro bruto anual</h2>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+
+      <div class="field" style="margin-bottom:14px">
+        <label for="lucroAno">Selecionar ano</label>
+
+        <input
+          id="lucroAno"
+          type="number"
+          class="search"
+          min="2000"
+          max="2100"
+          step="1"
+          value="${anoAtual}"
+          onchange="carregarLucroAnual()"
+        >
+      </div>
+
+      <div id="lucroAnualConteudo">
+        <p class="muted">Carregando lucro bruto...</p>
+      </div>
+
+    </div>
+
     <div class="card">
 
       <div class="section-title">
-        <h2>Relatórios</h2>
+        <h2>Relatórios de vendas</h2>
       </div>
 
-      <div class="row" style="gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+      <div
+        class="row"
+        style="gap:10px;flex-wrap:wrap;margin-bottom:15px"
+      >
 
-        <div class="field" style="flex:1; min-width:140px;">
+        <div class="field" style="flex:1;min-width:140px">
           <label>Data inicial</label>
           <input
             id="reportDateStart"
@@ -7398,7 +7433,7 @@ async function renderReports(el){
           >
         </div>
 
-        <div class="field" style="flex:1; min-width:140px;">
+        <div class="field" style="flex:1;min-width:140px">
           <label>Data final</label>
           <input
             id="reportDateEnd"
@@ -7410,7 +7445,7 @@ async function renderReports(el){
         <button
           class="btn primary"
           onclick="carregarRelatorio()"
-          style="margin-top:22px;"
+          style="margin-top:22px"
         >
           Filtrar
         </button>
@@ -7426,8 +7461,12 @@ async function renderReports(el){
     </div>
   `;
 
-  await carregarRelatorio();
+  await Promise.all([
+    carregarLucroAnual(),
+    carregarRelatorio()
+  ]);
 }
+
 
 
 async function carregarRelatorio(){
