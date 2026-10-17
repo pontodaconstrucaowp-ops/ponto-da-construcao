@@ -864,15 +864,7 @@ async function renderHome(el) {
       el.querySelector('#dashEntregasPendentes');
 
     const campoLista =
-
-el.querySelector('#dashProximasEntregas')
-  .innerHTML = `
-    <p class="muted">
-      Não foi possível consultar as entregas.
-      Tente novamente em alguns instantes.
-    </p>
-  `;
-
+      el.querySelector('#dashProximasEntregas');
 
     campoQuantidade.textContent =
       String(entregas.length);
@@ -1068,7 +1060,7 @@ el.querySelector('#dashProximasEntregas')
     el.querySelector('#dashProximasEntregas')
       .innerHTML = `
         <p class="muted">
-Não foi possível consultar o estoque.
+Não foi possível consultar as entregas.
 Tente novamente em alguns instantes.
         </p>
       `;
@@ -1248,7 +1240,7 @@ Tente novamente em alguns instantes.
 
     el.querySelector('#dashListaEstoqueBaixo').innerHTML = `
       <p class="muted">
-Não foi possível consultar as entregas.
+Não foi possível consultar o estoque.
 Tente novamente em alguns instantes.
       </p>
     `;
