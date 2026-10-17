@@ -7379,17 +7379,13 @@ if(!vendas || vendas.length === 0){
 
   let itensExternos = [];
 
-  const { data: itens, error: erroItens } =
-    await supabaseClient
-      .from('itens_venda')
-      .select(`
-        vendas_id,
-        produtos_id,
-        quantidade_compra_externa,
-        custo_compra_externa
-      `)
-      .in('vendas_id', vendasIds)
-      .gt('quantidade_compra_externa', 0);
+const { data: itens, error: erroItens } =
+  await supabaseClient.rpc(
+    'consultar_compras_externas_admin',
+    {
+      p_vendas_ids: vendasIds
+    }
+  );
 
   if(erroItens){
 
