@@ -11618,7 +11618,7 @@ async function validarCancelamentoVenda() {
   }
 
   const botao = janela.querySelector(
-    'button[onclick="validarCancelamentoVendaTeste()"]'
+    'button[onclick="validarCancelamentoVenda()"]'
   );
 
   cancelamentoVendaEmProcessamento = true;
