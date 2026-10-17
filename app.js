@@ -864,7 +864,15 @@ async function renderHome(el) {
       el.querySelector('#dashEntregasPendentes');
 
     const campoLista =
-      el.querySelector('#dashProximasEntregas');
+
+el.querySelector('#dashProximasEntregas')
+  .innerHTML = `
+    <p class="muted">
+      Não foi possível consultar as entregas.
+      Tente novamente em alguns instantes.
+    </p>
+  `;
+
 
     campoQuantidade.textContent =
       String(entregas.length);
