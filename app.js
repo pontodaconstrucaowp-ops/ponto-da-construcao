@@ -9940,10 +9940,6 @@ async function renderReceivables(el) {
       <h2>💰 Contas a receber</h2>
     </div>
 
-    <p class="muted" style="margin-bottom:16px">
-      🧪 Sistema em fase de testes.
-      Os valores são demonstrativos.
-    </p>
 
     <div class="card">
       <div class="label">Total em aberto</div>
