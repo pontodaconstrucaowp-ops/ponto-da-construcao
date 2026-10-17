@@ -11433,3 +11433,104 @@ if (document.readyState === 'loading') {
   restaurarSessao();
 
 }
+
+function renderSettings(el) {
+
+  if (!el) {
+    console.error('Área de Configurações não encontrada.');
+    return;
+  }
+
+  const usuario = state.user;
+
+  if (!usuario) {
+    el.innerHTML = `
+      <div class="card">
+        <h2>Sessão não encontrada</h2>
+        <p class="muted">
+          Faça login novamente para acessar as configurações.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  const ehAdministrador =
+    usuario.tipo === 'admin' ||
+    usuario.tipo === 'administrador';
+
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[caractere]));
+
+  const nome = escapar(usuario.nome || 'Não informado');
+  const email = escapar(usuario.email || 'Não informado');
+
+  const perfil = ehAdministrador
+    ? 'Administrador'
+    : usuario.tipo === 'entregador'
+      ? 'Entregador'
+      : 'Funcionário';
+
+  const situacao = usuario.ativo
+    ? 'Ativo'
+    : 'Inativo';
+
+  el.innerHTML = `
+    <div class="section-title">
+      <h2>⚙️ Configurações</h2>
+    </div>
+
+    <div class="card">
+      <h2>Minha conta</h2>
+
+      <p>
+        <strong>Nome:</strong>
+        ${nome}
+      </p>
+
+      <p>
+        <strong>E-mail:</strong>
+        ${email}
+      </p>
+
+      <p>
+        <strong>Perfil:</strong>
+        ${perfil}
+      </p>
+
+      <p>
+        <strong>Situação:</strong>
+        ${situacao}
+      </p>
+    </div>
+
+    ${ehAdministrador ? `
+      <div class="card">
+        <h2>👥 Administração de usuários</h2>
+
+        <p class="muted">
+          O gerenciamento de usuários e permissões
+          será disponibilizado nesta área após
+          a configuração das operações seguras
+          no Supabase.
+        </p>
+      </div>
+    ` : ''}
+
+    <div class="card">
+      <h2>🔒 Segurança</h2>
+
+      <p class="muted">
+        O acesso às funcionalidades do sistema
+        depende do perfil e das permissões
+        configuradas no banco de dados.
+      </p>
+    </div>
+  `;
+}
