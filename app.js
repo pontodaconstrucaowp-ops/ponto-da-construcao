@@ -7379,6 +7379,7 @@ async function nextDelivery(id){
   );
 }
 
+
 async function renderReports(el) {
 
   if (!el) return;
@@ -7387,7 +7388,7 @@ async function renderReports(el) {
 
   el.innerHTML = `
     <div class="section-title">
-      <h2>📊 Lucro bruto anual</h2>
+      <h2>📊 Faturamento mensal e anual</h2>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -7408,7 +7409,9 @@ async function renderReports(el) {
       </div>
 
       <div id="lucroAnualConteudo">
-        <p class="muted">Carregando lucro bruto...</p>
+        <p class="muted">
+          Carregando faturamento...
+        </p>
       </div>
 
     </div>
@@ -7421,11 +7424,19 @@ async function renderReports(el) {
 
       <div
         class="row"
-        style="gap:10px;flex-wrap:wrap;margin-bottom:15px"
+        style="
+          gap:10px;
+          flex-wrap:wrap;
+          margin-bottom:15px;
+        "
       >
 
-        <div class="field" style="flex:1;min-width:140px">
+        <div
+          class="field"
+          style="flex:1;min-width:140px"
+        >
           <label>Data inicial</label>
+
           <input
             id="reportDateStart"
             class="search"
@@ -7433,8 +7444,12 @@ async function renderReports(el) {
           >
         </div>
 
-        <div class="field" style="flex:1;min-width:140px">
+        <div
+          class="field"
+          style="flex:1;min-width:140px"
+        >
           <label>Data final</label>
+
           <input
             id="reportDateEnd"
             class="search"
@@ -7455,7 +7470,9 @@ async function renderReports(el) {
       <div id="reportSummary"></div>
 
       <div id="reportsList" class="list">
-        <div class="muted">Carregando vendas...</div>
+        <div class="muted">
+          Carregando vendas...
+        </div>
       </div>
 
     </div>
