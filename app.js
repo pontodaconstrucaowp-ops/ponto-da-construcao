@@ -467,10 +467,6 @@ async function renderHome(el) {
       <h2>📊 Visão geral</h2>
     </div>
 
-    <p class="muted" style="margin-bottom:16px">
-      Indicadores calculados com os registros
-      disponíveis no sistema.
-    </p>
 
     <div class="grid stats">
 
