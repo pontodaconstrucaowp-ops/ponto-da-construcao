@@ -7084,288 +7084,529 @@ async function saveProductEdit(id) {
 }
 
 
-async function renderDeliveries(el){
+
+async function renderDeliveries(el) {
+
+  if (!el) return;
+
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+
+  const formatarQuantidade = valor =>
+    Number(valor).toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
 
   el.innerHTML = `
     <div class="card">
-      <strong>Fila de entregas</strong>
-      <p class="muted">
-        Carregando entregas...
-      </p>
+      <strong>🚚 Fila de entregas</strong>
+      <p class="muted">Carregando entregas e materiais...</p>
     </div>
   `;
-
-  const { data, error } = await supabaseClient
-    .from('entregas')
-    .select(`
-      id,
-      venda_id,
-      prioridade,
-      posicao_fila,
-      status,
-      endereço,
-      entregador_id,
-      vendas (
-        id,
-        valor_total,
-        forma_pagamento,
-        status,
-        clientes (
-          nome,
-          telefone,
-          endereço
-        )
-      )
-    `)
-    .order('posicao_fila', { ascending: true });
-
-  if(error){
-
-    console.error(
-      'ERRO AO CARREGAR ENTREGAS:',
-      error
-    );
-
-    el.innerHTML = `
-      <div class="card">
-        <strong>Erro ao carregar entregas</strong>
-        <p class="muted">
-          ${error.message}
-        </p>
-      </div>
-    `;
-
-    return;
-  }
-
-  if(!data || data.length === 0){
-
-    el.innerHTML = `
-      <div class="card">
-        <strong>Nenhuma entrega na fila</strong>
-        <p class="muted">
-          As entregas aparecerão aqui quando forem criadas.
-        </p>
-      </div>
-    `;
-
-    return;
-  }
-
-  el.innerHTML = `
-    <div class="card">
-      <strong>Fila de entregas</strong>
-      <p class="muted">
-        ${data.length} entrega(s) na fila.
-      </p>
-    </div>
-
-    <div class="list" style="margin-top:12px">
-
-      ${data.map((d, i) => {
-
-        const venda = d.vendas;
-        const cliente = venda?.clientes;
-
-        const endereco =
-          d.endereço ||
-          cliente?.endereço ||
-          'Endereço não informado';
-
-        const nomeCliente =
-          cliente?.nome ||
-          'Cliente não informado';
-
-        const telefone =
-          cliente?.telefone ||
-          'Sem telefone';
-
-        const valor =
-          Number(venda?.valor_total || 0);
-
-        return `
-
-          <div class="card">
-
-            <div class="row">
-              <strong>
-                #${d.id} · ${nomeCliente}
-              </strong>
-
-              <span class="badge ${d.status}">
-                ${d.status}
-              </span>
-            </div>
-
-            <p class="muted">
-              📍 ${endereco}
-            </p>
-
-            <p class="muted">
-              ☎ ${telefone}
-            </p>
-
-            <div class="row">
-              <span>
-                ${money(valor)}
-              </span>
-
-              <span class="muted">
-                ${venda?.forma_pagamento || ''}
-              </span>
-            </div>
-
-            <div class="actions">
-            
-<button
-  type="button"
-  class="secondary"
-onclick="abrirMapaEntrega(${d.id})"
->
-  🗺️ Ver no mapa
-</button>
-
-            ${d.status !== 'entregue' ? `
-
-  ${i > 0 ? `
-    <button
-      class="secondary"
-      onclick="moveDelivery(${d.id},-1)"
-    >
-      ↑ Colocar na frente
-    </button>
-  ` : ''}
-
-  ${i < data.length - 1 ? `
-    <button
-      class="secondary"
-      onclick="moveDelivery(${d.id},1)"
-    >
-      ↓
-    </button>
-  ` : ''}
-
-` : ''}
-
-              ${d.status !== 'entregue' ? `
-                <button
-                  class="primary"
-                  onclick="nextDelivery(${d.id})"
-                >
-                  ${d.status === 'pendente'
-                    ? 'Iniciar rota'
-                    : 'Marcar entregue'}
-                </button>
-              ` : ''}
-
-            </div>
-
-          </div>
-
-        `;
-
-      }).join('')}
-
-    </div>
-  `;
-}
-async function abrirMapaEntrega(entregaId) {
 
   try {
 
-    if (!Number.isSafeInteger(Number(entregaId))) {
-      alert('Número da entrega inválido.');
-      return;
-    }
+    // =====================================
+    // 1. CONSULTAR ENTREGAS
+    // =====================================
 
-    const { data: entrega, error } =
+    const { data: entregas, error: erroEntregas } =
       await supabaseClient
         .from('entregas')
         .select(`
           id,
+          venda_id,
+          prioridade,
+          posicao_fila,
+          status,
           endereço,
-          latitude,
-          longitude,
+          entregador_id,
           vendas (
+            id,
+            valor_total,
+            forma_pagamento,
+            status,
             clientes (
-              endereço,
-              latitude,
-              longitude
+              nome,
+              telefone,
+              endereço
             )
           )
         `)
-        .eq('id', entregaId)
-        .single();
+        .order('posicao_fila', {
+          ascending: true,
+          nullsFirst: false
+        })
+        .order('id', { ascending: true });
 
-    if (error || !entrega) {
+    if (erroEntregas) throw erroEntregas;
 
-      console.error(
-        'Erro ao consultar localização da entrega:',
-        error
-      );
+    if (!el.isConnected || state.page !== 'deliveries') {
+      return;
+    }
 
-      alert(
-        'Não foi possível consultar a localização da entrega.'
-      );
+    if (!entregas?.length) {
+
+      el.innerHTML = `
+        <div class="card">
+          <h2>🚚 Nenhuma entrega na fila</h2>
+          <p class="muted">
+            As entregas aparecerão aqui quando forem criadas.
+          </p>
+        </div>
+      `;
 
       return;
     }
 
-    const cliente = entrega.vendas?.clientes;
+    // =====================================
+    // 2. CONSULTAR MATERIAIS DAS VENDAS
+    // =====================================
 
-    // Priorizar o ponto salvo na entrega.
-    // Usar o ponto do cliente apenas como alternativa.
-    const latitude =
-      entrega.latitude ?? cliente?.latitude;
+    const idsVendas = [
+      ...new Set(
+        entregas
+          .map(e => e.venda_id)
+          .filter(id => id != null)
+      )
+    ];
 
-    const longitude =
-      entrega.longitude ?? cliente?.longitude;
+    let itens = [];
 
-    const lat = Number(latitude);
-    const lng = Number(longitude);
+    if (idsVendas.length) {
 
-    const coordenadasValidas =
-      latitude != null &&
-      longitude != null &&
-      Number.isFinite(lat) &&
-      Number.isFinite(lng) &&
-      Math.abs(lat) <= 90 &&
-      Math.abs(lng) <= 180;
+      const { data, error } = await supabaseClient
+        .from('itens_venda')
+        .select(`
+          id,
+          vendas_id,
+          produtos_id,
+          quantidade,
+          unidade_venda,
+          origem_material,
+          controle_entrega_estoque_ativo,
+          produtos (
+            nome
+          )
+        `)
+        .in('vendas_id', idsVendas);
 
-    if (!coordenadasValidas) {
+      if (error) throw error;
 
-      alert(
-        'Esta entrega não possui uma localização válida.\n\n' +
-        'Verifique o ponto marcado no cadastro do cliente.'
-      );
-
-      return;
+      itens = data || [];
     }
 
-    const destino =
-      `${lat},${lng}`;
+    // =====================================
+    // 3. CONSULTAR HISTÓRICO DE RECEBIMENTOS
+    // =====================================
 
-    const url =
-      'https://www.google.com/maps/search/?api=1&query=' +
-      encodeURIComponent(destino);
+    // A política atual de itens_entregues permite
+    // consulta aos administradores.
+    // Não exibimos saldos como zero para entregadores
+    // sem permissão de leitura.
 
-    // Abrir na mesma aba evita bloqueios de pop-up.
-    window.location.assign(url);
+    let recebimentos = [];
+
+    if (ehAdministrador && itens.length) {
+
+      const idsItens = itens
+        .filter(i => i.controle_entrega_estoque_ativo === true)
+        .map(i => i.id);
+
+      if (idsItens.length) {
+
+        const { data, error } = await supabaseClient
+          .from('itens_entregues')
+          .select(`
+            id,
+            item_venda_id,
+            entrega_id,
+            quantidade_entregue,
+            quantidade_estoque_proprio,
+            data_entrega
+          `)
+          .in('item_venda_id', idsItens);
+
+        if (error) throw error;
+
+        recebimentos = data || [];
+      }
+    }
+
+    // =====================================
+    // 4. ORGANIZAR QUANTIDADES
+    // =====================================
+
+    const totalRecebidoPorItem = new Map();
+
+    for (const registro of recebimentos) {
+
+      const anterior =
+        totalRecebidoPorItem.get(registro.item_venda_id) || 0;
+
+      totalRecebidoPorItem.set(
+        registro.item_venda_id,
+        anterior + Number(registro.quantidade_entregue || 0)
+      );
+    }
+
+    const itensPorVenda = new Map();
+
+    for (const item of itens) {
+
+      if (!itensPorVenda.has(item.vendas_id)) {
+        itensPorVenda.set(item.vendas_id, []);
+      }
+
+      itensPorVenda.get(item.vendas_id).push(item);
+    }
+
+    // =====================================
+    // 5. MONTAR TELA
+    // =====================================
+
+    const pendentes = entregas.filter(
+      e => e.status !== 'entregue'
+    ).length;
+
+    el.innerHTML = `
+
+      <div class="card">
+
+        <h2 style="margin-bottom:8px">
+          🚚 Fila de entregas
+        </h2>
+
+        <p class="muted">
+          ${entregas.length} entrega(s) cadastrada(s).
+        </p>
+
+        <p style="margin-top:8px">
+          <strong>${pendentes}</strong>
+          entrega(s) ainda não finalizada(s).
+        </p>
+
+      </div>
+
+      <div class="list" style="margin-top:12px">
+
+        ${entregas.map((entrega, indice) => {
+
+          const venda = entrega.vendas;
+          const cliente = venda?.clientes;
+
+          const nomeCliente = escapar(
+            cliente?.nome || 'Cliente não informado'
+          );
+
+          const endereco = escapar(
+            entrega.endereço ||
+            cliente?.endereço ||
+            'Endereço não informado'
+          );
+
+          const telefone = escapar(
+            cliente?.telefone || 'Sem telefone'
+          );
+
+          const valor = Number(venda?.valor_total || 0);
+
+          const materiais =
+            itensPorVenda.get(entrega.venda_id) || [];
+
+          const controleNovo = materiais.some(
+            item => item.controle_entrega_estoque_ativo === true
+          );
+
+          const statusTexto = {
+            pendente: '⏳ Pendente',
+            em_rota: '🚚 Em rota',
+            entregue: '✅ Entregue'
+          }[entrega.status] || entrega.status;
+
+          let blocoMateriais = '';
+
+          if (!materiais.length) {
+
+            blocoMateriais = `
+              <p class="muted">
+                Nenhum material encontrado para esta venda.
+              </p>
+            `;
+
+          } else if (!controleNovo) {
+
+            blocoMateriais = `
+              <p class="muted">
+                Esta venda pertence ao controle anterior.
+                O histórico detalhado de recebimentos
+                não está disponível.
+              </p>
+            `;
+
+          } else if (!ehAdministrador) {
+
+            blocoMateriais = `
+              <p class="muted">
+                O detalhamento dos saldos de entrega
+                está disponível para administradores.
+              </p>
+            `;
+
+          } else {
+
+            blocoMateriais = materiais.map(item => {
+
+              const quantidadeVendida =
+                Number(item.quantidade || 0);
+
+              const quantidadeEntregue =
+                totalRecebidoPorItem.get(item.id) || 0;
+
+              const quantidadePendente = Math.max(
+                0,
+                quantidadeVendida - quantidadeEntregue
+              );
+
+              const unidade = escapar(
+                item.unidade_venda || 'unidade'
+              );
+
+              const nome = escapar(
+                item.produtos?.nome || 'Material'
+              );
+
+              const concluido =
+                quantidadePendente <= 0;
+
+              return `
+
+                <div style="
+                  border:1px solid #e2e8f0;
+                  border-radius:10px;
+                  padding:12px;
+                  margin-top:10px;
+                ">
+
+                  <strong>${nome}</strong>
+
+                  <p class="muted" style="margin-top:5px">
+                    Unidade: ${unidade}
+                  </p>
+
+                  <div style="
+                    display:grid;
+                    grid-template-columns:repeat(3,minmax(0,1fr));
+                    gap:8px;
+                    margin-top:12px;
+                    text-align:center;
+                  ">
+
+                    <div>
+                      <small class="muted">Vendido</small>
+                      <div>
+                        <strong>
+                          ${formatarQuantidade(quantidadeVendida)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div>
+                      <small class="muted">Entregue</small>
+                      <div style="color:#166534">
+                        <strong>
+                          ${formatarQuantidade(quantidadeEntregue)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div>
+                      <small class="muted">Falta</small>
+                      <div style="color:${
+                        concluido ? '#166534' : '#b45309'
+                      }">
+                        <strong>
+                          ${formatarQuantidade(quantidadePendente)}
+                        </strong>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <p style="
+                    margin-top:10px;
+                    font-size:12px;
+                    font-weight:600;
+                    color:${concluido ? '#166534' : '#b45309'};
+                  ">
+                    ${concluido
+                      ? '✅ Material totalmente recebido'
+                      : '⏳ Recebimento pendente'}
+                  </p>
+
+                </div>
+              `;
+
+            }).join('');
+
+          }
+
+          return `
+
+            <div class="card">
+
+              <div class="row">
+
+                <strong>
+                  #${escapar(entrega.id)} · ${nomeCliente}
+                </strong>
+
+                <span class="badge ${escapar(entrega.status)}">
+                  ${escapar(statusTexto)}
+                </span>
+
+              </div>
+
+              ${entrega.prioridade === true ? `
+                <p style="
+                  color:#b91c1c;
+                  font-weight:700;
+                  margin-top:10px;
+                ">
+                  🔴 Entrega prioritária
+                </p>
+              ` : ''}
+
+              <p class="muted" style="margin-top:12px">
+                📍 ${endereco}
+              </p>
+
+              <p class="muted">
+                ☎ ${telefone}
+              </p>
+
+              <div class="row" style="margin-top:12px">
+
+                <strong>
+                  ${money(valor)}
+                </strong>
+
+                <span class="muted">
+                  ${escapar(venda?.forma_pagamento || '')}
+                </span>
+
+              </div>
+
+              <div style="
+                border-top:1px solid #e2e8f0;
+                margin-top:16px;
+                padding-top:14px;
+              ">
+
+                <strong>📦 Materiais da venda</strong>
+
+                ${blocoMateriais}
+
+              </div>
+
+              <div class="actions" style="margin-top:16px">
+
+                <button
+                  type="button"
+                  class="secondary"
+                  onclick="abrirMapaEntrega(${Number(entrega.id)})"
+                >
+                  🗺️ Ver no mapa
+                </button>
+
+                ${entrega.status !== 'entregue' ? `
+
+                  ${indice > 0 ? `
+                    <button
+                      type="button"
+                      class="secondary"
+                      onclick="moveDelivery(${Number(entrega.id)},-1)"
+                    >
+                      ↑ Colocar na frente
+                    </button>
+                  ` : ''}
+
+                  ${indice < entregas.length - 1 ? `
+                    <button
+                      type="button"
+                      class="secondary"
+                      onclick="moveDelivery(${Number(entrega.id)},1)"
+                    >
+                      ↓
+                    </button>
+                  ` : ''}
+
+                ` : ''}
+
+                ${entrega.status === 'pendente' ? `
+
+                  <button
+                    type="button"
+                    class="primary"
+                    onclick="nextDelivery(${Number(entrega.id)})"
+                  >
+                    🚚 Iniciar rota
+                  </button>
+
+                ` : ''}
+
+                ${entrega.status === 'em_rota' ? `
+
+                  <p class="muted" style="font-size:12px">
+                    Aguardando o novo controle de confirmação
+                    de recebimento.
+                  </p>
+
+                ` : ''}
+
+              </div>
+
+            </div>
+
+          `;
+
+        }).join('')}
+
+      </div>
+    `;
 
   } catch (erro) {
 
     console.error(
-      'Erro inesperado ao abrir mapa:',
+      'Erro ao carregar tela de entregas:',
       erro
     );
 
-    alert(
-      'Não foi possível abrir o mapa desta entrega.'
-    );
+    if (!el.isConnected) return;
+
+    el.innerHTML = `
+      <div class="card">
+        <h2>Não foi possível carregar as entregas</h2>
+        <p class="muted">
+          ${escapar(erro.message || 'Erro desconhecido.')}
+        </p>
+      </div>
+    `;
 
   }
 
 }
+
 
 
 async function nextDelivery(id) {
