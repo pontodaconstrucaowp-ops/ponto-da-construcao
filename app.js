@@ -7367,79 +7367,99 @@ async function abrirMapaEntrega(entregaId) {
 
 }
 
-async function nextDelivery(id){
 
-  const { data, error } = await supabaseClient
-    .from('entregas')
-    .select('id, status, posicao_fila')
-    .eq('id', id)
-    .single();
+async function nextDelivery(id) {
 
-  if(error){
+  try {
 
-    console.error(
-      'ERRO AO BUSCAR ENTREGA:',
-      error
-    );
-
-    alert(
-      'Não foi possível carregar a entrega:\n\n' +
-      error.message
-    );
-
-    return;
-  }
-
-  if(!data){
-    alert('Entrega não encontrada.');
-    return;
-  }
-
-  let novoStatus = data.status;
-
-  if(data.status === 'pendente'){
-    novoStatus = 'em_rota';
-  }
-  else if(data.status === 'em_rota'){
-    novoStatus = 'entregue';
-  }
-  else {
-    return;
-  }
-
-  const atualizacao = {
-    status: novoStatus
-  };
-
-  if(novoStatus === 'entregue'){
-    atualizacao.posicao_fila = -1;
-  }
-
-  const { error: updateError } =
-    await supabaseClient
+    const { data, error } = await supabaseClient
       .from('entregas')
-      .update(atualizacao)
-      .eq('id', id);
+      .select('id, status, posicao_fila')
+      .eq('id', id)
+      .single();
 
-  if(updateError){
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      alert('Entrega não encontrada.');
+      return;
+    }
+
+    // ENTREGA JÁ FINALIZADA
+
+    if (data.status === 'entregue') {
+      alert('Esta entrega já está finalizada.');
+      return;
+    }
+
+    // IMPEDIR FINALIZAÇÃO PELO MÉTODO ANTIGO
+
+    if (data.status !== 'pendente') {
+
+      alert(
+        'A confirmação de recebimento será feita ' +
+        'pelo novo controle de entregas parciais.\n\n' +
+        'Por enquanto, esta entrega não será finalizada.'
+      );
+
+      return;
+    }
+
+    // INICIAR ROTA
+
+    const confirmou = window.confirm(
+      'Deseja iniciar a rota desta entrega?'
+    );
+
+    if (!confirmou) {
+      return;
+    }
+
+    const { data: atualizada, error: updateError } =
+      await supabaseClient
+        .from('entregas')
+        .update({
+          status: 'em_rota'
+        })
+        .eq('id', id)
+        .eq('status', 'pendente')
+        .select('id')
+        .maybeSingle();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    if (!atualizada) {
+      alert(
+        'O status desta entrega foi alterado. ' +
+        'Atualize a página e tente novamente.'
+      );
+      return;
+    }
+
+    await renderDeliveries(
+      document.getElementById('content')
+    );
+
+  } catch (erro) {
 
     console.error(
-      'ERRO AO ATUALIZAR ENTREGA:',
-      updateError
+      'Erro ao atualizar entrega:',
+      erro
     );
 
     alert(
       'Não foi possível atualizar a entrega:\n\n' +
-      updateError.message
+      (erro.message || 'Erro desconhecido.')
     );
 
-    return;
   }
 
-  await renderDeliveries(
-    document.getElementById('content')
-  );
 }
+
 
 
 async function renderReports(el) {
