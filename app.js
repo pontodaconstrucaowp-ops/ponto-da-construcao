@@ -7269,6 +7269,104 @@ onclick="abrirMapaEntrega(${d.id})"
     </div>
   `;
 }
+async function abrirMapaEntrega(entregaId) {
+
+  try {
+
+    if (!Number.isSafeInteger(Number(entregaId))) {
+      alert('Número da entrega inválido.');
+      return;
+    }
+
+    const { data: entrega, error } =
+      await supabaseClient
+        .from('entregas')
+        .select(`
+          id,
+          endereço,
+          latitude,
+          longitude,
+          vendas (
+            clientes (
+              endereço,
+              latitude,
+              longitude
+            )
+          )
+        `)
+        .eq('id', entregaId)
+        .single();
+
+    if (error || !entrega) {
+
+      console.error(
+        'Erro ao consultar localização da entrega:',
+        error
+      );
+
+      alert(
+        'Não foi possível consultar a localização da entrega.'
+      );
+
+      return;
+    }
+
+    const cliente = entrega.vendas?.clientes;
+
+    // Priorizar o ponto salvo na entrega.
+    // Usar o ponto do cliente apenas como alternativa.
+    const latitude =
+      entrega.latitude ?? cliente?.latitude;
+
+    const longitude =
+      entrega.longitude ?? cliente?.longitude;
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    const coordenadasValidas =
+      latitude != null &&
+      longitude != null &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      Math.abs(lat) <= 90 &&
+      Math.abs(lng) <= 180;
+
+    if (!coordenadasValidas) {
+
+      alert(
+        'Esta entrega não possui uma localização válida.\n\n' +
+        'Verifique o ponto marcado no cadastro do cliente.'
+      );
+
+      return;
+    }
+
+    const destino =
+      `${lat},${lng}`;
+
+    const url =
+      'https://www.google.com/maps/search/?api=1&query=' +
+      encodeURIComponent(destino);
+
+    // Abrir na mesma aba evita bloqueios de pop-up.
+    window.location.assign(url);
+
+  } catch (erro) {
+
+    console.error(
+      'Erro inesperado ao abrir mapa:',
+      erro
+    );
+
+    alert(
+      'Não foi possível abrir o mapa desta entrega.'
+    );
+
+  }
+
+}
+
 async function nextDelivery(id){
 
   const { data, error } = await supabaseClient
