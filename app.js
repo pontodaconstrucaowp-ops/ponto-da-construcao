@@ -523,17 +523,7 @@ async function renderHome(el) {
 
     </div>
 
-    <div class="section-title">
-      <h2>📦 Materiais que precisam de atenção</h2>
-    </div>
 
-    <div class="card">
-      <div id="dashListaEstoqueBaixo">
-        <p class="muted">
-          Consultando estoque...
-        </p>
-      </div>
-    </div>
 
     <div class="section-title">
       <h2>Ações rápidas</h2>
