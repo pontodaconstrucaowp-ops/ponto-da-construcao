@@ -4195,177 +4195,336 @@ function updateConfirmSaleButton(){
     !window.salePayment ||
     !window.saleType;
 }
-async function confirmSale(){
 
-  if(!window.salePayment){
-    alert('Selecione a forma de pagamento.');
+async function confirmSale() {
+
+  // Impedir confirmações simultâneas
+  if (window.pcConfirmandoVenda === true) {
     return;
   }
 
-  if(!window.saleType){
-    alert('Selecione entrega ou retirada.');
-    return;
-  }
+  window.pcConfirmandoVenda = true;
 
-  if(!state.selectedClient){
-    alert('Selecione um cliente.');
-    return;
-  }
+  try {
 
-  // ====================================
-  // BUSCAR LOCALIZAÇÃO DO CLIENTE
-  // ====================================
+    // Verificar se existe uma venda já registrada
+    // cuja entrega ainda precisa ser concluída.
+    let vendaPendente =
+      window.pcVendaRegistradaPendente || null;
 
-  let dadosEntrega = null;
+    if (!vendaPendente) {
 
-  if(window.saleType === 'entrega'){
+      if (!window.salePayment) {
+        alert('Selecione a forma de pagamento.');
+        return;
+      }
 
-    const { data: cliente, error: clienteError } =
-      await supabaseClient
-        .from('clientes')
-        .select('id,nome,endereço,latitude,longitude')
-        .eq('id', state.selectedClient)
-        .single();
+      if (!window.saleType) {
+        alert('Selecione entrega ou retirada.');
+        return;
+      }
 
-    if(clienteError || !cliente){
+      if (!state.selectedClient) {
+        alert('Selecione um cliente.');
+        return;
+      }
 
-      console.error(
-        'ERRO AO BUSCAR CLIENTE:',
-        clienteError
+      if (!Array.isArray(state.cart) ||
+          state.cart.length === 0) {
+        alert('Adicione pelo menos um material.');
+        return;
+      }
+
+      // ====================================
+      // LOCALIZAÇÃO DO CLIENTE
+      // ====================================
+
+      let dadosEntrega = null;
+
+      if (window.saleType === 'entrega') {
+
+        const { data: cliente, error: clienteError } =
+          await supabaseClient
+            .from('clientes')
+            .select('id,nome,endereço,latitude,longitude')
+            .eq('id', state.selectedClient)
+            .single();
+
+        if (clienteError || !cliente) {
+
+          console.error(
+            'ERRO AO BUSCAR CLIENTE:',
+            clienteError
+          );
+
+          alert(
+            'Não foi possível consultar o endereço do cliente.'
+          );
+
+          return;
+        }
+
+        if (
+          cliente.latitude == null ||
+          cliente.longitude == null
+        ) {
+
+          alert(
+            'Este cliente ainda não possui uma localização marcada no mapa.\n\n' +
+            'Abra o cadastro do cliente e marque o local da entrega antes de continuar.'
+          );
+
+          return;
+        }
+
+        dadosEntrega = {
+          endereco: cliente.endereço || null,
+          latitude: cliente.latitude,
+          longitude: cliente.longitude
+        };
+      }
+
+      // ====================================
+      // CALCULAR TOTAL
+      // ====================================
+
+      const totalMateriais = pcTotal();
+
+      const desconto = Math.min(
+        Math.max(0, Number(state.saleDiscount) || 0),
+        totalMateriais
       );
 
-      alert(
-        'Não foi possível consultar o endereço do cliente.'
+      const total = totalMateriais - desconto;
+
+      const itens = state.cart.map(item => ({
+        produtos_id: item.id,
+        quantidade: item.qty,
+        preco_unitario: item.price,
+        tipo_opcao: item.tipoOpcao || 'principal'
+      }));
+
+      // ====================================
+      // REGISTRAR VENDA
+      // ====================================
+
+      const { data: vendaId, error } =
+        await supabaseClient.rpc('registrar_venda', {
+          p_cliente_id: state.selectedClient,
+          p_valor_total: total,
+          p_forma_pagamento: window.salePayment,
+          p_itens: itens
+        });
+
+      if (error) {
+
+        console.error(
+          'ERRO AO REGISTRAR VENDA:',
+          error
+        );
+
+        alert(
+          'Não foi possível confirmar o resultado da venda.\n\n' +
+          error.message +
+          '\n\nAntes de tentar novamente, consulte o histórico de vendas para verificar se ela foi registrada.'
+        );
+
+        return;
+      }
+
+      if (vendaId == null) {
+        alert(
+          'O servidor não retornou o número da venda.\n\n' +
+          'Consulte o histórico de vendas antes de tentar novamente.'
+        );
+        return;
+      }
+
+      console.log(
+        'VENDA REGISTRADA:',
+        vendaId
       );
 
-      return;
+      // Guardar o registro para evitar
+      // uma segunda venda em caso de falha.
+      vendaPendente = {
+        vendaId: vendaId,
+        tipo: window.saleType,
+        dadosEntrega: dadosEntrega
+      };
+
+      window.pcVendaRegistradaPendente =
+        vendaPendente;
     }
 
-    if(
-      cliente.latitude == null ||
-      cliente.longitude == null
-    ){
+    // ====================================
+    // REGISTRAR ENTREGA
+    // ====================================
 
-      alert(
-        'Este cliente ainda não possui uma localização marcada no mapa.\n\n' +
-        'Abra o cadastro do cliente e marque o local da entrega antes de continuar.'
-      );
+    if (vendaPendente.tipo === 'entrega') {
 
-      return;
-    }
+      const vendaId = vendaPendente.vendaId;
 
-    dadosEntrega = {
-      endereco: cliente.endereço || null,
-      latitude: cliente.latitude,
-      longitude: cliente.longitude
-    };
-  }
-
-  // ====================================
-  // CALCULAR TOTAL
-  // ====================================
-
-  const totalMateriais = pcTotal();
-
-  const desconto = Math.min(
-    Math.max(0, Number(state.saleDiscount) || 0),
-    totalMateriais
-  );
-
-  const total = totalMateriais - desconto;
-
-const itens = state.cart.map(item => ({
-  produtos_id: item.id,
-  quantidade: item.qty,
-  preco_unitario: item.price,
-  tipo_opcao: item.tipoOpcao || 'principal'
-}));
-
-  // ====================================
-  // REGISTRAR VENDA
-  // ====================================
-
-  const { data: vendaId, error } =
-    await supabaseClient.rpc('registrar_venda', {
-      p_cliente_id: state.selectedClient,
-      p_valor_total: total,
-      p_forma_pagamento: window.salePayment,
-      p_itens: itens
-    });
-
-  if(error){
-
-    console.error(
-      'ERRO AO REGISTRAR VENDA:',
-      error
-    );
-
-    alert(
-      'Não foi possível registrar a venda:\n\n' +
-      error.message
-    );
-
-    return;
-  }
-
-  console.log(
-    'VENDA REGISTRADA:',
-    vendaId
-  );
-
-  // ====================================
-  // REGISTRAR ENTREGA
-  // ====================================
-
-  if(window.saleType === 'entrega'){
-
-    const { data: ultimaEntrega, error: filaError } =
-      await supabaseClient
+      // Verificar se a entrega já existe.
+      // Isso evita duplicar a entrega caso
+      // a resposta anterior tenha falhado.
+      const {
+        data: entregasExistentes,
+        error: verificarErro
+      } = await supabaseClient
         .from('entregas')
-        .select('posicao_fila')
-        .neq('status', 'entregue')
-        .order('posicao_fila', { ascending: false })
+        .select('id')
+        .eq('venda_id', vendaId)
         .limit(1);
 
-    if(filaError){
-      console.error('ERRO AO VERIFICAR FILA:', filaError);
-      alert('A venda foi registrada, mas não foi possível verificar a fila de entregas:\n\n' + filaError.message);
-      return;
+      if (verificarErro) {
+
+        console.error(
+          'ERRO AO VERIFICAR ENTREGA:',
+          verificarErro
+        );
+
+        alert(
+          'A venda #' + vendaId +
+          ' já foi registrada.\n\n' +
+          'Não foi possível verificar a entrega. ' +
+          'Tente confirmar novamente, sem criar outra venda.'
+        );
+
+        return;
+      }
+
+      if (!entregasExistentes?.length) {
+
+        const {
+          data: ultimaEntrega,
+          error: filaError
+        } = await supabaseClient
+          .from('entregas')
+          .select('posicao_fila')
+          .neq('status', 'entregue')
+          .order('posicao_fila', {
+            ascending: false
+          })
+          .limit(1);
+
+        if (filaError) {
+
+          console.error(
+            'ERRO AO VERIFICAR FILA:',
+            filaError
+          );
+
+          alert(
+            'A venda #' + vendaId +
+            ' foi registrada, mas houve um erro na fila de entregas.\n\n' +
+            'Tente confirmar novamente. ' +
+            'O sistema não registrará outra venda.'
+          );
+
+          return;
+        }
+
+        const ultimaPosicao =
+          ultimaEntrega?.length
+            ? Number(
+                ultimaEntrega[0].posicao_fila || 0
+              )
+            : 0;
+
+        const { error: entregaError } =
+          await supabaseClient
+            .from('entregas')
+            .insert({
+              venda_id: vendaId,
+              prioridade: false,
+              posicao_fila: ultimaPosicao + 1,
+              status: 'pendente',
+              endereço:
+                vendaPendente.dadosEntrega.endereco,
+              latitude:
+                vendaPendente.dadosEntrega.latitude,
+              longitude:
+                vendaPendente.dadosEntrega.longitude
+            });
+
+        if (entregaError) {
+
+          console.error(
+            'ERRO AO CRIAR ENTREGA:',
+            entregaError
+          );
+
+          alert(
+            'A venda #' + vendaId +
+            ' foi registrada, mas não foi possível confirmar a entrega.\n\n' +
+            entregaError.message +
+            '\n\nTente confirmar novamente. ' +
+            'A venda não será registrada outra vez.'
+          );
+
+          return;
+        }
+      }
     }
 
-    const ultimaPosicao = ultimaEntrega && ultimaEntrega.length
-      ? Number(ultimaEntrega[0].posicao_fila || 0)
-      : 0;
+    // ====================================
+    // FINALIZAÇÃO
+    // ====================================
 
-    const { error: entregaError } = await supabaseClient
-      .from('entregas')
-      .insert({
-        venda_id: vendaId,
-        prioridade: false,
-        posicao_fila: ultimaPosicao + 1,
-        status: 'pendente',
-        endereço: dadosEntrega.endereco,
-        latitude: dadosEntrega.latitude,
-        longitude: dadosEntrega.longitude
-      });
+    const vendaId = vendaPendente.vendaId;
 
-    if(entregaError){
-      console.error('ERRO AO CRIAR ENTREGA:', entregaError);
-      alert('A venda foi registrada, mas não foi possível criar a entrega:\n\n' + entregaError.message);
-      return;
+    // Limpar a venda pendente somente
+    // após concluir a etapa da entrega.
+    window.pcVendaRegistradaPendente = null;
+
+    state.cart = [];
+    state.selectedClient = null;
+    state.saleDiscount = 0;
+    state.cartOpen = false;
+
+    window.salePayment = null;
+    window.saleType = null;
+
+    // Manter a impressão e a navegação
+    // utilizadas no sistema original.
+    abrirImpressaoVenda(vendaId, 'pago');
+
+    navigate('home');
+
+  } catch (erro) {
+
+    console.error(
+      'ERRO INESPERADO AO CONFIRMAR VENDA:',
+      erro
+    );
+
+    if (window.pcVendaRegistradaPendente) {
+
+      alert(
+        'A venda #' +
+        window.pcVendaRegistradaPendente.vendaId +
+        ' já foi registrada, mas houve uma falha na finalização.\n\n' +
+        'Não crie outra venda. ' +
+        'Tente confirmar novamente para continuar.'
+      );
+
+    } else {
+
+      alert(
+        'Ocorreu um erro inesperado.\n\n' +
+        'Verifique o histórico de vendas antes de tentar novamente.'
+      );
     }
+
+  } finally {
+
+    // Liberar o botão mesmo após um erro.
+    window.pcConfirmandoVenda = false;
+
   }
-
-  state.cart = [];
-  state.selectedClient = null;
-  state.saleDiscount = 0;
-  state.cartOpen = false;
-  window.salePayment = null;
-  window.saleType = null;
-
-  abrirImpressaoVenda(vendaId, 'pago');
-  navigate('home');
 }
+
 
 
 async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
