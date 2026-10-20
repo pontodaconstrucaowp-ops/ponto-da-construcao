@@ -2415,32 +2415,67 @@ function pcEscapar(valor) {
   }[c]));
 }
 
+
 function pcOpcoes(produto) {
+
   const unidade = String(
     produto.unidade || 'unidade'
   ).trim().toLowerCase();
+
+  // =====================================
+  // DEFINIR PASSO DE QUANTIDADE
+  // =====================================
+
+  let passo = 1;
+
+  if (unidade === 'milheiro') {
+
+    // Permitir frações de milheiro.
+    // 0.001 milheiro = 1 unidade física.
+    // 0.5 milheiro = 500 unidades.
+    // 1.25 milheiro = 1250 unidades.
+    passo = 0.001;
+
+  } else if (['m³', 'kg'].includes(unidade)) {
+
+    // Preservar quantidades fracionadas
+    // utilizadas por esses materiais.
+    passo = 0.1;
+
+  }
+
+  // =====================================
+  // OPÇÃO PRINCIPAL
+  // =====================================
 
   const opcoes = [{
     tipo: 'principal',
     unidade,
     preco: Number(produto.preco),
-    passo: ['m³', 'kg'].includes(unidade) ? 0.1 : 1
+    passo
   }];
+
+  // =====================================
+  // OPÇÃO DE VENDA AVULSA
+  // =====================================
 
   if (
     ['dúzia', 'duzia', 'milheiro'].includes(unidade) &&
     produto.preco_avulso != null
   ) {
+
     opcoes.push({
       tipo: 'avulso',
       unidade: 'unidade',
       preco: Number(produto.preco_avulso),
       passo: 1
     });
+
   }
 
   return opcoes;
 }
+
 
 function pcItem(id, tipo) {
   return state.cart.find(item =>
