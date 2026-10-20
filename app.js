@@ -5290,75 +5290,15 @@ async function renderProducts(el) {
   }
 
 }
-function abrirEntradaMercadorias() {
 
-  // =====================================
-  // VERIFICAR PERMISSÃO
-  // =====================================
+async function renderProducts(el) {
 
-  const ehAdmin = state.user?.tipo === 'admin';
+  if (!el) return;
 
-  if (!ehAdmin) {
-    alert('Apenas administradores podem adicionar mercadorias.');
-    return;
-  }
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
 
-  // =====================================
-  // CARREGAR PRODUTOS UNIFICADOS
-  // =====================================
-
-  const produtos = (window.currentProducts || [])
-    .filter(p =>
-      p.ativo === true &&
-      p.estoque_unificado === true &&
-      p.controla_estoque === true &&
-      ['dúzia', 'duzia'].includes(
-        String(p.unidade || '').trim().toLowerCase()
-      )
-    )
-    .sort((a, b) =>
-      String(a.nome || '').localeCompare(
-        String(b.nome || ''),
-        'pt-BR'
-      )
-    );
-
-  if (!produtos.length) {
-    alert('Nenhum produto com estoque unificado disponível.');
-    return;
-  }
-
-  // =====================================
-  // REMOVER JANELA ANTERIOR
-  // =====================================
-
-  document
-    .getElementById('entradaMercadoriasModal')
-    ?.remove();
-
-  // =====================================
-  // CRIAR JANELA
-  // =====================================
-
-  const modal = document.createElement('div');
-
-  modal.id = 'entradaMercadoriasModal';
-
-  // Fundo escurecido e janela centralizada
-  Object.assign(modal.style, {
-    position: 'fixed',
-    inset: '0',
-    zIndex: '999999',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(0, 0, 0, 0.60)',
-    padding: '16px',
-    boxSizing: 'border-box',
-    overflowY: 'auto'
-  });
-
-  // Proteção dos nomes dos produtos
   const escapar = valor =>
     String(valor ?? '').replace(/[&<>"']/g, c => ({
       '&': '&amp;',
@@ -5368,213 +5308,324 @@ function abrirEntradaMercadorias() {
       "'": '&#39;'
     }[c]));
 
+  const quantidadeTexto = valor =>
+    Number(valor).toLocaleString('pt-BR', {
+      maximumFractionDigits: 3
+    });
+
   // =====================================
-  // CONTEÚDO DA JANELA
+  // ESTRUTURA DA TELA DE ESTOQUE
   // =====================================
 
-  modal.innerHTML = `
+  el.innerHTML = `
 
-    <div
-      class="modal-backdrop"
-      style="
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-      "
-    >
+    ${
+      ehAdministrador
+        ? `
+          <div class="card"
+               style="margin-bottom:16px">
 
-      <div
-        class="modal-card"
-        style="
-          background: #ffffff;
-          color: #17243b;
-          width: 100%;
-          max-width: 520px;
-          max-height: 90vh;
-          overflow-y: auto;
-          padding: 26px;
-          border-radius: 18px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-          box-sizing: border-box;
-        "
+            <h2 style="margin-top:0">
+              📦 Compras pendentes
+            </h2>
+
+            <p class="muted">
+              Materiais que precisam ser
+              comprados de fornecedores
+              para atender às vendas.
+            </p>
+
+            <div id="comprasPendentesLista">
+              Consultando pendências...
+            </div>
+
+            <button
+              type="button"
+              class="secondary"
+              onclick="navigate('products')"
+              style="margin-top:12px"
+            >
+              🔄 Atualizar pendências
+            </button>
+
+          </div>
+        `
+        : ''
+    }
+
+    <div class="row" style="margin-bottom:12px">
+
+      <input
+        class="search"
+        id="productSearch"
+        oninput="filterProducts()"
+        placeholder="Buscar material..."
       >
 
-        <div
-          class="modal-header"
-          style="margin-bottom: 20px;"
-        >
-
-          <h2 style="
-            color: #073b91;
-            margin: 0;
-          ">
-            📦 Adicionar mercadorias
-          </h2>
-
-        </div>
-
-        <div class="field" style="margin-bottom: 16px;">
-
-          <label
-            for="entradaProduto"
-            style="display:block; margin-bottom:7px;"
-          >
-            Material
-          </label>
-
-          <select
-            id="entradaProduto"
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 1px solid #d7deea;
-              border-radius: 10px;
-              background: #ffffff;
-              color: #17243b;
-              box-sizing: border-box;
-            "
-          >
-
-            ${produtos.map(p => `
-              <option value="${p.id}">
-                ${escapar(p.nome)}
-              </option>
-            `).join('')}
-
-          </select>
-
-        </div>
-
-        <div class="field" style="margin-bottom: 16px;">
-
-          <label
-            for="entradaDuzias"
-            style="display:block; margin-bottom:7px;"
-          >
-            Quantidade de dúzias
-          </label>
-
-          <input
-            id="entradaDuzias"
-            type="number"
-            min="0"
-            step="1"
-            value="0"
-            oninput="calcularEntradaMercadorias()"
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 1px solid #d7deea;
-              border-radius: 10px;
-              background: #ffffff;
-              color: #17243b;
-              box-sizing: border-box;
-            "
-          >
-
-        </div>
-
-        <div class="field" style="margin-bottom: 16px;">
-
-          <label
-            for="entradaUnidades"
-            style="display:block; margin-bottom:7px;"
-          >
-            Quantidade de unidades avulsas
-          </label>
-
-          <input
-            id="entradaUnidades"
-            type="number"
-            min="0"
-            step="1"
-            value="0"
-            oninput="calcularEntradaMercadorias()"
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 1px solid #d7deea;
-              border-radius: 10px;
-              background: #ffffff;
-              color: #17243b;
-              box-sizing: border-box;
-            "
-          >
-
-        </div>
-
-        <div
-          class="card"
-          style="
-            margin-top: 18px;
-            padding: 18px;
-            background: #f1f5fa;
-            border: 1px solid #e1e8f2;
-            border-radius: 12px;
-            box-shadow: none;
-          "
-        >
-
-          <strong style="color:#526176;">
-            Total a acrescentar
-          </strong>
-
-          <h2
-            id="entradaTotal"
-            style="
-              margin: 10px 0 0;
-              color: #073b91;
-              font-size: 28px;
-            "
-          >
-            0 peças
-          </h2>
-
-        </div>
-
-        <div
-          class="actions"
-          style="
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 22px;
-          "
-        >
-
-          <button
-            type="button"
-            class="primary"
-            onclick="salvarEntradaMercadorias()"
-          >
-            Confirmar entrada
-          </button>
-
-          <button
-            type="button"
-            class="secondary"
-            onclick="document.getElementById('entradaMercadoriasModal')?.remove()"
-          >
-            Cancelar
-          </button>
-
-        </div>
-
-      </div>
+      <button
+        class="primary"
+        onclick="openProductForm()"
+      >
+        + Produto
+      </button>
 
     </div>
 
+    <button
+      type="button"
+      class="secondary"
+      onclick="abrirEntradaMercadorias()"
+    >
+      📦 + Adicionar mercadorias
+    </button>
+
+    <div id="productList" class="list">
+      <div class="card muted">
+        Carregando estoque...
+      </div>
+    </div>
   `;
 
   // =====================================
-  // EXIBIR JANELA
+  // CONSULTAR COMPRAS PENDENTES
   // =====================================
 
-  document.body.appendChild(modal);
+  if (ehAdministrador) {
+
+    const listaPendencias =
+      el.querySelector('#comprasPendentesLista');
+
+    try {
+
+      const { data, error } = await supabaseClient
+        .from('itens_venda')
+        .select(`
+          id,
+          vendas_id,
+          quantidade_pendente,
+          unidade_venda,
+          produtos (
+            nome
+          ),
+          vendas!inner (
+            status
+          )
+        `)
+        .gt('quantidade_pendente', 0)
+        .eq('vendas.status', 'concluida')
+        .order('vendas_id', {
+          ascending: false
+        });
+
+      if (!listaPendencias?.isConnected) {
+        return;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      const pendencias = data || [];
+
+      if (pendencias.length === 0) {
+
+        listaPendencias.innerHTML = `
+          <p style="
+            color:#166534;
+            font-weight:600;
+          ">
+            ✅ Nenhuma compra pendente.
+          </p>
+        `;
+
+      } else {
+
+        listaPendencias.innerHTML = `
+
+          <p class="muted"
+             style="margin-bottom:12px">
+            ${pendencias.length}
+            item(ns) com compra pendente.
+          </p>
+
+          ${pendencias.map(item => {
+
+            const nome = escapar(
+              item.produtos?.nome ||
+              'Material não identificado'
+            );
+
+            const unidade = escapar(
+              item.unidade_venda || 'unidade'
+            );
+
+            const quantidade =
+              quantidadeTexto(
+                item.quantidade_pendente
+              );
+
+            const venda = escapar(
+              item.vendas_id
+            );
+
+            return `
+
+              <div style="
+                border:1px solid #e2e8f0;
+                border-radius:10px;
+                padding:14px;
+                margin-bottom:10px;
+              ">
+
+                <strong>
+                  ${nome}
+                </strong>
+
+                <p class="muted"
+                   style="margin:8px 0">
+                  Venda #${venda}
+                </p>
+
+                <p style="
+                  color:#b45309;
+                  font-weight:700;
+                  margin:8px 0;
+                ">
+                  ⏳ A comprar:
+                  ${quantidade} ${unidade}
+                </p>
+
+                <small class="muted">
+                  Aguardando atendimento
+                  da pendência de compra.
+                </small>
+
+              </div>
+            `;
+
+          }).join('')}
+
+        `;
+      }
+
+    } catch (erro) {
+
+      console.error(
+        'Erro ao consultar compras pendentes:',
+        erro
+      );
+
+      if (listaPendencias?.isConnected) {
+
+        listaPendencias.innerHTML = `
+          <p style="color:#b91c1c">
+            Não foi possível consultar
+            as compras pendentes.
+          </p>
+
+          <p class="muted">
+            Verifique a conexão ou
+            as permissões do Supabase.
+          </p>
+        `;
+      }
+
+    }
+  }
+
+  // =====================================
+  // CONSULTAR PRODUTOS DO ESTOQUE
+  // =====================================
+
+  try {
+
+    const { data, error } = await supabaseClient
+      .from('produtos')
+      .select('*')
+      .order('nome', {
+        ascending: true
+      });
+
+    const list =
+      el.querySelector('#productList');
+
+    if (!list || !list.isConnected) {
+      return;
+    }
+
+    if (error) {
+      throw error;
+    }
+
+    state.products = data || [];
+    window.currentProducts = data || [];
+
+    if (!data || data.length === 0) {
+
+      list.innerHTML = `
+        <div class="card">
+
+          <strong>
+            Nenhum produto cadastrado
+          </strong>
+
+          <p class="muted">
+            Clique em "+ Produto"
+            para cadastrar.
+          </p>
+
+        </div>
+      `;
+
+      return;
+    }
+
+    list.innerHTML = productRows(data);
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao carregar estoque:',
+      erro
+    );
+
+    const list =
+      el.querySelector('#productList');
+
+    if (!list || !list.isConnected) {
+      return;
+    }
+
+    list.innerHTML = `
+
+      <div class="card">
+
+        <strong>
+          Erro ao carregar estoque
+        </strong>
+
+        <p class="muted">
+          Não foi possível carregar
+          os produtos.
+          Verifique sua conexão
+          e tente novamente.
+        </p>
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="navigate('products')"
+        >
+          Tentar novamente
+        </button>
+
+      </div>
+    `;
+
+  }
 
 }
+
 
 
 function calcularEntradaMercadorias() {
