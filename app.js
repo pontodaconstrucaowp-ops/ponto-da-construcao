@@ -703,15 +703,7 @@ async function renderHome(el) {
 
   try {
 
-    const vendas = await consultarTodos(
-      'vendas',
-      'id,data,valor_total,status',
-      consulta => consulta
-        .gte('data', inicioAno.toISOString())
-        .lt('data', inicioProximoAno.toISOString())
-        .order('data', { ascending: true })
-        .order('id', { ascending: true })
-    );
+const vendas = await consultaVendas;
 
     let totalHoje = 0;
     let totalMes = 0;
