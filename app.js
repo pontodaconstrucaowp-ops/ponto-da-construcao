@@ -5188,6 +5188,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 }
 
 
+
 async function renderProducts(el) {
 
   if (!el) return;
@@ -5205,50 +5206,47 @@ async function renderProducts(el) {
       "'": '&#39;'
     }[c]));
 
-  const quantidadeTexto = valor =>
+  const formatarQuantidade = valor =>
     Number(valor).toLocaleString('pt-BR', {
       maximumFractionDigits: 3
     });
 
+  const formatoNumero = valor =>
+    String(valor ?? '').trim().replace(',', '.');
+
   // =====================================
-  // ESTRUTURA DA TELA DE ESTOQUE
+  // ESTRUTURA DO ESTOQUE
   // =====================================
 
   el.innerHTML = `
 
-    ${
-      ehAdministrador
-        ? `
-          <div class="card"
-               style="margin-bottom:16px">
+    ${ehAdministrador ? `
+      <div class="card" style="margin-bottom:16px">
 
-            <h2 style="margin-top:0">
-              📦 Compras pendentes
-            </h2>
+        <h2 style="margin-top:0">
+          📦 Compras pendentes
+        </h2>
 
-            <p class="muted">
-              Materiais que precisam ser
-              comprados de fornecedores
-              para atender às vendas.
-            </p>
+        <p class="muted">
+          Materiais que precisam ser comprados
+          de fornecedores para atender às vendas.
+        </p>
 
-            <div id="comprasPendentesLista">
-              Consultando pendências...
-            </div>
+        <div id="comprasPendentesLista">
+          Consultando pendências...
+        </div>
 
-            <button
-              type="button"
-              class="secondary"
-              onclick="navigate('products')"
-              style="margin-top:12px"
-            >
-              🔄 Atualizar pendências
-            </button>
+        <button
+          type="button"
+          class="secondary"
+          id="atualizarComprasPendentes"
+          style="margin-top:12px"
+        >
+          🔄 Atualizar pendências
+        </button>
 
-          </div>
-        `
-        : ''
-    }
+      </div>
+    ` : ''}
 
     <div class="row" style="margin-bottom:12px">
 
@@ -5284,65 +5282,71 @@ async function renderProducts(el) {
   `;
 
   // =====================================
-  // CONSULTAR COMPRAS PENDENTES
+  // COMPRAS PENDENTES
   // =====================================
 
   if (ehAdministrador) {
 
-    const listaPendencias =
+    const lista =
       el.querySelector('#comprasPendentesLista');
 
-    try {
+    let pendencias = [];
+    let registrando = false;
 
-      const { data, error } = await supabaseClient
-        .from('itens_venda')
-        .select(`
-          id,
-          vendas_id,
-          quantidade_pendente,
-          unidade_venda,
-          produtos (
-            nome
-          ),
-          vendas!inner (
-            status
-          )
-        `)
-        .gt('quantidade_pendente', 0)
-        .eq('vendas.status', 'concluida')
-        .order('vendas_id', {
-          ascending: false
-        });
+    const carregarPendencias = async () => {
 
-      if (!listaPendencias?.isConnected) {
-        return;
-      }
+      if (!lista?.isConnected) return;
 
-      if (error) {
-        throw error;
-      }
+      lista.textContent =
+        'Consultando pendências...';
 
-      const pendencias = data || [];
+      try {
 
-      if (pendencias.length === 0) {
+        const { data, error } = await supabaseClient
+          .from('itens_venda')
+          .select(`
+            id,
+            vendas_id,
+            quantidade_pendente,
+            unidade_venda,
+            produtos (
+              nome
+            ),
+            vendas!inner (
+              status
+            )
+          `)
+          .gt('quantidade_pendente', 0)
+          .eq('vendas.status', 'concluida')
+          .order('vendas_id', {
+            ascending: false
+          });
 
-        listaPendencias.innerHTML = `
-          <p style="
-            color:#166534;
-            font-weight:600;
-          ">
-            ✅ Nenhuma compra pendente.
-          </p>
-        `;
+        if (error) throw error;
 
-      } else {
+        if (!lista.isConnected) return;
 
-        listaPendencias.innerHTML = `
+        pendencias = data || [];
 
-          <p class="muted"
-             style="margin-bottom:12px">
+        if (pendencias.length === 0) {
+
+          lista.innerHTML = `
+            <p style="
+              color:#166534;
+              font-weight:600;
+            ">
+              ✅ Nenhuma compra pendente.
+            </p>
+          `;
+
+          return;
+        }
+
+        lista.innerHTML = `
+
+          <p class="muted">
             ${pendencias.length}
-            item(ns) com compra pendente.
+            item(ns) aguardando compra.
           </p>
 
           ${pendencias.map(item => {
@@ -5357,81 +5361,481 @@ async function renderProducts(el) {
             );
 
             const quantidade =
-              quantidadeTexto(
+              formatarQuantidade(
                 item.quantidade_pendente
               );
 
-            const venda = escapar(
-              item.vendas_id
-            );
+            const id = escapar(item.id);
 
             return `
 
-              <div style="
-                border:1px solid #e2e8f0;
-                border-radius:10px;
-                padding:14px;
-                margin-bottom:10px;
-              ">
+              <div
+                style="
+                  border:1px solid #e2e8f0;
+                  border-radius:12px;
+                  padding:14px;
+                  margin-bottom:12px;
+                "
+              >
 
-                <strong>
-                  ${nome}
-                </strong>
+                <strong>${nome}</strong>
 
-                <p class="muted"
-                   style="margin:8px 0">
-                  Venda #${venda}
+                <p class="muted">
+                  Venda #${escapar(item.vendas_id)}
                 </p>
 
                 <p style="
                   color:#b45309;
                   font-weight:700;
-                  margin:8px 0;
                 ">
                   ⏳ A comprar:
                   ${quantidade} ${unidade}
                 </p>
 
-                <small class="muted">
-                  Aguardando atendimento
-                  da pendência de compra.
-                </small>
+                <button
+                  type="button"
+                  class="primary"
+                  data-abrir-compra="${id}"
+                >
+                  🛒 Registrar compra
+                </button>
+
+                <form
+                  data-form-compra="${id}"
+                  style="
+                    display:none;
+                    margin-top:16px;
+                    border-top:1px solid #e2e8f0;
+                    padding-top:14px;
+                  "
+                >
+
+                  <h3>Registrar compra</h3>
+
+                  <p class="muted">
+                    Venda #${escapar(item.vendas_id)}
+                    — ${nome}
+                  </p>
+
+                  <div class="field">
+                    <label>
+                      Quantidade comprada (${unidade})
+                    </label>
+                    <input
+                      name="quantidade"
+                      type="number"
+                      min="0.001"
+                      step="any"
+                      max="${Number(item.quantidade_pendente)}"
+                      required
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label>Fornecedor</label>
+                    <input
+                      name="fornecedor"
+                      type="text"
+                      maxlength="200"
+                      placeholder="Nome do fornecedor"
+                      required
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label>Custo unitário (R$)</label>
+                    <input
+                      name="custo_unitario"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="0,00"
+                      required
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label>
+                      Transporte total da compra (R$)
+                    </label>
+                    <input
+                      name="transporte"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value="0"
+                      required
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label>Observações</label>
+                    <textarea
+                      name="observacao"
+                      rows="2"
+                      placeholder="Observação opcional"
+                    ></textarea>
+                  </div>
+
+                  <p
+                    data-total-compra
+                    style="font-weight:700"
+                  >
+                    Total da compra: R$ 0,00
+                  </p>
+
+                  <p class="muted">
+                    Esta operação registra a aquisição.
+                    Não aumenta o estoque físico
+                    e não confirma a entrega ao cliente.
+                  </p>
+
+                  <button
+                    type="submit"
+                    class="primary"
+                    data-confirmar-compra
+                  >
+                    ✅ Confirmar compra
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary"
+                    data-cancelar-compra="${id}"
+                  >
+                    Cancelar
+                  </button>
+
+                </form>
 
               </div>
             `;
 
           }).join('')}
-
         `;
+
+      } catch (erro) {
+
+        console.error(
+          'Erro ao carregar compras pendentes:',
+          erro
+        );
+
+        if (lista?.isConnected) {
+          lista.textContent =
+            'Não foi possível consultar as pendências.';
+        }
+
       }
 
-    } catch (erro) {
+    };
 
-      console.error(
-        'Erro ao consultar compras pendentes:',
-        erro
+    // =====================================
+    // ABRIR E FECHAR FORMULÁRIO
+    // =====================================
+
+    lista.addEventListener('click', evento => {
+
+      const abrir =
+        evento.target.closest(
+          '[data-abrir-compra]'
+        );
+
+      const cancelar =
+        evento.target.closest(
+          '[data-cancelar-compra]'
+        );
+
+      if (abrir) {
+
+        const id =
+          abrir.dataset.abrirCompra;
+
+        const formulario = Array.from(
+          lista.querySelectorAll(
+            '[data-form-compra]'
+          )
+        ).find(form =>
+          form.dataset.formCompra === id
+        );
+
+        if (!formulario) return;
+
+        formulario.style.display = 'block';
+        abrir.style.display = 'none';
+
+        return;
+      }
+
+      if (cancelar) {
+
+        const id =
+          cancelar.dataset.cancelarCompra;
+
+        const formulario = Array.from(
+          lista.querySelectorAll(
+            '[data-form-compra]'
+          )
+        ).find(form =>
+          form.dataset.formCompra === id
+        );
+
+        const botao = Array.from(
+          lista.querySelectorAll(
+            '[data-abrir-compra]'
+          )
+        ).find(b =>
+          b.dataset.abrirCompra === id
+        );
+
+        if (formulario) {
+          formulario.reset();
+          formulario.style.display = 'none';
+        }
+
+        if (botao) {
+          botao.style.display = '';
+        }
+
+      }
+
+    });
+
+    // =====================================
+    // ATUALIZAR TOTAL
+    // =====================================
+
+    lista.addEventListener('input', evento => {
+
+      const form =
+        evento.target.closest(
+          '[data-form-compra]'
+        );
+
+      if (!form) return;
+
+      const quantidade = Number(
+        formatoNumero(
+          form.elements.namedItem('quantidade')?.value
+        )
       );
 
-      if (listaPendencias?.isConnected) {
+      const custo = Number(
+        formatoNumero(
+          form.elements.namedItem('custo_unitario')?.value
+        )
+      );
 
-        listaPendencias.innerHTML = `
-          <p style="color:#b91c1c">
-            Não foi possível consultar
-            as compras pendentes.
-          </p>
+      const transporte = Number(
+        formatoNumero(
+          form.elements.namedItem('transporte')?.value
+        )
+      );
 
-          <p class="muted">
-            Verifique a conexão ou
-            as permissões do Supabase.
-          </p>
-        `;
+      const total =
+        (Number.isFinite(quantidade) ? quantidade : 0) *
+        (Number.isFinite(custo) ? custo : 0) +
+        (Number.isFinite(transporte) ? transporte : 0);
+
+      const campo =
+        form.querySelector('[data-total-compra]');
+
+      if (campo) {
+        campo.textContent =
+          'Total da compra: ' +
+          money(Math.max(0, total));
       }
 
-    }
+    });
+
+    // =====================================
+    // REGISTRAR COMPRA NO SUPABASE
+    // =====================================
+
+    lista.addEventListener('submit', async evento => {
+
+      const form = evento.target.closest(
+        '[data-form-compra]'
+      );
+
+      if (!form) return;
+
+      evento.preventDefault();
+
+      if (registrando) return;
+
+      const id = form.dataset.formCompra;
+
+      const item = pendencias.find(
+        p => p.id === id
+      );
+
+      if (!item) {
+        alert('Pendência não encontrada. Atualize a tela.');
+        return;
+      }
+
+      const quantidade = Number(
+        formatoNumero(
+          form.elements.namedItem('quantidade')?.value
+        )
+      );
+
+      const fornecedor = String(
+        form.elements.namedItem('fornecedor')?.value || ''
+      ).trim();
+
+      const custo = Number(
+        formatoNumero(
+          form.elements.namedItem('custo_unitario')?.value
+        )
+      );
+
+      const transporte = Number(
+        formatoNumero(
+          form.elements.namedItem('transporte')?.value
+        )
+      );
+
+      const observacao = String(
+        form.elements.namedItem('observacao')?.value || ''
+      ).trim();
+
+      const limite = Number(
+        item.quantidade_pendente
+      );
+
+      if (
+        !Number.isFinite(quantidade) ||
+        quantidade <= 0 ||
+        quantidade > limite
+      ) {
+        alert('Quantidade de compra inválida.');
+        return;
+      }
+
+      const unidade = String(
+        item.unidade_venda || ''
+      ).toLowerCase().trim();
+
+      if (
+        ['unidade', 'saco', 'dúzia', 'duzia',
+         'milheiro', 'balde', 'lata'].includes(unidade) &&
+        !Number.isInteger(quantidade)
+      ) {
+        alert('Informe uma quantidade inteira.');
+        return;
+      }
+
+      if (fornecedor.length < 2) {
+        alert('Informe o fornecedor.');
+        return;
+      }
+
+      if (
+        !Number.isFinite(custo) ||
+        custo <= 0 ||
+        !Number.isFinite(transporte) ||
+        transporte < 0
+      ) {
+        alert('Confira os custos da compra.');
+        return;
+      }
+
+      const total = quantidade * custo + transporte;
+
+      const confirmou = window.confirm(
+        `Confirmar compra para a venda #${item.vendas_id}?\n\n` +
+        `Material: ${item.produtos?.nome || 'Material'}\n` +
+        `Quantidade: ${quantidade} ${unidade}\n` +
+        `Fornecedor: ${fornecedor}\n` +
+        `Total: ${money(total)}\n\n` +
+        'A compra NÃO confirma a entrega ao cliente.'
+      );
+
+      if (!confirmou) return;
+
+      registrando = true;
+
+      const botao =
+        form.querySelector('[data-confirmar-compra]');
+
+      if (botao) {
+        botao.disabled = true;
+        botao.textContent = 'Registrando...';
+      }
+
+      try {
+
+        const { data, error } =
+          await supabaseClient.rpc(
+            'registrar_compra_pendente',
+            {
+              p_item_venda_id: item.id,
+              p_quantidade: quantidade,
+              p_fornecedor_nome: fornecedor,
+              p_custo_unitario: custo,
+              p_custo_transporte: transporte,
+              p_observacao: observacao || null
+            }
+          );
+
+        if (error) throw error;
+
+        console.log(
+          'Compra registrada:',
+          data
+        );
+
+        alert(
+          '✅ Compra registrada com sucesso!\n\n' +
+          'A entrega ao cliente continua pendente.'
+        );
+
+        navigate('products');
+
+      } catch (erro) {
+
+        console.error(
+          'Erro ao registrar compra:',
+          erro
+        );
+
+        alert(
+          'Não foi possível confirmar a compra.\n' +
+          'Verifique se a operação foi registrada ' +
+          'antes de tentar novamente.\n\n' +
+          (erro.message || 'Erro desconhecido.')
+        );
+
+      } finally {
+
+        registrando = false;
+
+        if (botao) {
+          botao.disabled = false;
+          botao.textContent = '✅ Confirmar compra';
+        }
+
+      }
+
+    });
+
+    const atualizar =
+      el.querySelector('#atualizarComprasPendentes');
+
+    atualizar?.addEventListener(
+      'click',
+      carregarPendencias
+    );
+
+    // Carregar em paralelo com o estoque
+    carregarPendencias();
+
   }
 
   // =====================================
-  // CONSULTAR PRODUTOS DO ESTOQUE
+  // PRODUTOS DO ESTOQUE
   // =====================================
 
   try {
@@ -5446,13 +5850,9 @@ async function renderProducts(el) {
     const list =
       el.querySelector('#productList');
 
-    if (!list || !list.isConnected) {
-      return;
-    }
+    if (!list || !list.isConnected) return;
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     state.products = data || [];
     window.currentProducts = data || [];
@@ -5461,16 +5861,10 @@ async function renderProducts(el) {
 
       list.innerHTML = `
         <div class="card">
-
-          <strong>
-            Nenhum produto cadastrado
-          </strong>
-
+          <strong>Nenhum produto cadastrado</strong>
           <p class="muted">
-            Clique em "+ Produto"
-            para cadastrar.
+            Clique em "+ Produto" para cadastrar.
           </p>
-
         </div>
       `;
 
@@ -5489,23 +5883,14 @@ async function renderProducts(el) {
     const list =
       el.querySelector('#productList');
 
-    if (!list || !list.isConnected) {
-      return;
-    }
+    if (!list || !list.isConnected) return;
 
     list.innerHTML = `
-
       <div class="card">
-
-        <strong>
-          Erro ao carregar estoque
-        </strong>
-
+        <strong>Erro ao carregar estoque</strong>
         <p class="muted">
-          Não foi possível carregar
-          os produtos.
-          Verifique sua conexão
-          e tente novamente.
+          Não foi possível carregar os produtos.
+          Verifique sua conexão e tente novamente.
         </p>
 
         <button
@@ -5515,13 +5900,13 @@ async function renderProducts(el) {
         >
           Tentar novamente
         </button>
-
       </div>
     `;
 
   }
 
 }
+
 
 
 
