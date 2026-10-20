@@ -696,7 +696,15 @@ async function renderHome(el) {
       .eq('controla_estoque', true)
       .order('id', { ascending: true })
   );
-
+  // Acompanhar todas as consultas paralelas,
+  // inclusive quando alguma apresentar erro.
+  Promise.allSettled([
+    consultaVendas,
+    consultaContas,
+    consultaEntregas,
+    consultaProdutos
+  ]);
+  
   // =====================================
   // VENDAS E FATURAMENTO ANUAL
   // =====================================
