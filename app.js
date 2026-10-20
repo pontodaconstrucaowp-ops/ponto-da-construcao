@@ -1093,16 +1093,7 @@ Tente novamente em alguns instantes.
 
   try {
 
-    const produtos = await consultarTodos(
-      'produtos',
-      `id,nome,unidade,estoque,
-       estoque_minimo,controla_estoque,ativo`,
-      consulta => consulta
-        .eq('ativo', true)
-        .eq('controla_estoque', true)
-        .order('id', { ascending: true })
-    );
-
+const produtos = await consultaProdutos;
     const materiaisBaixos = produtos.filter(produto => {
 
       if (
