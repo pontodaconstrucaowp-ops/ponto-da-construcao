@@ -637,6 +637,65 @@ async function renderHome(el) {
     state.page === 'home' &&
     el.isConnected &&
     el.querySelector('#dashEstoqueBaixo') !== null;
+    // =====================================
+  // CONSULTAS PARALELAS DO DASHBOARD
+  // =====================================
+
+  const consultaVendas = consultarTodos(
+    'vendas',
+    'id,data,valor_total,status',
+    consulta => consulta
+      .gte('data', inicioAno.toISOString())
+      .lt('data', inicioProximoAno.toISOString())
+      .order('data', { ascending: true })
+      .order('id', { ascending: true })
+  );
+
+  const consultaContas = consultarTodos(
+    'contas_receber',
+    'id,valor_original,valor_recebido,status',
+    consulta => consulta
+      .in('status', ['pendente', 'parcial'])
+      .order('id', { ascending: true })
+  );
+
+  const consultaEntregas = consultarTodos(
+    'entregas',
+    `
+      id,
+      venda_id,
+      status,
+      prioridade,
+      posicao_fila,
+      endereço,
+      created_at,
+      vendas (
+        id,
+        valor_total,
+        clientes (
+          nome,
+          endereço
+        )
+      )
+    `,
+    consulta => consulta
+      .in('status', ['pendente', 'em_rota'])
+      .order('posicao_fila', {
+        ascending: true,
+        nullsFirst: false
+      })
+      .order('id', { ascending: true })
+  );
+
+  const consultaProdutos = consultarTodos(
+    'produtos',
+    `id,nome,unidade,estoque,
+     estoque_minimo,controla_estoque,ativo`,
+    consulta => consulta
+      .eq('ativo', true)
+      .eq('controla_estoque', true)
+      .order('id', { ascending: true })
+  );
 
   // =====================================
   // VENDAS E FATURAMENTO ANUAL
