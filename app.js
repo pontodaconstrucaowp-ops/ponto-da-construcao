@@ -7699,14 +7699,36 @@ ${
 
                 ` : ''}
 
-                ${entrega.status === 'em_rota' ? `
 
-                  <p class="muted" style="font-size:12px">
-                    Aguardando o novo controle de confirmação
-                    de recebimento.
-                  </p>
+${entrega.status === 'em_rota' ? `
 
-                ` : ''}
+  <button
+    type="button"
+    class="primary"
+    onclick="nextDelivery(${Number(entrega.id)})"
+    style="
+      background:#166534;
+      color:white;
+      font-weight:700;
+    "
+  >
+    ✅ Finalizar entrega
+  </button>
+
+  <p
+    class="muted"
+    style="
+      font-size:12px;
+      margin-top:8px;
+    "
+  >
+    A finalização somente será permitida
+    quando todos os materiais estiverem
+    registrados como recebidos.
+  </p>
+
+` : ''}
+
 
               </div>
 
