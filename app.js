@@ -7607,7 +7607,124 @@ async function renderDeliveries(el) {
 
 }
 
+async function confirmarRecebimentoParcial(
+  entregaId,
+  itemVendaId,
+  quantidade,
+  quantidadePropria,
+  observacao = ''
+) {
 
+  // =====================================
+  // 1. VERIFICAR ADMINISTRADOR
+  // =====================================
+
+  if (state.user?.tipo !== 'admin') {
+    alert('Somente administradores podem confirmar recebimentos.');
+    return false;
+  }
+
+  // =====================================
+  // 2. VALIDAR QUANTIDADES
+  // =====================================
+
+  const entregue = Number(quantidade);
+  const propria = Number(quantidadePropria);
+
+  if (
+    !Number.isFinite(entregue) ||
+    entregue <= 0
+  ) {
+    alert('Informe uma quantidade recebida válida.');
+    return false;
+  }
+
+  if (
+    !Number.isFinite(propria) ||
+    propria < 0 ||
+    propria > entregue
+  ) {
+    alert(
+      'A quantidade de estoque próprio deve estar ' +
+      'entre zero e a quantidade recebida.'
+    );
+    return false;
+  }
+
+  if (
+    !Number.isSafeInteger(Number(entregaId)) ||
+    Number(entregaId) <= 0 ||
+    !itemVendaId
+  ) {
+    alert('Entrega ou material inválido.');
+    return false;
+  }
+
+  // =====================================
+  // 3. CHAVE ÚNICA DA CONFIRMAÇÃO
+  // =====================================
+
+  const chave = crypto.randomUUID();
+
+  try {
+
+    // =====================================
+    // 4. REGISTRAR NO SUPABASE
+    // =====================================
+
+    const { data, error } = await supabaseClient.rpc(
+      'confirmar_entrega_parcial',
+      {
+        p_entrega_id: Number(entregaId),
+        p_item_venda_id: itemVendaId,
+        p_quantidade_entregue: entregue,
+        p_quantidade_estoque_proprio: propria,
+        p_observacao: String(observacao || '').trim(),
+        p_chave_confirmacao: chave
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    console.log(
+      'Recebimento registrado:',
+      data
+    );
+
+    alert('Recebimento registrado com sucesso!');
+
+    // =====================================
+    // 5. ATUALIZAR A TELA
+    // =====================================
+
+    if (state.page === 'deliveries') {
+      await renderDeliveries(
+        document.getElementById('content')
+      );
+    }
+
+    return true;
+
+  } catch (erro) {
+
+    console.error(
+      'Erro ao confirmar recebimento:',
+      erro
+    );
+
+    alert(
+      'Não foi possível confirmar o recebimento.\n\n' +
+      (erro.message || 'Erro desconhecido.') +
+      '\n\nConfira o histórico antes de tentar novamente.'
+    );
+
+    return false;
+
+  }
+
+}
 
 async function nextDelivery(id) {
 
