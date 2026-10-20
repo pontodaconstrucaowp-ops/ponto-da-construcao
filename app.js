@@ -7498,14 +7498,25 @@ ${
           Quantidade recebida (${unidade})
         </label>
 
-        <input
-          type="number"
-          id="recebido_${item.id}"
-          min="0"
-          max="${quantidadePendente}"
-          step="any"
-          placeholder="Ex.: 5"
-        >
+<input
+  type="number"
+  id="recebido_${item.id}"
+  min="0"
+  max="${quantidadePendente}"
+  step="any"
+  placeholder="Ex.: 5"
+  oninput="
+    const campoProprio =
+      document.getElementById('proprio_${item.id}');
+
+    if (
+      campoProprio &&
+      !campoProprio.disabled
+    ) {
+      campoProprio.value = this.value;
+    }
+  "
+>
 
       </div>
 
