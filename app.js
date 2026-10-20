@@ -7443,16 +7443,121 @@ async function renderDeliveries(el) {
 
                   </div>
 
-                  <p style="
-                    margin-top:10px;
-                    font-size:12px;
-                    font-weight:600;
-                    color:${concluido ? '#166534' : '#b45309'};
-                  ">
-                    ${concluido
-                      ? '✅ Material totalmente recebido'
-                      : '⏳ Recebimento pendente'}
-                  </p>
+<p style="
+  margin-top:10px;
+  font-size:12px;
+  font-weight:600;
+  color:${concluido ? '#166534' : '#b45309'};
+">
+  ${concluido
+    ? '✅ Material totalmente recebido'
+    : '⏳ Recebimento pendente'}
+</p>
+
+${
+  !concluido &&
+  entrega.status === 'em_rota' &&
+  item.controle_entrega_estoque_ativo === true
+    ? `
+
+    <div style="
+      margin-top:14px;
+      padding-top:14px;
+      border-top:1px solid #e2e8f0;
+    ">
+
+      <strong>
+        📦 Registrar recebimento
+      </strong>
+
+      <p class="muted" style="margin-top:8px">
+        Informe quanto o cliente realmente recebeu.
+      </p>
+
+      <div class="field" style="margin-top:12px">
+
+        <label>
+          Quantidade recebida (${unidade})
+        </label>
+
+        <input
+          type="number"
+          id="recebido_${item.id}"
+          min="0"
+          max="${quantidadePendente}"
+          step="any"
+          placeholder="Ex.: 5"
+        >
+
+      </div>
+
+      <div class="field" style="margin-top:12px">
+
+        <label>
+          Quantidade de estoque próprio (${unidade})
+        </label>
+
+        <input
+          type="number"
+          id="proprio_${item.id}"
+          min="0"
+          max="${quantidadePendente}"
+          step="any"
+          value="0"
+          ${item.origem_material === 'revenda'
+            ? 'disabled'
+            : ''}
+        >
+
+        <small class="muted">
+          ${
+            item.origem_material === 'revenda'
+              ? 'Material de revenda: não desconta estoque próprio.'
+              : 'Informe apenas a parte que saiu do estoque próprio.'
+          }
+        </small>
+
+      </div>
+
+      <div class="field" style="margin-top:12px">
+
+        <label>
+          Observação (opcional)
+        </label>
+
+        <input
+          type="text"
+          id="observacao_${item.id}"
+          placeholder="Ex.: Primeira viagem"
+        >
+
+      </div>
+
+      <button
+        type="button"
+        class="primary"
+        style="
+          width:100%;
+          margin-top:14px;
+        "
+        onclick="
+          confirmarRecebimentoParcial(
+            ${Number(entrega.id)},
+            '${item.id}',
+            document.getElementById('recebido_${item.id}').value,
+            document.getElementById('proprio_${item.id}').value,
+            document.getElementById('observacao_${item.id}').value
+          )
+        "
+      >
+        ✅ Confirmar recebimento parcial
+      </button>
+
+    </div>
+
+  `
+    : ''
+}
 
                 </div>
               `;
