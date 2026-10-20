@@ -877,33 +877,7 @@ const contas = await consultaContas;
 
   try {
 
-    const entregas = await consultarTodos(
-      'entregas',
-      `
-        id,
-        venda_id,
-        status,
-        prioridade,
-        posicao_fila,
-        endereço,
-        created_at,
-        vendas (
-          id,
-          valor_total,
-          clientes (
-            nome,
-            endereço
-          )
-        )
-      `,
-      consulta => consulta
-        .in('status', ['pendente', 'em_rota'])
-        .order('posicao_fila', {
-          ascending: true,
-          nullsFirst: false
-        })
-        .order('id', { ascending: true })
-    );
+const entregas = await consultaEntregas;
 
     if (!paginaAtual()) return;
 
