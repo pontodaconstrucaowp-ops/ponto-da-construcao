@@ -828,13 +828,7 @@ const vendas = await consultaVendas;
 
   try {
 
-    const contas = await consultarTodos(
-      'contas_receber',
-      'id,valor_original,valor_recebido,status',
-      consulta => consulta
-        .in('status', ['pendente', 'parcial'])
-        .order('id', { ascending: true })
-    );
+const contas = await consultaContas;
 
     let totalAReceber = 0;
 
