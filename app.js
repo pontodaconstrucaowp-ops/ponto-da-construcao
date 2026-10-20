@@ -7882,88 +7882,226 @@ if (!ehAdministrador) {
   }
 
 }
+
 async function nextDelivery(id) {
 
   try {
 
-    const { data, error } = await supabaseClient
-      .from('entregas')
-      .select('id, status, posicao_fila')
-      .eq('id', id)
-      .single();
+    const entregaId = Number(id);
 
-    if (error) {
-      throw error;
+    if (!Number.isSafeInteger(entregaId) || entregaId <= 0) {
+      alert('Identificador de entrega inválido.');
+      return;
     }
 
-    if (!data) {
+    const { data: entrega, error: erroEntrega } =
+      await supabaseClient
+        .from('entregas')
+        .select('id, venda_id, status')
+        .eq('id', entregaId)
+        .single();
+
+    if (erroEntrega) throw erroEntrega;
+
+    if (!entrega) {
       alert('Entrega não encontrada.');
       return;
     }
 
-    // ENTREGA JÁ FINALIZADA
-
-    if (data.status === 'entregue') {
+    if (entrega.status === 'entregue') {
       alert('Esta entrega já está finalizada.');
       return;
     }
 
-    // IMPEDIR FINALIZAÇÃO PELO MÉTODO ANTIGO
+    // =====================================
+    // INICIAR ROTA
+    // =====================================
 
-    if (data.status !== 'pendente') {
+    if (entrega.status === 'pendente') {
+
+      const confirmou = window.confirm(
+        'Deseja iniciar a rota desta entrega?'
+      );
+
+      if (!confirmou) return;
+
+      const { data: atualizada, error } =
+        await supabaseClient
+          .from('entregas')
+          .update({ status: 'em_rota' })
+          .eq('id', entregaId)
+          .eq('status', 'pendente')
+          .select('id')
+          .maybeSingle();
+
+      if (error) throw error;
+
+      if (!atualizada) {
+        alert(
+          'O status da entrega foi alterado. ' +
+          'Atualize a página e tente novamente.'
+        );
+        return;
+      }
+
+      alert('Rota iniciada com sucesso!');
+
+      if (state.page === 'deliveries') {
+        await renderDeliveries(
+          document.getElementById('content')
+        );
+      }
+
+      return;
+    }
+
+    // =====================================
+    // FINALIZAR ENTREGA
+    // =====================================
+
+    if (entrega.status !== 'em_rota') {
+      alert(
+        'Esta entrega não está em uma situação ' +
+        'que permite a finalização.'
+      );
+      return;
+    }
+
+    if (entrega.venda_id == null) {
+      alert('Esta entrega não possui uma venda vinculada.');
+      return;
+    }
+
+    // Consultar materiais da venda
+
+    const { data: itens, error: erroItens } =
+      await supabaseClient
+        .from('itens_venda')
+        .select(
+          'id, quantidade, controle_entrega_estoque_ativo'
+        )
+        .eq('vendas_id', entrega.venda_id);
+
+    if (erroItens) throw erroItens;
+
+    if (!itens || itens.length === 0) {
+      alert(
+        'Nenhum material encontrado para esta entrega.'
+      );
+      return;
+    }
+
+    // Não finalizar pelo novo fluxo uma venda antiga
+
+    if (itens.some(
+      item => item.controle_entrega_estoque_ativo !== true
+    )) {
+      alert(
+        'Esta venda pertence ao controle antigo. ' +
+        'É necessária uma conferência específica ' +
+        'antes de finalizar.'
+      );
+      return;
+    }
+
+    // Consultar recebimentos registrados
+
+    const idsItens = itens.map(item => item.id);
+
+    const { data: recebimentos, error: erroRecebimentos } =
+      await supabaseClient
+        .from('itens_entregues')
+        .select('item_venda_id, quantidade_entregue')
+        .in('item_venda_id', idsItens);
+
+    if (erroRecebimentos) throw erroRecebimentos;
+
+    const totaisRecebidos = new Map();
+
+    for (const recebimento of recebimentos || []) {
+
+      const anterior =
+        totaisRecebidos.get(recebimento.item_venda_id) || 0;
+
+      totaisRecebidos.set(
+        recebimento.item_venda_id,
+        anterior + Number(recebimento.quantidade_entregue)
+      );
+
+    }
+
+    // Conferir se ainda falta material
+
+    const itensPendentes = itens.filter(item => {
+
+      const vendido = Number(item.quantidade);
+
+      const recebido =
+        totaisRecebidos.get(item.id) || 0;
+
+      return (
+        !Number.isFinite(vendido) ||
+        !Number.isFinite(recebido) ||
+        recebido + 0.000000001 < vendido
+      );
+
+    });
+
+    if (itensPendentes.length > 0) {
 
       alert(
-        'A confirmação de recebimento será feita ' +
-        'pelo novo controle de entregas parciais.\n\n' +
-        'Por enquanto, esta entrega não será finalizada.'
+        'Não é possível finalizar esta entrega.\n\n' +
+        'Ainda existem ' +
+        itensPendentes.length +
+        ' material(is) com recebimento pendente.\n\n' +
+        'Registre os recebimentos restantes primeiro.'
       );
 
       return;
     }
 
-    // INICIAR ROTA
+    // Confirmar finalização
 
     const confirmou = window.confirm(
-      'Deseja iniciar a rota desta entrega?'
+      'Todos os materiais estão registrados ' +
+      'como recebidos.\n\n' +
+      'Deseja finalizar esta entrega?'
     );
 
-    if (!confirmou) {
-      return;
-    }
+    if (!confirmou) return;
 
-    const { data: atualizada, error: updateError } =
+    // O banco deve validar novamente a finalização.
+
+    const { data: finalizada, error: erroFinalizacao } =
       await supabaseClient
         .from('entregas')
-        .update({
-          status: 'em_rota'
-        })
-        .eq('id', id)
-        .eq('status', 'pendente')
+        .update({ status: 'entregue' })
+        .eq('id', entregaId)
+        .eq('status', 'em_rota')
         .select('id')
         .maybeSingle();
 
-    if (updateError) {
-      throw updateError;
-    }
+    if (erroFinalizacao) throw erroFinalizacao;
 
-    if (!atualizada) {
+    if (!finalizada) {
       alert(
-        'O status desta entrega foi alterado. ' +
-        'Atualize a página e tente novamente.'
+        'A entrega foi modificada por outro usuário. ' +
+        'Atualize a tela antes de continuar.'
       );
       return;
     }
 
-    await renderDeliveries(
-      document.getElementById('content')
-    );
+    alert('Entrega finalizada com sucesso!');
+
+    if (state.page === 'deliveries') {
+      await renderDeliveries(
+        document.getElementById('content')
+      );
+    }
 
   } catch (erro) {
 
-    console.error(
-      'Erro ao atualizar entrega:',
-      erro
-    );
+    console.error('Erro ao atualizar entrega:', erro);
 
     alert(
       'Não foi possível atualizar a entrega:\n\n' +
