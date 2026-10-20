@@ -7740,11 +7740,14 @@ async function confirmarRecebimentoParcial(
   observacao = ''
 ) {
 
-  if (state.user?.tipo !== 'admin') {
-    alert('Somente administradores podem confirmar recebimentos.');
-    return false;
-  }
+const ehAdministrador =
+  state.user?.tipo === 'admin' ||
+  state.user?.tipo === 'administrador';
 
+if (!ehAdministrador) {
+  alert('Somente administradores podem confirmar recebimentos.');
+  return false;
+}
   const entregue = Number(quantidade);
   const propria = Number(quantidadePropria);
   const textoObservacao = String(observacao || '').trim();
