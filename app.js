@@ -8635,7 +8635,11 @@ const { data: itens, error: erroItens } =
       (comprasPorVenda[venda.id] || []).length > 0
     ).length;
 
-  document.getElementById('reportSummary').innerHTML = `
+ const painelResumo = document.getElementById('reportSummary');
+
+if (!painelResumo || state.page !== 'reports') return;
+
+painelResumo.innerHTML = `
     <div class="card" style="margin-bottom:15px;">
 
       <div class="row">
