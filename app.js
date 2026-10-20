@@ -7607,6 +7607,8 @@ async function renderDeliveries(el) {
 
 }
 
+const chavesRecebimentoPendente = new Map();
+
 async function confirmarRecebimentoParcial(
   entregaId,
   itemVendaId,
@@ -7615,26 +7617,16 @@ async function confirmarRecebimentoParcial(
   observacao = ''
 ) {
 
-  // =====================================
-  // 1. VERIFICAR ADMINISTRADOR
-  // =====================================
-
   if (state.user?.tipo !== 'admin') {
     alert('Somente administradores podem confirmar recebimentos.');
     return false;
   }
 
-  // =====================================
-  // 2. VALIDAR QUANTIDADES
-  // =====================================
-
   const entregue = Number(quantidade);
   const propria = Number(quantidadePropria);
+  const textoObservacao = String(observacao || '').trim();
 
-  if (
-    !Number.isFinite(entregue) ||
-    entregue <= 0
-  ) {
+  if (!Number.isFinite(entregue) || entregue <= 0) {
     alert('Informe uma quantidade recebida válida.');
     return false;
   }
@@ -7644,10 +7636,7 @@ async function confirmarRecebimentoParcial(
     propria < 0 ||
     propria > entregue
   ) {
-    alert(
-      'A quantidade de estoque próprio deve estar ' +
-      'entre zero e a quantidade recebida.'
-    );
+    alert('Confira a quantidade de estoque próprio.');
     return false;
   }
 
@@ -7660,17 +7649,50 @@ async function confirmarRecebimentoParcial(
     return false;
   }
 
-  // =====================================
-  // 3. CHAVE ÚNICA DA CONFIRMAÇÃO
-  // =====================================
+  const identificador = `${entregaId}:${itemVendaId}`;
 
-  const chave = crypto.randomUUID();
+  // Guarda a chave e os valores até termos confirmação
+  // do resultado. Uma repetição usa a mesma chave.
+
+  const tentativaAnterior =
+    chavesRecebimentoPendente.get(identificador);
+
+  if (tentativaAnterior?.executando) {
+    alert('Aguarde a confirmação anterior.');
+    return false;
+  }
+
+  const valores = JSON.stringify({
+    entregue,
+    propria,
+    observacao: textoObservacao
+  });
+
+  if (
+    tentativaAnterior &&
+    tentativaAnterior.valores !== valores
+  ) {
+    alert(
+      'Existe uma confirmação anterior sem resultado conhecido.\n\n' +
+      'Confira o histórico antes de alterar as quantidades.'
+    );
+    return false;
+  }
+
+  const tentativa = tentativaAnterior || {
+    chave: crypto.randomUUID(),
+    valores,
+    executando: false
+  };
+
+  tentativa.executando = true;
+
+  chavesRecebimentoPendente.set(
+    identificador,
+    tentativa
+  );
 
   try {
-
-    // =====================================
-    // 4. REGISTRAR NO SUPABASE
-    // =====================================
 
     const { data, error } = await supabaseClient.rpc(
       'confirmar_entrega_parcial',
@@ -7679,8 +7701,8 @@ async function confirmarRecebimentoParcial(
         p_item_venda_id: itemVendaId,
         p_quantidade_entregue: entregue,
         p_quantidade_estoque_proprio: propria,
-        p_observacao: String(observacao || '').trim(),
-        p_chave_confirmacao: chave
+        p_observacao: textoObservacao,
+        p_chave_confirmacao: tentativa.chave
       }
     );
 
@@ -7688,16 +7710,12 @@ async function confirmarRecebimentoParcial(
       throw error;
     }
 
-    console.log(
-      'Recebimento registrado:',
-      data
-    );
+    // O banco confirmou a operação.
+    chavesRecebimentoPendente.delete(identificador);
+
+    console.log('Recebimento confirmado:', data);
 
     alert('Recebimento registrado com sucesso!');
-
-    // =====================================
-    // 5. ATUALIZAR A TELA
-    // =====================================
 
     if (state.page === 'deliveries') {
       await renderDeliveries(
@@ -7709,23 +7727,24 @@ async function confirmarRecebimentoParcial(
 
   } catch (erro) {
 
-    console.error(
-      'Erro ao confirmar recebimento:',
-      erro
-    );
+    console.error('Erro no recebimento:', erro);
 
     alert(
-      'Não foi possível confirmar o recebimento.\n\n' +
+      'Não foi possível confirmar o resultado.\n\n' +
       (erro.message || 'Erro desconhecido.') +
       '\n\nConfira o histórico antes de tentar novamente.'
     );
 
+    // Mantemos a chave para permitir uma repetição segura.
     return false;
+
+  } finally {
+
+    tentativa.executando = false;
 
   }
 
 }
-
 async function nextDelivery(id) {
 
   try {
