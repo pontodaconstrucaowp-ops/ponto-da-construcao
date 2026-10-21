@@ -2570,6 +2570,7 @@ if (
 }
 
 
+
 function pcMostrarProdutos() {
 
   const lista = document.getElementById('saleProductItems');
@@ -2630,19 +2631,76 @@ function pcMostrarProdutos() {
               quantidade * opcao.preco * 100
             ) / 100;
 
+            // ====================================
+            // INFORMAÇÕES DE REVENDA
+            // ====================================
+
             const revenda =
               produto?.controla_estoque === false;
 
             const possuiCusto =
-              produto?.custo_referencia != null;
+              produto?.custo_referencia != null &&
+              produto?.custo_referencia !== '';
 
-            const custo = Number(
+            const unidadePrincipal = String(
+              produto?.unidade || ''
+            ).trim().toLowerCase();
+
+            const custoReferencia = Number(
               produto?.custo_referencia || 0
             );
 
-            // Lucro bruto sem custo de frete
-            const lucro =
-              Number(opcao.preco) - custo;
+            const freteReferencia = Number(
+              produto?.frete_referencia || 0
+            );
+
+            // O custo cadastrado pertence à
+            // unidade principal do produto.
+            //
+            // Para a opção avulsa, precisamos
+            // converter o custo para uma peça.
+
+            let divisor = 1;
+
+            if (opcao.tipo === 'avulso') {
+
+              if (unidadePrincipal === 'milheiro') {
+                divisor = 1000;
+
+              } else if (
+                ['dúzia', 'duzia'].includes(
+                  unidadePrincipal
+                )
+              ) {
+                divisor = 12;
+              }
+
+            }
+
+            const custoPorOpcao =
+              custoReferencia / divisor;
+
+            const fretePorOpcao =
+              freteReferencia / divisor;
+
+            const custoCompleto =
+              custoPorOpcao + fretePorOpcao;
+
+            const lucroPorOpcao =
+              Number(opcao.preco) - custoCompleto;
+
+            const custoValido =
+              possuiCusto &&
+              Number.isFinite(custoReferencia) &&
+              custoReferencia >= 0 &&
+              Number.isFinite(freteReferencia) &&
+              freteReferencia >= 0 &&
+              Number.isFinite(custoCompleto) &&
+              Number.isFinite(lucroPorOpcao);
+
+            // ====================================
+            // CARTÃO DA MODALIDADE
+            // ====================================
 
             return `
               <div
@@ -2661,7 +2719,9 @@ function pcMostrarProdutos() {
                 </div>
 
                 ${
-                  revenda && ehAdministrador && possuiCusto
+                  revenda &&
+                  ehAdministrador &&
+                  custoValido
                     ? `
                       <div
                         style="
@@ -2673,19 +2733,70 @@ function pcMostrarProdutos() {
                           font-size:13px;
                         "
                       >
+
                         <strong>
                           🔒 Informações internas de revenda
                         </strong>
 
                         <div style="margin-top:8px">
-                          Custo de compra:
-                          <strong>${money(custo)}</strong>
+                          Custo de compra
+                          por ${pcEscapar(opcao.unidade)}:
+                          <strong>
+                            ${money(custoPorOpcao)}
+                          </strong>
                         </div>
 
+                        ${
+                          fretePorOpcao > 0
+                            ? `
+                              <div style="margin-top:5px">
+                                Frete estimado
+                                por ${pcEscapar(opcao.unidade)}:
+                                <strong>
+                                  ${money(fretePorOpcao)}
+                                </strong>
+                              </div>
+                            `
+                            : ''
+                        }
+
                         <div style="margin-top:5px">
-                          Lucro bruto estimado:
-                          <strong>${money(lucro)}</strong>
+                          Lucro bruto estimado
+                          por ${pcEscapar(opcao.unidade)}:
+                          <strong>
+                            ${money(lucroPorOpcao)}
+                          </strong>
                         </div>
+
+                      </div>
+                    `
+                    : ''
+                }
+
+                ${
+                  revenda &&
+                  ehAdministrador &&
+                  !custoValido
+                    ? `
+                      <div
+                        style="
+                          margin:10px 0;
+                          padding:12px;
+                          border:1px solid #fcd34d;
+                          border-radius:10px;
+                          background:#fffbeb;
+                          font-size:13px;
+                        "
+                      >
+                        <strong>
+                          🔒 Informações internas de revenda
+                        </strong>
+
+                        <div style="margin-top:8px">
+                          Custo de referência não cadastrado
+                          ou inválido.
+                        </div>
+
                       </div>
                     `
                     : ''
@@ -2723,7 +2834,8 @@ function pcMostrarProdutos() {
                     type="button"
                     aria-label="Adicionar ${pcEscapar(opcao.unidade)}"
                     onclick="
-                      pcAlterar(${id},
+                      pcAlterar(
+                        ${id},
                         '${opcao.tipo}',
                         1
                       );
@@ -2756,6 +2868,7 @@ function pcMostrarProdutos() {
     <div class="card">Nenhum material encontrado.</div>
   `;
 }
+
 function pcTotalCartao(elemento) {
   const cartao = elemento.closest('.pc-produto');
   if (!cartao) return;
