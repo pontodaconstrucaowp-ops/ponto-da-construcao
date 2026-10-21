@@ -670,9 +670,10 @@ async function renderHome(el) {
       posicao_fila,
       endereço,
       created_at,
-      vendas (
+      vendas!inner (
         id,
         valor_total,
+        ambiente_teste,
         clientes (
           nome,
           endereço
@@ -681,6 +682,7 @@ async function renderHome(el) {
     `,
     consulta => consulta
       .in('status', ['pendente', 'em_rota'])
+      .eq('vendas.ambiente_teste', false)
       .order('posicao_fila', {
         ascending: true,
         nullsFirst: false
@@ -1267,6 +1269,8 @@ Tente novamente em alguns instantes.
     `;
   }
 }
+
+
 
 
 
