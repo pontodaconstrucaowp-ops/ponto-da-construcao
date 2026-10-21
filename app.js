@@ -11663,14 +11663,23 @@ titulo: entrada
 
 
 function renderMore(el) {
+  if (!el) return;
 
   const ehAdministrador =
     state.user?.tipo === 'admin' ||
     state.user?.tipo === 'administrador';
 
+  const escapar = valor =>
+    String(valor ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+
   el.innerHTML = `
     <div class="list">
-
       <button class="card" onclick="navigate('clients')">
         <strong>Clientes</strong>
         <span class="muted">Cadastro e histórico</span>
@@ -11683,6 +11692,11 @@ function renderMore(el) {
             Dívidas dos clientes e registro de pagamentos
           </span>
         </button>
+
+        <button class="card" type="button" id="abrirComprasDeposito">
+          <strong>📦 Compras do depósito</strong>
+          <span class="muted">Consultar compras realizadas e valores registrados</span>
+        </button>
       ` : ''}
 
       <button class="card" onclick="navigate('cash')">
@@ -11694,8 +11708,8 @@ function renderMore(el) {
         <strong>Relatórios</strong>
         <span class="muted">Resumo de vendas e operação</span>
       </button>
-   
-            ${ehAdministrador ? `
+
+      ${ehAdministrador ? `
         <button class="card" onclick="navigate('observations')">
           <strong>📝 Observações</strong>
           <span class="muted">
@@ -11708,9 +11722,89 @@ function renderMore(el) {
         <strong>Configurações</strong>
         <span class="muted">Usuários e preferências</span>
       </button>
-
     </div>
+
+    ${ehAdministrador ? `
+      <div id="painelComprasDeposito" style="display:none;margin-top:18px">
+        <div class="section-title"><h2>📦 Compras do depósito</h2></div>
+        <div class="card">
+          <p class="muted">Consulta de compras já registradas. Nesta etapa não é possível registrar recebimentos ou alterar o estoque.</p>
+          <button type="button" class="secondary" id="recarregarComprasDeposito">🔄 Atualizar compras</button>
+          <div id="listaComprasDeposito" style="margin-top:14px" aria-live="polite"></div>
+        </div>
+      </div>
+    ` : ''}
   `;
+
+  if (!ehAdministrador) return;
+
+  const botaoAbrir = el.querySelector('#abrirComprasDeposito');
+  const painel = el.querySelector('#painelComprasDeposito');
+  const lista = el.querySelector('#listaComprasDeposito');
+  const botaoAtualizar = el.querySelector('#recarregarComprasDeposito');
+  let carregando = false;
+
+  async function consultarComprasDeposito() {
+    if (carregando || !lista?.isConnected) return;
+    carregando = true;
+    if (botaoAtualizar) botaoAtualizar.disabled = true;
+    lista.textContent = 'Consultando compras...';
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('compras')
+        .select('id,data,fornecedor,valor_total,observacao')
+        .order('data', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      if (!lista.isConnected || state.page !== 'more') return;
+
+      const compras = data || [];
+      if (!compras.length) {
+        lista.innerHTML = '<p class="muted">Nenhuma compra do depósito registrada até o momento.</p>';
+        return;
+      }
+
+      const formatoValor = valor => {
+        const numero = Number(valor);
+        return Number.isFinite(numero) ? money(numero) : 'Valor indisponível';
+      };
+
+      lista.innerHTML = compras.map(compra => {
+        const dataCompra = compra.data ? new Date(compra.data) : null;
+        const dataTexto = dataCompra && !Number.isNaN(dataCompra.getTime())
+          ? dataCompra.toLocaleString('pt-BR')
+          : 'Data não informada';
+
+        return `
+          <div style="border-top:1px solid #e2e8f0;padding:12px 0">
+            <strong>Compra #${escapar(compra.id)} · ${escapar(compra.fornecedor || 'Fornecedor não informado')}</strong>
+            <div class="muted" style="margin-top:5px">${escapar(dataTexto)}</div>
+            <div style="margin-top:6px"><strong>${escapar(formatoValor(compra.valor_total))}</strong></div>
+            ${compra.observacao ? `<div class="muted" style="margin-top:5px">${escapar(compra.observacao)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    } catch (erro) {
+      console.error('Erro ao consultar compras do depósito:', erro);
+      if (lista.isConnected) {
+        lista.textContent = 'Não foi possível consultar as compras. Verifique a permissão de leitura da tabela compras e tente novamente.';
+      }
+    } finally {
+      carregando = false;
+      if (botaoAtualizar?.isConnected) botaoAtualizar.disabled = false;
+    }
+  }
+
+  botaoAbrir?.addEventListener('click', () => {
+    const abrir = painel.style.display === 'none';
+    painel.style.display = abrir ? 'block' : 'none';
+    if (abrir) consultarComprasDeposito();
+  });
+
+  botaoAtualizar?.addEventListener('click', consultarComprasDeposito);
 }
 
 
