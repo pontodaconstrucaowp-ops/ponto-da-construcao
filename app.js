@@ -11697,6 +11697,14 @@ function renderMore(el) {
           <strong>📦 Compras do depósito</strong>
           <span class="muted">Consultar compras realizadas e valores registrados</span>
         </button>
+        <div id="painelComprasDeposito" style="display:none;margin:4px 0 14px">
+          <div class="card" style="border:1px solid #cbd5e1">
+            <h2>📦 Compras do depósito</h2>
+            <p class="muted">Consulta de compras registradas. Nesta etapa não é possível registrar recebimentos ou alterar o estoque.</p>
+            <button type="button" class="secondary" id="recarregarComprasDeposito">🔄 Atualizar compras</button>
+            <div id="listaComprasDeposito" style="margin-top:14px" aria-live="polite"></div>
+          </div>
+        </div>
       ` : ''}
 
       <button class="card" onclick="navigate('cash')">
@@ -11724,16 +11732,7 @@ function renderMore(el) {
       </button>
     </div>
 
-    ${ehAdministrador ? `
-      <div id="painelComprasDeposito" style="display:none;margin-top:18px">
-        <div class="section-title"><h2>📦 Compras do depósito</h2></div>
-        <div class="card">
-          <p class="muted">Consulta de compras já registradas. Nesta etapa não é possível registrar recebimentos ou alterar o estoque.</p>
-          <button type="button" class="secondary" id="recarregarComprasDeposito">🔄 Atualizar compras</button>
-          <div id="listaComprasDeposito" style="margin-top:14px" aria-live="polite"></div>
-        </div>
-      </div>
-    ` : ''}
+
   `;
 
   if (!ehAdministrador) return;
@@ -11801,12 +11800,14 @@ function renderMore(el) {
   botaoAbrir?.addEventListener('click', () => {
     const abrir = painel.style.display === 'none';
     painel.style.display = abrir ? 'block' : 'none';
-    if (abrir) consultarComprasDeposito();
+    if (abrir) {
+      painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      consultarComprasDeposito();
+    }
   });
 
   botaoAtualizar?.addEventListener('click', consultarComprasDeposito);
 }
-
 
 async function renderReceivables(el) {
 
