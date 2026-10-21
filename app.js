@@ -8488,6 +8488,260 @@ ${entrega.status === 'em_rota' ? `
 
 const chavesRecebimentoPendente = new Map();
 
+
+async function registrarCompraRevenda(
+  itemVendaId,
+  quantidade,
+  fornecedor,
+  custoUnitario,
+  custoTransporte,
+  observacao = ''
+) {
+
+  // =====================================
+  // 1. AUTORIZAÇÃO
+  // =====================================
+
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
+
+  if (!ehAdministrador) {
+    alert('Somente administradores podem registrar compras.');
+    return false;
+  }
+
+  // =====================================
+  // 2. VALIDAR DADOS
+  // =====================================
+
+  const converterNumero = valor => {
+    const texto = String(valor ?? '').trim();
+
+    if (!texto) return NaN;
+
+    // Aceitar decimal com ponto ou vírgula.
+    // Ex.: 0.25 ou 0,25.
+    if (texto.includes(',')) {
+      return Number(
+        texto.replace(/\./g, '').replace(',', '.')
+      );
+    }
+
+    return Number(texto);
+  };
+
+  const qtd = converterNumero(quantidade);
+  const custo = converterNumero(custoUnitario);
+  const frete = converterNumero(custoTransporte);
+
+  const nomeFornecedor = String(
+    fornecedor ?? ''
+  ).trim();
+
+  const textoObservacao = String(
+    observacao ?? ''
+  ).trim();
+
+  if (!itemVendaId) {
+    alert('Item da venda não identificado.');
+    return false;
+  }
+
+  if (!Number.isFinite(qtd) || qtd <= 0) {
+    alert('Informe uma quantidade válida.');
+    return false;
+  }
+
+  if (nomeFornecedor.length < 2) {
+    alert('Informe o nome do fornecedor.');
+    return false;
+  }
+
+  if (!Number.isFinite(custo) || custo <= 0) {
+    alert('Informe um custo unitário válido.');
+    return false;
+  }
+
+  if (!Number.isFinite(frete) || frete < 0) {
+    alert('Informe um custo de transporte válido.');
+    return false;
+  }
+
+  // =====================================
+  // 3. PROTEÇÃO CONTRA DUPLICIDADE
+  // =====================================
+
+  if (!window.pcComprasRevendaPendentes) {
+    window.pcComprasRevendaPendentes = new Map();
+  }
+
+  const pendentes =
+    window.pcComprasRevendaPendentes;
+
+  const identificador = String(itemVendaId);
+
+  const dadosCompra = {
+    itemVendaId: identificador,
+    quantidade: qtd,
+    fornecedor: nomeFornecedor,
+    custoUnitario: custo,
+    custoTransporte: frete,
+    observacao: textoObservacao
+  };
+
+  const assinatura = JSON.stringify(dadosCompra);
+
+  let pendencia = pendentes.get(identificador);
+
+  if (pendencia?.executando) {
+    alert('Já existe uma confirmação em andamento.');
+    return false;
+  }
+
+  if (
+    pendencia &&
+    pendencia.assinatura !== assinatura
+  ) {
+    alert(
+      'Existe uma confirmação anterior sem resultado conhecido.\n\n' +
+      'Confira o histórico de compras antes de alterar os dados.'
+    );
+
+    return false;
+  }
+
+  if (!pendencia) {
+
+    if (
+      !window.crypto ||
+      typeof window.crypto.randomUUID !== 'function'
+    ) {
+      alert(
+        'Este navegador não permite gerar uma chave segura de confirmação.'
+      );
+      return false;
+    }
+
+    pendencia = {
+      chave: window.crypto.randomUUID(),
+      assinatura,
+      executando: false
+    };
+
+    pendentes.set(identificador, pendencia);
+  }
+
+  // =====================================
+  // 4. CONFIRMAÇÃO DO ADMINISTRADOR
+  // =====================================
+
+  const totalCompra =
+    Math.round((qtd * (custo + frete)) * 100) / 100;
+
+  const confirmou = window.confirm(
+    'CONFIRMAR COMPRA DE REVENDA?\n\n' +
+    'Fornecedor: ' + nomeFornecedor + '\n' +
+    'Quantidade: ' + qtd + '\n' +
+    'Custo unitário: ' + money(custo) + '\n' +
+    'Transporte unitário: ' + money(frete) + '\n' +
+    'Custo total: ' + money(totalCompra) + '\n\n' +
+    'Essa operação registra o custo da compra, ' +
+    'mas NÃO movimenta o estoque nem o caixa.'
+  );
+
+  if (!confirmou) {
+    return false;
+  }
+
+  // =====================================
+  // 5. REGISTRAR COMPRA NO SUPABASE
+  // =====================================
+
+  pendencia.executando = true;
+
+  try {
+
+    const { data, error } = await supabaseClient.rpc(
+      'registrar_compra_revenda',
+      {
+        p_item_venda_id: identificador,
+        p_quantidade: qtd,
+        p_fornecedor_nome: nomeFornecedor,
+        p_custo_unitario: custo,
+        p_custo_transporte: frete,
+        p_observacao: textoObservacao || null,
+        p_chave_confirmacao: pendencia.chave
+      }
+    );
+
+    if (error) {
+      console.error(
+        'Erro ao registrar compra de revenda:',
+        error
+      );
+
+      alert(
+        'Não foi possível confirmar o resultado da compra.\n\n' +
+        error.message + '\n\n' +
+        'Confira o histórico antes de repetir a operação.'
+      );
+
+      return false;
+    }
+
+    if (!data) {
+      alert(
+        'O servidor não retornou o identificador da compra.\n\n' +
+        'Confira o histórico antes de repetir a operação.'
+      );
+
+      return false;
+    }
+
+    // Só liberar uma nova operação após
+    // confirmação positiva do servidor.
+    pendentes.delete(identificador);
+
+    console.log(
+      'COMPRA DE REVENDA REGISTRADA:',
+      data
+    );
+
+    alert(
+      '✅ Compra de revenda registrada com sucesso!\n\n' +
+      'Fornecedor: ' + nomeFornecedor + '\n' +
+      'Quantidade: ' + qtd + '\n' +
+      'Total: ' + money(totalCompra) + '\n\n' +
+      'Nenhuma movimentação de estoque ou caixa foi realizada.'
+    );
+
+    return true;
+
+  } catch (erro) {
+
+    console.error(
+      'Erro inesperado na compra de revenda:',
+      erro
+    );
+
+    alert(
+      'O resultado da compra é desconhecido.\n\n' +
+      'Confira o histórico antes de tentar novamente, ' +
+      'para evitar registros duplicados.'
+    );
+
+    return false;
+
+  } finally {
+
+    pendencia.executando = false;
+
+  }
+
+}
+
+
 async function confirmarRecebimentoParcial(
   entregaId,
   itemVendaId,
