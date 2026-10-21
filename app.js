@@ -9673,6 +9673,7 @@ async function carregarLucroAnual() {
       const { data, error } = await supabaseClient
         .from('vendas')
         .select('id,data,valor_total,status')
+        .eq('ambiente_teste', false)
         .gte('data', inicioAno.toISOString())
         .lt('data', fimAno.toISOString())
         .order('data', { ascending: true })
@@ -9942,6 +9943,7 @@ async function carregarRelatorio(){
   let query = supabaseClient
     .from('vendas')
     .select('*')
+    .eq('ambiente_teste', false)
     .order('id', { ascending:false });
 
   if(inicio){
