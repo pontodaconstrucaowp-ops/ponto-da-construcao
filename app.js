@@ -654,9 +654,10 @@ async function renderHome(el) {
 
   const consultaContas = consultarTodos(
     'contas_receber',
-    'id,valor_original,valor_recebido,status',
+    'id,valor_original,valor_recebido,status,venda_id,vendas!inner(id,ambiente_teste)',
     consulta => consulta
       .in('status', ['pendente', 'parcial'])
+      .eq('vendas.ambiente_teste', false)
       .order('id', { ascending: true })
   );
 
@@ -1269,6 +1270,8 @@ Tente novamente em alguns instantes.
     `;
   }
 }
+
+
 
 
 
