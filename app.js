@@ -645,6 +645,7 @@ async function renderHome(el) {
     'vendas',
     'id,data,valor_total,status',
     consulta => consulta
+      .eq('ambiente_teste', false)
       .gte('data', inicioAno.toISOString())
       .lt('data', inicioProximoAno.toISOString())
       .order('data', { ascending: true })
@@ -1266,6 +1267,8 @@ Tente novamente em alguns instantes.
     `;
   }
 }
+
+
 
 
 async function renderSales(el) {
