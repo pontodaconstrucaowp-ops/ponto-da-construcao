@@ -4249,6 +4249,7 @@ function updateConfirmSaleButton(){
     !window.saleType;
 }
 
+
 async function confirmSale() {
 
   // Impedir confirmações simultâneas
@@ -4260,8 +4261,8 @@ async function confirmSale() {
 
   try {
 
-    // Verificar se existe uma venda já registrada
-    // cuja entrega ainda precisa ser concluída.
+    // Verificar se uma venda já foi registrada
+    // e está aguardando a criação da entrega.
     let vendaPendente =
       window.pcVendaRegistradaPendente || null;
 
@@ -4282,14 +4283,16 @@ async function confirmSale() {
         return;
       }
 
-      if (!Array.isArray(state.cart) ||
-          state.cart.length === 0) {
+      if (
+        !Array.isArray(state.cart) ||
+        state.cart.length === 0
+      ) {
         alert('Adicione pelo menos um material.');
         return;
       }
 
       // ====================================
-      // LOCALIZAÇÃO DO CLIENTE
+      // 1. LOCALIZAÇÃO DO CLIENTE
       // ====================================
 
       let dadosEntrega = null;
@@ -4299,7 +4302,9 @@ async function confirmSale() {
         const { data: cliente, error: clienteError } =
           await supabaseClient
             .from('clientes')
-            .select('id,nome,endereço,latitude,longitude')
+            .select(
+              'id,nome,endereço,latitude,longitude'
+            )
             .eq('id', state.selectedClient)
             .single();
 
@@ -4338,36 +4343,268 @@ async function confirmSale() {
       }
 
       // ====================================
-      // CALCULAR TOTAL
+      // 2. CARREGAR PRODUTOS ATUALIZADOS
+      // ====================================
+
+      const idsProdutos = [
+        ...new Set(
+          state.cart.map(item => Number(item.id))
+        )
+      ];
+
+      if (
+        idsProdutos.some(
+          id => !Number.isSafeInteger(id) || id <= 0
+        )
+      ) {
+        alert('Existe um produto inválido no carrinho.');
+        return;
+      }
+
+      const { data: produtos, error: produtosError } =
+        await supabaseClient
+          .from('produtos')
+          .select(`
+            id,
+            nome,
+            unidade,
+            ativo,
+            preco,
+            preco_avulso,
+            controla_estoque,
+            custo_referencia,
+            frete_referencia
+          `)
+          .in('id', idsProdutos);
+
+      if (produtosError) {
+
+        console.error(
+          'ERRO AO CONSULTAR PRODUTOS:',
+          produtosError
+        );
+
+        alert(
+          'Não foi possível consultar os dados atualizados dos produtos.'
+        );
+
+        return;
+      }
+
+      const produtosPorId = new Map(
+        (produtos || []).map(produto => [
+          Number(produto.id),
+          produto
+        ])
+      );
+
+      // ====================================
+      // 3. PREPARAR ITENS E REVENDAS
+      // ====================================
+
+      const itens = [];
+
+      for (const item of state.cart) {
+
+        const produto = produtosPorId.get(
+          Number(item.id)
+        );
+
+        if (!produto || produto.ativo !== true) {
+
+          alert(
+            'Produto não encontrado ou inativo: ' +
+            String(item.name || item.id)
+          );
+
+          return;
+        }
+
+        const quantidade = Number(item.qty);
+        const preco = Number(item.price);
+
+        const tipoOpcao =
+          item.tipoOpcao || 'principal';
+
+        const unidadePrincipal = String(
+          produto.unidade || ''
+        ).trim().toLowerCase();
+
+        if (
+          !Number.isFinite(quantidade) ||
+          quantidade <= 0 ||
+          !Number.isFinite(preco) ||
+          preco < 0
+        ) {
+
+          alert(
+            'Quantidade ou preço inválido: ' +
+            produto.nome
+          );
+
+          return;
+        }
+
+        if (
+          !['principal', 'avulso'].includes(tipoOpcao)
+        ) {
+
+          alert(
+            'Modalidade de venda inválida: ' +
+            produto.nome
+          );
+
+          return;
+        }
+
+        // O cadastro atual utiliza produtos sem
+        // controle de estoque como revenda.
+        const ehRevenda =
+          produto.controla_estoque === false;
+
+        let origemMaterial = 'proprio';
+        let custoUnitario = 0;
+        let custoTransporte = 0;
+
+        if (ehRevenda) {
+
+          origemMaterial = 'revenda';
+
+          // Custo cadastrado na unidade principal:
+          // por milheiro, dúzia ou unidade.
+          if (
+            produto.custo_referencia == null ||
+            String(produto.custo_referencia).trim() === ''
+          ) {
+
+            alert(
+              'O produto "' + produto.nome +
+              '" está configurado como revenda, ' +
+              'mas não possui custo de fornecedor cadastrado.\n\n' +
+              'Abra Estoque > Editar e informe o custo antes de confirmar esta venda.'
+            );
+
+            return;
+          }
+
+          const custoReferencia = Number(
+            produto.custo_referencia
+          );
+
+          const freteReferencia =
+            produto.frete_referencia == null
+              ? 0
+              : Number(produto.frete_referencia);
+
+          if (
+            !Number.isFinite(custoReferencia) ||
+            custoReferencia <= 0 ||
+            !Number.isFinite(freteReferencia) ||
+            freteReferencia < 0
+          ) {
+
+            alert(
+              'Confira o custo e o frete de revenda do produto: ' +
+              produto.nome
+            );
+
+            return;
+          }
+
+          // Converter custos para a unidade
+          // efetivamente utilizada na venda.
+          let divisor = 1;
+
+          if (tipoOpcao === 'avulso') {
+
+            if (
+              unidadePrincipal === 'milheiro'
+            ) {
+              divisor = 1000;
+
+            } else if (
+              ['dúzia', 'duzia'].includes(
+                unidadePrincipal
+              )
+            ) {
+              divisor = 12;
+
+            } else {
+
+              alert(
+                'Este produto não permite venda avulsa: ' +
+                produto.nome
+              );
+
+              return;
+            }
+          }
+
+          // Preservar a precisão dos custos,
+          // especialmente ao dividir um milheiro.
+          custoUnitario =
+            custoReferencia / divisor;
+
+          custoTransporte =
+            freteReferencia / divisor;
+
+          // Exemplo:
+          // custo 730 por milheiro;
+          // venda principal de 0.5 milheiro:
+          // custo unitário 730, total 365.
+          //
+          // Venda avulsa de 500 unidades:
+          // custo unitário 0.73, total 365.
+        }
+
+        itens.push({
+          produtos_id: produto.id,
+          quantidade,
+          preco_unitario: preco,
+          tipo_opcao: tipoOpcao,
+          origem_material: origemMaterial,
+          custo_unitario: custoUnitario,
+          custo_transporte: custoTransporte
+        });
+      }
+
+      // ====================================
+      // 4. CALCULAR TOTAL
       // ====================================
 
       const totalMateriais = pcTotal();
 
       const desconto = Math.min(
-        Math.max(0, Number(state.saleDiscount) || 0),
+        Math.max(
+          0,
+          Number(state.saleDiscount) || 0
+        ),
         totalMateriais
       );
 
       const total = totalMateriais - desconto;
 
-      const itens = state.cart.map(item => ({
-        produtos_id: item.id,
-        quantidade: item.qty,
-        preco_unitario: item.price,
-        tipo_opcao: item.tipoOpcao || 'principal'
-      }));
-
       // ====================================
-      // REGISTRAR VENDA
+      // 5. REGISTRAR VENDA
       // ====================================
 
       const { data: vendaId, error } =
-        await supabaseClient.rpc('registrar_venda', {
-          p_cliente_id: state.selectedClient,
-          p_valor_total: total,
-          p_forma_pagamento: window.salePayment,
-          p_itens: itens
-        });
+        await supabaseClient.rpc(
+          'registrar_venda',
+          {
+            p_cliente_id:
+              state.selectedClient,
+
+            p_valor_total:
+              total,
+
+            p_forma_pagamento:
+              window.salePayment,
+
+            p_itens:
+              itens
+          }
+        );
 
       if (error) {
 
@@ -4386,10 +4623,12 @@ async function confirmSale() {
       }
 
       if (vendaId == null) {
+
         alert(
           'O servidor não retornou o número da venda.\n\n' +
           'Consulte o histórico de vendas antes de tentar novamente.'
         );
+
         return;
       }
 
@@ -4398,12 +4637,12 @@ async function confirmSale() {
         vendaId
       );
 
-      // Guardar o registro para evitar
-      // uma segunda venda em caso de falha.
+      // Proteger contra uma segunda venda
+      // caso a criação da entrega falhe.
       vendaPendente = {
-        vendaId: vendaId,
+        vendaId,
         tipo: window.saleType,
-        dadosEntrega: dadosEntrega
+        dadosEntrega
       };
 
       window.pcVendaRegistradaPendente =
@@ -4411,16 +4650,13 @@ async function confirmSale() {
     }
 
     // ====================================
-    // REGISTRAR ENTREGA
+    // 6. REGISTRAR ENTREGA
     // ====================================
 
     if (vendaPendente.tipo === 'entrega') {
 
       const vendaId = vendaPendente.vendaId;
 
-      // Verificar se a entrega já existe.
-      // Isso evita duplicar a entrega caso
-      // a resposta anterior tenha falhado.
       const {
         data: entregasExistentes,
         error: verificarErro
@@ -4485,6 +4721,18 @@ async function confirmSale() {
               )
             : 0;
 
+        const dados =
+          vendaPendente.dadosEntrega;
+
+        if (!dados) {
+
+          alert(
+            'A venda já foi registrada, mas os dados de localização da entrega não estão disponíveis.'
+          );
+
+          return;
+        }
+
         const { error: entregaError } =
           await supabaseClient
             .from('entregas')
@@ -4493,12 +4741,9 @@ async function confirmSale() {
               prioridade: false,
               posicao_fila: ultimaPosicao + 1,
               status: 'pendente',
-              endereço:
-                vendaPendente.dadosEntrega.endereco,
-              latitude:
-                vendaPendente.dadosEntrega.latitude,
-              longitude:
-                vendaPendente.dadosEntrega.longitude
+              endereço: dados.endereco,
+              latitude: dados.latitude,
+              longitude: dados.longitude
             });
 
         if (entregaError) {
@@ -4522,13 +4767,11 @@ async function confirmSale() {
     }
 
     // ====================================
-    // FINALIZAÇÃO
+    // 7. FINALIZAÇÃO
     // ====================================
 
     const vendaId = vendaPendente.vendaId;
 
-    // Limpar a venda pendente somente
-    // após concluir a etapa da entrega.
     window.pcVendaRegistradaPendente = null;
 
     state.cart = [];
@@ -4539,8 +4782,7 @@ async function confirmSale() {
     window.salePayment = null;
     window.saleType = null;
 
-    // Manter a impressão e a navegação
-    // utilizadas no sistema original.
+    // Preservar impressão e navegação
     abrirImpressaoVenda(vendaId, 'pago');
 
     navigate('home');
@@ -4572,11 +4814,11 @@ async function confirmSale() {
 
   } finally {
 
-    // Liberar o botão mesmo após um erro.
     window.pcConfirmandoVenda = false;
 
   }
 }
+
 
 
 
