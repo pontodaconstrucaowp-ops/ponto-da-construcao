@@ -7826,6 +7826,7 @@ async function saveProductEdit(id) {
 
 
 
+
 async function renderDeliveries(el) {
 
   if (!el) return;
@@ -7935,9 +7936,12 @@ async function renderDeliveries(el) {
           quantidade,
           unidade_venda,
           origem_material,
+          custo_unitario,
+          custo_transporte,
           controle_entrega_estoque_ativo,
           produtos (
-            nome
+            nome,
+            fornecedor_referencia
           )
         `)
         .in('vendas_id', idsVendas);
@@ -7951,17 +7955,14 @@ async function renderDeliveries(el) {
     // 3. CONSULTAR HISTÓRICO DE RECEBIMENTOS
     // =====================================
 
-    // A política atual de itens_entregues permite
-    // consulta aos administradores.
-    // Não exibimos saldos como zero para entregadores
-    // sem permissão de leitura.
-
     let recebimentos = [];
 
     if (ehAdministrador && itens.length) {
 
       const idsItens = itens
-        .filter(i => i.controle_entrega_estoque_ativo === true)
+        .filter(
+          i => i.controle_entrega_estoque_ativo === true
+        )
         .map(i => i.id);
 
       if (idsItens.length) {
@@ -7985,7 +7986,46 @@ async function renderDeliveries(el) {
     }
 
     // =====================================
-    // 4. ORGANIZAR QUANTIDADES
+    // 4. CONSULTAR COMPRAS DE REVENDA
+    // =====================================
+
+    let comprasRevenda = [];
+
+    if (ehAdministrador && itens.length) {
+
+      const idsRevenda = itens
+        .filter(
+          i =>
+            i.origem_material === 'revenda' &&
+            i.controle_entrega_estoque_ativo === true
+        )
+        .map(i => i.id);
+
+      if (idsRevenda.length) {
+
+        const { data, error } = await supabaseClient
+          .from('atendimentos_pendencias')
+          .select(`
+            id,
+            item_venda_id,
+            quantidade,
+            custo_unitario,
+            custo_transporte,
+            fornecedor_nome,
+            created_at,
+            origem_atendimento
+          `)
+          .in('item_venda_id', idsRevenda)
+          .eq('origem_atendimento', 'fornecedor');
+
+        if (error) throw error;
+
+        comprasRevenda = data || [];
+      }
+    }
+
+    // =====================================
+    // 5. ORGANIZAR HISTÓRICOS
     // =====================================
 
     const totalRecebidoPorItem = new Map();
@@ -8001,6 +8041,17 @@ async function renderDeliveries(el) {
       );
     }
 
+    const comprasPorItem = new Map();
+
+    for (const compra of comprasRevenda) {
+
+      if (!comprasPorItem.has(compra.item_venda_id)) {
+        comprasPorItem.set(compra.item_venda_id, []);
+      }
+
+      comprasPorItem.get(compra.item_venda_id).push(compra);
+    }
+
     const itensPorVenda = new Map();
 
     for (const item of itens) {
@@ -8013,7 +8064,38 @@ async function renderDeliveries(el) {
     }
 
     // =====================================
-    // 5. MONTAR TELA
+    // 6. FUNÇÃO DE REGISTRO PELA INTERFACE
+    // =====================================
+
+    window.pcConfirmarCompraRevendaTela = async function(
+      itemVendaId
+    ) {
+
+      const campo = id =>
+        document.getElementById(id + itemVendaId)?.value;
+
+      const quantidade = campo('revendaQtd_');
+      const fornecedor = campo('revendaFornecedor_');
+      const custo = campo('revendaCusto_');
+      const frete = campo('revendaFrete_');
+      const observacao = campo('revendaObs_');
+
+      const sucesso = await registrarCompraRevenda(
+        itemVendaId,
+        quantidade,
+        fornecedor,
+        custo,
+        frete,
+        observacao
+      );
+
+      if (sucesso) {
+        navigate('deliveries');
+      }
+    };
+
+    // =====================================
+    // 7. MONTAR TELA
     // =====================================
 
     const pendentes = entregas.filter(
@@ -8066,7 +8148,8 @@ async function renderDeliveries(el) {
             itensPorVenda.get(entrega.venda_id) || [];
 
           const controleNovo = materiais.some(
-            item => item.controle_entrega_estoque_ativo === true
+            item =>
+              item.controle_entrega_estoque_ativo === true
           );
 
           const statusTexto = {
@@ -8130,6 +8213,287 @@ async function renderDeliveries(el) {
               const concluido =
                 quantidadePendente <= 0;
 
+              // =================================
+              // COMPRAS DE REVENDA
+              // =================================
+
+              const ehRevenda =
+                item.origem_material === 'revenda';
+
+              const historicoCompras =
+                comprasPorItem.get(item.id) || [];
+
+              const quantidadeComprada =
+                historicoCompras.reduce(
+                  (soma, compra) =>
+                    soma + Number(compra.quantidade || 0),
+                  0
+                );
+
+              const faltaComprar = Math.max(
+                0,
+                quantidadeVendida - quantidadeComprada
+              );
+
+              const custoRealRegistrado =
+                historicoCompras.reduce((soma, compra) => {
+
+                  const qtd = Number(compra.quantidade || 0);
+
+                  const custo = Number(
+                    compra.custo_unitario || 0
+                  );
+
+                  const frete = Number(
+                    compra.custo_transporte || 0
+                  );
+
+                  return soma + qtd * (custo + frete);
+
+                }, 0);
+
+              const fornecedorReferencia = escapar(
+                item.produtos?.fornecedor_referencia || ''
+              );
+
+              const custoReferencia = Number(
+                item.custo_unitario || 0
+              );
+
+              const freteReferencia = Number(
+                item.custo_transporte || 0
+              );
+
+              const blocoRevenda = ehRevenda ? `
+
+                <div style="
+                  border-top:1px solid #e2e8f0;
+                  margin-top:16px;
+                  padding-top:14px;
+                ">
+
+                  <strong>
+                    🏭 Compra de revenda
+                  </strong>
+
+                  <p class="muted" style="margin-top:6px">
+                    Registro da compra feita no fornecedor.
+                    Não movimenta o estoque da loja nem o caixa.
+                  </p>
+
+                  <div style="
+                    display:grid;
+                    grid-template-columns:repeat(3,minmax(0,1fr));
+                    gap:8px;
+                    text-align:center;
+                    margin-top:12px;
+                  ">
+
+                    <div>
+                      <small class="muted">Vendido</small>
+                      <div>
+                        <strong>
+                          ${formatarQuantidade(quantidadeVendida)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div>
+                      <small class="muted">Comprado</small>
+                      <div style="color:#166534">
+                        <strong>
+                          ${formatarQuantidade(quantidadeComprada)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div>
+                      <small class="muted">Falta comprar</small>
+                      <div style="color:#b45309">
+                        <strong>
+                          ${formatarQuantidade(faltaComprar)}
+                        </strong>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <p class="muted" style="margin-top:10px">
+                    Custo real registrado:
+                    <strong>
+                      ${money(custoRealRegistrado)}
+                    </strong>
+                  </p>
+
+                  ${
+                    historicoCompras.length
+                      ? `
+                        <div style="
+                          margin-top:10px;
+                          padding:10px;
+                          background:#f1f5f9;
+                          border-radius:8px;
+                        ">
+                          <strong>
+                            📋 Histórico de compras
+                          </strong>
+
+                          ${historicoCompras.map(compra => `
+
+                            <p style="
+                              margin-top:8px;
+                              font-size:12px;
+                            ">
+                              ${formatarQuantidade(compra.quantidade)}
+                              ${unidade}
+                              — ${escapar(
+                                compra.fornecedor_nome ||
+                                'Fornecedor'
+                              )}
+                              <strong>
+                                ${money(
+                                  Number(compra.quantidade || 0) *
+                                  (
+                                    Number(compra.custo_unitario || 0) +
+                                    Number(compra.custo_transporte || 0)
+                                  )
+                                )}
+                              </strong>
+                            </p>
+
+                          `).join('')}
+
+                        </div>
+                      `
+                      : `
+                        <p class="muted" style="margin-top:10px">
+                          Nenhuma compra real registrada.
+                        </p>
+                      `
+                  }
+
+                  ${
+                    faltaComprar > 0 &&
+                    venda?.status === 'concluida'
+                      ? `
+
+                        <div style="
+                          padding:12px;
+                          margin-top:12px;
+                          border:1px solid #dbe5ee;
+                          border-radius:10px;
+                          background:#f8fafc;
+                        ">
+
+                          <strong>
+                            Registrar compra no fornecedor
+                          </strong>
+
+                          <div class="field" style="margin-top:12px">
+                            <label>
+                              Quantidade comprada (${unidade})
+                            </label>
+
+                            <input
+                              type="number"
+                              id="revendaQtd_${item.id}"
+                              min="0"
+                              max="${faltaComprar}"
+                              step="any"
+                              value="${faltaComprar}"
+                            >
+                          </div>
+
+                          <div class="field" style="margin-top:12px">
+                            <label>Fornecedor</label>
+
+                            <input
+                              type="text"
+                              id="revendaFornecedor_${item.id}"
+                              value="${fornecedorReferencia}"
+                              placeholder="Nome do fornecedor"
+                            >
+                          </div>
+
+                          <div class="field" style="margin-top:12px">
+                            <label>
+                              Custo por ${unidade} (R$)
+                            </label>
+
+                            <input
+                              type="number"
+                              id="revendaCusto_${item.id}"
+                              min="0.000001"
+                              step="any"
+                              value="${custoReferencia}"
+                            >
+                          </div>
+
+                          <div class="field" style="margin-top:12px">
+                            <label>
+                              Transporte por ${unidade} (R$)
+                            </label>
+
+                            <input
+                              type="number"
+                              id="revendaFrete_${item.id}"
+                              min="0"
+                              step="any"
+                              value="${freteReferencia}"
+                            >
+                          </div>
+
+                          <div class="field" style="margin-top:12px">
+                            <label>Observação (opcional)</label>
+
+                            <input
+                              type="text"
+                              id="revendaObs_${item.id}"
+                              placeholder="Ex.: Compra no fornecedor"
+                            >
+                          </div>
+
+                          <button
+                            type="button"
+                            class="primary"
+                            style="
+                              width:100%;
+                              margin-top:14px;
+                            "
+                            onclick="
+                              pcConfirmarCompraRevendaTela('${item.id}')
+                            "
+                          >
+                            🏭 Registrar compra de revenda
+                          </button>
+
+                        </div>
+
+                      `
+                      : `
+                        <p style="
+                          margin-top:12px;
+                          color:#166534;
+                          font-weight:600;
+                          font-size:12px;
+                        ">
+                          ${
+                            faltaComprar <= 0
+                              ? '✅ Compra integral registrada'
+                              : 'Registro indisponível para esta venda'
+                          }
+                        </p>
+                      `
+                  }
+
+                </div>
+
+              ` : '';
+
+              // =================================
+              // MATERIAL E RECEBIMENTO
+              // =================================
+
               return `
 
                 <div style="
@@ -8184,139 +8548,146 @@ async function renderDeliveries(el) {
 
                   </div>
 
-<p style="
-  margin-top:10px;
-  font-size:12px;
-  font-weight:600;
-  color:${concluido ? '#166534' : '#b45309'};
-">
-  ${concluido
-    ? '✅ Material totalmente recebido'
-    : '⏳ Recebimento pendente'}
-</p>
+                  <p style="
+                    margin-top:10px;
+                    font-size:12px;
+                    font-weight:600;
+                    color:${concluido ? '#166534' : '#b45309'};
+                  ">
+                    ${
+                      concluido
+                        ? '✅ Material totalmente recebido'
+                        : '⏳ Recebimento pendente'
+                    }
+                  </p>
 
-${
-  !concluido &&
-  entrega.status === 'em_rota' &&
-  item.controle_entrega_estoque_ativo === true
-    ? `
+                  ${
+                    !concluido &&
+                    entrega.status === 'em_rota' &&
+                    item.controle_entrega_estoque_ativo === true
+                      ? `
 
-    <div style="
-      margin-top:14px;
-      padding-top:14px;
-      border-top:1px solid #e2e8f0;
-    ">
+                        <div style="
+                          margin-top:14px;
+                          padding-top:14px;
+                          border-top:1px solid #e2e8f0;
+                        ">
 
-      <strong>
-        📦 Registrar recebimento
-      </strong>
+                          <strong>
+                            📦 Registrar recebimento
+                          </strong>
 
-      <p class="muted" style="margin-top:8px">
-        Informe quanto o cliente realmente recebeu.
-      </p>
+                          <p class="muted" style="margin-top:8px">
+                            Informe quanto o cliente realmente recebeu.
+                          </p>
 
-      <div class="field" style="margin-top:12px">
+                          <div class="field" style="margin-top:12px">
+                            <label>
+                              Quantidade recebida (${unidade})
+                            </label>
 
-        <label>
-          Quantidade recebida (${unidade})
-        </label>
+                            <input
+                              type="number"
+                              id="recebido_${item.id}"
+                              min="0"
+                              max="${quantidadePendente}"
+                              step="any"
+                              placeholder="Ex.: 0,25"
+                              oninput="
+                                const campoProprio =
+                                  document.getElementById(
+                                    'proprio_${item.id}'
+                                  );
 
-<input
-  type="number"
-  id="recebido_${item.id}"
-  min="0"
-  max="${quantidadePendente}"
-  step="any"
-  placeholder="Ex.: 5"
-  oninput="
-    const campoProprio =
-      document.getElementById('proprio_${item.id}');
+                                if (
+                                  campoProprio &&
+                                  !campoProprio.disabled
+                                ) {
+                                  campoProprio.value = this.value;
+                                }
+                              "
+                            >
+                          </div>
 
-    if (
-      campoProprio &&
-      !campoProprio.disabled
-    ) {
-      campoProprio.value = this.value;
-    }
-  "
->
+                          <div class="field" style="margin-top:12px">
+                            <label>
+                              Quantidade de estoque próprio (${unidade})
+                            </label>
 
-      </div>
+                            <input
+                              type="number"
+                              id="proprio_${item.id}"
+                              min="0"
+                              max="${quantidadePendente}"
+                              step="any"
+                              value="0"
+                              ${
+                                ehRevenda ? 'disabled' : ''
+                              }
+                            >
 
-      <div class="field" style="margin-top:12px">
+                            <small class="muted">
+                              ${
+                                ehRevenda
+                                  ? 'Material de revenda: não desconta estoque próprio.'
+                                  : 'Informe apenas a parte que saiu do estoque próprio.'
+                              }
+                            </small>
+                          </div>
 
-        <label>
-          Quantidade de estoque próprio (${unidade})
-        </label>
+                          <div class="field" style="margin-top:12px">
+                            <label>Observação (opcional)</label>
 
-        <input
-          type="number"
-          id="proprio_${item.id}"
-          min="0"
-          max="${quantidadePendente}"
-          step="any"
-          value="0"
-          ${item.origem_material === 'revenda'
-            ? 'disabled'
-            : ''}
-        >
+                            <input
+                              type="text"
+                              id="observacao_${item.id}"
+                              placeholder="Ex.: Primeira viagem"
+                            >
+                          </div>
 
-        <small class="muted">
-          ${
-            item.origem_material === 'revenda'
-              ? 'Material de revenda: não desconta estoque próprio.'
-              : 'Informe apenas a parte que saiu do estoque próprio.'
-          }
-        </small>
+                          <button
+                            type="button"
+                            class="primary"
+                            style="
+                              width:100%;
+                              margin-top:14px;
+                            "
+                            onclick="
+                              confirmarRecebimentoParcial(
+                                ${Number(entrega.id)},
+                                '${item.id}',
+                                document.getElementById(
+                                  'recebido_${item.id}'
+                                ).value,
+                                document.getElementById(
+                                  'proprio_${item.id}'
+                                ).value,
+                                document.getElementById(
+                                  'observacao_${item.id}'
+                                ).value
+                              )
+                            "
+                          >
+                            ✅ Confirmar recebimento parcial
+                          </button>
 
-      </div>
+                        </div>
 
-      <div class="field" style="margin-top:12px">
+                      `
+                      : ''
+                  }
 
-        <label>
-          Observação (opcional)
-        </label>
-
-        <input
-          type="text"
-          id="observacao_${item.id}"
-          placeholder="Ex.: Primeira viagem"
-        >
-
-      </div>
-
-      <button
-        type="button"
-        class="primary"
-        style="
-          width:100%;
-          margin-top:14px;
-        "
-        onclick="
-          confirmarRecebimentoParcial(
-            ${Number(entrega.id)},
-            '${item.id}',
-            document.getElementById('recebido_${item.id}').value,
-            document.getElementById('proprio_${item.id}').value,
-            document.getElementById('observacao_${item.id}').value
-          )
-        "
-      >
-        ✅ Confirmar recebimento parcial
-      </button>
-
-    </div>
-
-  `
-    : ''
-}
+                  ${blocoRevenda}
 
                 </div>
               `;
 
             }).join('');
-
           }
+
+          // =================================
+          // CARTÃO DA ENTREGA
+          // =================================
 
           return `
 
@@ -8422,36 +8793,34 @@ ${
 
                 ` : ''}
 
+                ${entrega.status === 'em_rota' ? `
 
-${entrega.status === 'em_rota' ? `
+                  <button
+                    type="button"
+                    class="primary"
+                    onclick="nextDelivery(${Number(entrega.id)})"
+                    style="
+                      background:#166534;
+                      color:white;
+                      font-weight:700;
+                    "
+                  >
+                    ✅ Finalizar entrega
+                  </button>
 
-  <button
-    type="button"
-    class="primary"
-    onclick="nextDelivery(${Number(entrega.id)})"
-    style="
-      background:#166534;
-      color:white;
-      font-weight:700;
-    "
-  >
-    ✅ Finalizar entrega
-  </button>
+                  <p
+                    class="muted"
+                    style="
+                      font-size:12px;
+                      margin-top:8px;
+                    "
+                  >
+                    A finalização somente será permitida
+                    quando todos os materiais estiverem
+                    registrados como recebidos.
+                  </p>
 
-  <p
-    class="muted"
-    style="
-      font-size:12px;
-      margin-top:8px;
-    "
-  >
-    A finalização somente será permitida
-    quando todos os materiais estiverem
-    registrados como recebidos.
-  </p>
-
-` : ''}
-
+                ` : ''}
 
               </div>
 
@@ -8485,6 +8854,7 @@ ${entrega.status === 'em_rota' ? `
   }
 
 }
+
 
 const chavesRecebimentoPendente = new Map();
 
