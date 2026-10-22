@@ -11669,86 +11669,102 @@ function renderMore(el) {
     state.user?.tipo === 'admin' ||
     state.user?.tipo === 'administrador';
 
-  const escapar = valor =>
-    String(valor ?? '').replace(/[&<>"']/g, c => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[c]));
+  const escapar = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 
   el.innerHTML = `
     <div class="list">
       <button class="card" onclick="navigate('clients')">
-        <strong>Clientes</strong>
-        <span class="muted">Cadastro e histórico</span>
+        <strong>Clientes</strong><span class="muted">Cadastro e histórico</span>
       </button>
-
       ${ehAdministrador ? `
         <button class="card" onclick="navigate('receivables')">
           <strong>💰 Contas a receber</strong>
-          <span class="muted">
-            Dívidas dos clientes e registro de pagamentos
-          </span>
+          <span class="muted">Dívidas dos clientes e registro de pagamentos</span>
         </button>
-
         <button class="card" type="button" id="abrirComprasDeposito">
           <strong>📦 Compras do depósito</strong>
-          <span class="muted">Consultar compras realizadas e valores registrados</span>
+          <span class="muted">Compras de fornecedores para abastecer o depósito</span>
         </button>
         <div id="painelComprasDeposito" style="display:none;margin:4px 0 14px">
           <div class="card" style="border:1px solid #cbd5e1">
             <h2>📦 Compras do depósito</h2>
-            <p class="muted">Consulta de compras registradas. Nesta etapa não é possível registrar recebimentos ou alterar o estoque.</p>
+            <p class="muted">Cadastre compras com vários materiais. O estoque só será alterado quando o recebimento for confirmado.</p>
+            <button type="button" class="primary" id="botaoNovaCompraDeposito">＋ Nova compra</button>
+            <div id="formNovaCompraDeposito" style="display:none;margin-top:16px;border-top:1px solid #e2e8f0;padding-top:16px">
+              <h3>Nova compra de fornecedor</h3>
+              <label for="compraFornecedorDeposito">Fornecedor</label>
+              <input id="compraFornecedorDeposito" placeholder="Nome do fornecedor" autocomplete="off" style="width:100%;margin:6px 0 12px" maxlength="160">
+              <label for="compraObservacaoDeposito">Observação (opcional)</label>
+              <input id="compraObservacaoDeposito" placeholder="Ex.: pedido para reposição do depósito" style="width:100%;margin:6px 0 12px" maxlength="500">
+              <label for="compraPesquisarProduto">Pesquisar material</label>
+              <input id="compraPesquisarProduto" placeholder="Digite o nome do produto" autocomplete="off" style="width:100%;margin:6px 0 8px">
+              <div id="compraProdutosBusca" style="max-height:230px;overflow-y:auto"></div>
+              <h3 style="margin-top:16px">Materiais da compra</h3>
+              <div id="compraItensSelecionados"><p class="muted">Nenhum material adicionado.</p></div>
+              <div style="margin:12px 0;font-weight:bold" id="compraTotalDeposito">Total: R$ 0,00</div>
+              <p class="muted" style="font-size:12px">O custo informado é por unidade de compra (por saco, m³, dúzia ou peça). Nenhuma entrada de estoque ou pagamento será feito aqui.</p>
+              <div id="compraMensagemDeposito" role="status" aria-live="polite"></div>
+              <div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="primary" id="salvarCompraDeposito">✅ Registrar compra</button>
+                <button type="button" class="secondary" id="cancelarCompraDeposito">Cancelar</button>
+              </div>
+            </div>
+            <h3 style="margin-top:22px">Compras registradas</h3>
             <button type="button" class="secondary" id="recarregarComprasDeposito">🔄 Atualizar compras</button>
             <div id="listaComprasDeposito" style="margin-top:14px" aria-live="polite"></div>
           </div>
         </div>
       ` : ''}
-
       <button class="card" onclick="navigate('cash')">
-        <strong>Caixa / Financeiro</strong>
-        <span class="muted">Entradas, saídas e saldo</span>
+        <strong>Caixa / Financeiro</strong><span class="muted">Entradas, saídas e saldo</span>
       </button>
-
       <button class="card" onclick="navigate('reports')">
-        <strong>Relatórios</strong>
-        <span class="muted">Resumo de vendas e operação</span>
+        <strong>Relatórios</strong><span class="muted">Resumo de vendas e operação</span>
       </button>
-
       ${ehAdministrador ? `
         <button class="card" onclick="navigate('observations')">
-          <strong>📝 Observações</strong>
-          <span class="muted">
-            Anotações, lembretes, datas e horários
-          </span>
+          <strong>📝 Observações</strong><span class="muted">Anotações, lembretes, datas e horários</span>
         </button>
       ` : ''}
-
       <button class="card" onclick="navigate('settings')">
-        <strong>Configurações</strong>
-        <span class="muted">Usuários e preferências</span>
+        <strong>Configurações</strong><span class="muted">Usuários e preferências</span>
       </button>
     </div>
-
-
   `;
 
   if (!ehAdministrador) return;
 
-  const botaoAbrir = el.querySelector('#abrirComprasDeposito');
-  const painel = el.querySelector('#painelComprasDeposito');
-  const lista = el.querySelector('#listaComprasDeposito');
-  const botaoAtualizar = el.querySelector('#recarregarComprasDeposito');
+  const $ = seletor => el.querySelector(seletor);
+  const painel = $('#painelComprasDeposito');
+  const formulario = $('#formNovaCompraDeposito');
+  const lista = $('#listaComprasDeposito');
+  const busca = $('#compraPesquisarProduto');
+  const mensagem = $('#compraMensagemDeposito');
+  const salvar = $('#salvarCompraDeposito');
+  const cancelar = $('#cancelarCompraDeposito');
+  const moeda = valor => money(Number(valor) || 0);
+  const itens = [];
+  let produtos = [];
   let carregando = false;
+  let salvando = false;
+  let chavePendente = null;
+  let assinaturaPendente = null;
+
+  const marcarMudanca = () => {
+    // Não reaproveitar chave de uma compra se o conteúdo foi alterado.
+    chavePendente = null;
+    assinaturaPendente = null;
+    mensagem.textContent = '';
+  };
 
   async function consultarComprasDeposito() {
     if (carregando || !lista?.isConnected) return;
     carregando = true;
-    if (botaoAtualizar) botaoAtualizar.disabled = true;
+    const atualizar = $('#recarregarComprasDeposito');
+    atualizar.disabled = true;
     lista.textContent = 'Consultando compras...';
-
     try {
       const { data, error } = await supabaseClient
         .from('compras')
@@ -11756,59 +11772,212 @@ function renderMore(el) {
         .order('data', { ascending: false })
         .order('id', { ascending: false })
         .limit(100);
-
       if (error) throw error;
       if (!lista.isConnected || state.page !== 'more') return;
-
-      const compras = data || [];
-      if (!compras.length) {
-        lista.innerHTML = '<p class="muted">Nenhuma compra do depósito registrada até o momento.</p>';
+      if (!data?.length) {
+        lista.textContent = 'Nenhuma compra do depósito registrada até o momento.';
         return;
       }
-
-      const formatoValor = valor => {
-        const numero = Number(valor);
-        return Number.isFinite(numero) ? money(numero) : 'Valor indisponível';
-      };
-
-      lista.innerHTML = compras.map(compra => {
+      lista.innerHTML = data.map(compra => {
         const dataCompra = compra.data ? new Date(compra.data) : null;
-        const dataTexto = dataCompra && !Number.isNaN(dataCompra.getTime())
-          ? dataCompra.toLocaleString('pt-BR')
-          : 'Data não informada';
-
-        return `
-          <div style="border-top:1px solid #e2e8f0;padding:12px 0">
-            <strong>Compra #${escapar(compra.id)} · ${escapar(compra.fornecedor || 'Fornecedor não informado')}</strong>
-            <div class="muted" style="margin-top:5px">${escapar(dataTexto)}</div>
-            <div style="margin-top:6px"><strong>${escapar(formatoValor(compra.valor_total))}</strong></div>
-            ${compra.observacao ? `<div class="muted" style="margin-top:5px">${escapar(compra.observacao)}</div>` : ''}
-          </div>
-        `;
+        const quando = dataCompra && !isNaN(dataCompra.getTime())
+          ? dataCompra.toLocaleString('pt-BR') : 'Data não informada';
+        return `<div style="border-top:1px solid #e2e8f0;padding:12px 0">
+          <strong>Compra #${escapar(compra.id)} · ${escapar(compra.fornecedor || 'Fornecedor não informado')}</strong>
+          <div class="muted" style="margin-top:5px">${escapar(quando)}</div>
+          <div style="margin-top:6px"><strong>${escapar(moeda(compra.valor_total))}</strong></div>
+          ${compra.observacao ? `<div class="muted" style="margin-top:5px">${escapar(compra.observacao)}</div>` : ''}
+        </div>`;
       }).join('');
     } catch (erro) {
       console.error('Erro ao consultar compras do depósito:', erro);
-      if (lista.isConnected) {
-        lista.textContent = 'Não foi possível consultar as compras. Verifique a permissão de leitura da tabela compras e tente novamente.';
-      }
+      if (lista.isConnected) lista.textContent = 'Erro ao consultar compras: ' + (erro.message || 'Verifique a conexão.');
     } finally {
       carregando = false;
-      if (botaoAtualizar?.isConnected) botaoAtualizar.disabled = false;
+      if (atualizar.isConnected) atualizar.disabled = false;
     }
   }
 
-  botaoAbrir?.addEventListener('click', () => {
+  function unidadePadrao(produto) {
+    const normalizar = valor => String(valor || '').trim().toLowerCase().replace('duzia', 'dúzia');
+    return normalizar(produto.unidade) || 'unidade';
+  }
+
+  function renderizarItens() {
+    const destino = $('#compraItensSelecionados');
+    destino.innerHTML = itens.length ? itens.map((item, i) => {
+      const produto = produtos.find(p => p.id === item.produto_id);
+      const podePecas = produto?.estoque_unificado === true;
+      const unidade = unidadePadrao(produto || {});
+      const opcoes = podePecas ? ['dúzia', 'unidade'] : [unidade];
+      const subtotal = Number(item.quantidade) * Number(item.custo_unitario);
+      return `<div data-indice="${i}" style="border:1px solid #dbe2ea;border-radius:10px;padding:12px;margin-bottom:9px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <strong>${escapar(produto?.nome || 'Produto')}</strong>
+          <button type="button" class="secondary" data-remover="${i}" style="padding:6px 10px">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+          <div><label>Quantidade</label><input type="number" data-quantidade="${i}" min="0.001" step="any" value="${escapar(item.quantidade)}" style="width:100%"></div>
+          <div><label>Unidade</label><select data-unidade="${i}" style="width:100%">${opcoes.map(u => `<option value="${escapar(u)}" ${item.unidade_compra === u ? 'selected' : ''}>${escapar(u)}</option>`).join('')}</select></div>
+          <div style="grid-column:1 / -1"><label>Custo por ${escapar(item.unidade_compra)} (R$)</label><input type="number" data-custo="${i}" min="0.01" step="0.01" value="${escapar(item.custo_unitario)}" style="width:100%"></div>
+        </div>
+        <div style="margin-top:8px" class="muted">Subtotal: ${escapar(moeda(subtotal))}</div>
+      </div>`;
+    }).join('') : '<p class="muted">Nenhum material adicionado.</p>';
+    const total = itens.reduce((s, item) => s + Math.round(Number(item.quantidade) * Number(item.custo_unitario) * 100) / 100, 0);
+    $('#compraTotalDeposito').textContent = 'Total: ' + moeda(total);
+  }
+
+  function renderizarBusca() {
+    const termo = (busca.value || '').trim().toLocaleLowerCase('pt-BR');
+    const destino = $('#compraProdutosBusca');
+    if (!termo) {
+      destino.innerHTML = '<p class="muted">Digite parte do nome para localizar um material.</p>';
+      return;
+    }
+    const encontrados = produtos.filter(p =>
+      String(p.nome || '').toLocaleLowerCase('pt-BR').includes(termo)
+      && !itens.some(i => i.produto_id === p.id)
+    ).slice(0, 20);
+    destino.innerHTML = encontrados.length ? encontrados.map(p => `
+      <button type="button" class="secondary" data-adicionar="${p.id}" style="display:block;width:100%;text-align:left;margin:4px 0">
+        ＋ ${escapar(p.nome)} <small class="muted">(${escapar(unidadePadrao(p))})</small>
+      </button>
+    `).join('') : '<p class="muted">Nenhum produto encontrado.</p>';
+  }
+
+  async function carregarProdutos() {
+    busca.disabled = true;
+    $('#compraProdutosBusca').textContent = 'Carregando materiais...';
+    try {
+      const { data, error } = await supabaseClient
+        .from('produtos')
+        .select('id,nome,unidade,estoque_unificado')
+        .eq('ativo', true)
+        .eq('controla_estoque', true)
+        .order('nome', { ascending: true });
+      if (error) throw error;
+      produtos = data || [];
+      renderizarBusca();
+    } catch (erro) {
+      console.error('Erro ao consultar produtos para compra:', erro);
+      $('#compraProdutosBusca').textContent = 'Erro ao carregar produtos: ' + (erro.message || 'Tente novamente.');
+    } finally {
+      busca.disabled = false;
+    }
+  }
+
+  $('#abrirComprasDeposito').addEventListener('click', () => {
     const abrir = painel.style.display === 'none';
     painel.style.display = abrir ? 'block' : 'none';
     if (abrir) {
-      painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       consultarComprasDeposito();
+      painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   });
+  $('#recarregarComprasDeposito').addEventListener('click', consultarComprasDeposito);
+  $('#botaoNovaCompraDeposito').addEventListener('click', async () => {
+    formulario.style.display = formulario.style.display === 'none' ? 'block' : 'none';
+    if (formulario.style.display === 'block' && !produtos.length) await carregarProdutos();
+    if (formulario.style.display === 'block') formulario.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  cancelar.addEventListener('click', () => {
+    if (salvando) return;
+    formulario.style.display = 'none';
+  });
+  $('#compraFornecedorDeposito').addEventListener('input', marcarMudanca);
+  $('#compraObservacaoDeposito').addEventListener('input', marcarMudanca);
+  busca.addEventListener('input', renderizarBusca);
+  $('#compraProdutosBusca').addEventListener('click', evento => {
+    const botao = evento.target.closest('button[data-adicionar]');
+    if (!botao || salvando) return;
+    const produto = produtos.find(p => p.id === Number(botao.dataset.adicionar));
+    if (!produto || itens.some(i => i.produto_id === produto.id)) return;
+    itens.push({ produto_id: produto.id, quantidade: 1, custo_unitario: 0, unidade_compra: unidadePadrao(produto) });
+    marcarMudanca();
+    renderizarItens();
+    renderizarBusca();
+  });
+  $('#compraItensSelecionados').addEventListener('click', evento => {
+    const botao = evento.target.closest('button[data-remover]');
+    if (!botao || salvando) return;
+    itens.splice(Number(botao.dataset.remover), 1);
+    marcarMudanca();
+    renderizarItens();
+    renderizarBusca();
+  });
+  $('#compraItensSelecionados').addEventListener('change', evento => {
+    if (salvando) return;
+    const campo = evento.target;
+    const tipo = campo.hasAttribute('data-quantidade') ? 'quantidade'
+      : campo.hasAttribute('data-custo') ? 'custo_unitario'
+      : campo.hasAttribute('data-unidade') ? 'unidade_compra' : null;
+    if (!tipo) return;
+    const indice = Number(campo.getAttribute('data-quantidade') ?? campo.getAttribute('data-custo') ?? campo.getAttribute('data-unidade'));
+    if (!itens[indice]) return;
+    itens[indice][tipo] = tipo === 'unidade_compra' ? campo.value : Number(campo.value);
+    marcarMudanca();
+    renderizarItens();
+  });
 
-  botaoAtualizar?.addEventListener('click', consultarComprasDeposito);
+  salvar.addEventListener('click', async () => {
+    if (salvando) return;
+    const fornecedor = $('#compraFornecedorDeposito').value.trim();
+    const observacao = $('#compraObservacaoDeposito').value.trim() || null;
+    if (fornecedor.length < 2) { alert('Informe o fornecedor.'); return; }
+    if (!itens.length) { alert('Adicione ao menos um material.'); return; }
+    const dados = [];
+    for (const item of itens) {
+      const p = produtos.find(p => p.id === item.produto_id);
+      const q = Number(item.quantidade), custo = Number(item.custo_unitario);
+      const fisica = p?.estoque_unificado === true && item.unidade_compra === 'dúzia' ? q * 12 : q;
+      const exigeInteiro = p?.estoque_unificado === true || !['m³', 'kg'].includes(item.unidade_compra);
+      if (!p || !Number.isFinite(q) || q <= 0 || !Number.isFinite(custo) || custo <= 0 || Math.round(custo * 100) !== custo * 100 && Math.abs(Math.round(custo * 100) - custo * 100) > 1e-7 || (exigeInteiro && !Number.isInteger(fisica))) {
+        alert('Confira a quantidade e o custo (até 2 casas decimais) de: ' + (p?.nome || 'produto não encontrado'));
+        return;
+      }
+      dados.push({ produto_id: item.produto_id, quantidade: q, custo_unitario: custo, unidade_compra: item.unidade_compra });
+    }
+    const assinatura = JSON.stringify({ fornecedor, observacao, dados });
+    if (assinatura !== assinaturaPendente) {
+      if (!globalThis.crypto?.randomUUID) { alert('O navegador não oferece geração segura de identificador de compra.'); return; }
+      chavePendente = crypto.randomUUID();
+      assinaturaPendente = assinatura;
+    }
+    if (!window.confirm('Registrar esta compra? O estoque NÃO será alterado até a confirmação de recebimento.')) return;
+    salvando = true;
+    salvar.disabled = true;
+    cancelar.disabled = true;
+    mensagem.textContent = 'Registrando compra...';
+    try {
+      const { data, error } = await supabaseClient.rpc('registrar_compra_deposito', {
+        p_fornecedor: fornecedor,
+        p_itens: dados,
+        p_observacao: observacao,
+        p_chave_confirmacao: chavePendente
+      });
+      if (error) throw error;
+      mensagem.textContent = '✅ Compra #' + data + ' registrada com sucesso. Estoque ainda não alterado.';
+      itens.length = 0;
+      $('#compraFornecedorDeposito').value = '';
+      $('#compraObservacaoDeposito').value = '';
+      $('#compraPesquisarProduto').value = '';
+      assinaturaPendente = null;
+      chavePendente = null;
+      renderizarItens();
+      renderizarBusca();
+      await consultarComprasDeposito();
+    } catch (erro) {
+      console.error('Erro ao registrar compra do depósito:', erro);
+      mensagem.textContent = '❌ Não foi possível confirmar a compra: ' + (erro.message || 'Verifique a conexão.');
+      // A mesma chave é preservada para uma tentativa idêntica, evitando duplicidade.
+    } finally {
+      salvando = false;
+      salvar.disabled = false;
+      cancelar.disabled = false;
+    }
+  });
 }
-
 async function renderReceivables(el) {
 
   const ehAdministrador =
