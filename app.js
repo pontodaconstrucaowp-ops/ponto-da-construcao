@@ -11687,6 +11687,29 @@ function renderMore(el) {
           <strong>📦 Compras do depósito</strong>
           <span class="muted">Compras de fornecedores para abastecer o depósito</span>
         </button>
+        <button class="card" type="button" id="abrirInventarioDeposito">
+          <strong>📋 Inventário do depósito</strong>
+          <span class="muted">Definir o estoque físico de vários materiais em lote</span>
+        </button>
+        <div id="painelInventarioDeposito" style="display:none;margin:4px 0 14px">
+          <div class="card" style="border:1px solid #cbd5e1">
+            <h2>📋 Inventário do depósito</h2>
+            <p class="muted">Informe a quantidade física contada de cada material. Os valores SUBSTITUEM o estoque atual e não registram compras ou pagamentos.</p>
+            <label for="inventarioBusca">Pesquisar material</label>
+            <input id="inventarioBusca" placeholder="Digite o nome do material" style="width:100%;margin:6px 0 8px" autocomplete="off">
+            <div id="inventarioResultados" style="max-height:240px;overflow:auto"></div>
+            <h3 style="margin-top:18px">Materiais selecionados</h3>
+            <div id="inventarioSelecionados"><p class="muted">Nenhum material selecionado.</p></div>
+            <label for="inventarioObservacao">Observação</label>
+            <input id="inventarioObservacao" placeholder="Ex.: Contagem geral do depósito (teste)" maxlength="500" style="width:100%;margin:6px 0 12px">
+            <p class="muted" style="font-size:12px">Nenhum ajuste é efetuado até a confirmação. Utilize os dados fictícios com cuidado: o ajuste modifica o banco de testes.</p>
+            <div id="inventarioMensagem" role="status" aria-live="polite"></div>
+            <button type="button" class="primary" id="inventarioConfirmar">✅ Confirmar inventário</button>
+            <h3 style="margin-top:22px">Últimos inventários</h3>
+            <button type="button" class="secondary" id="inventarioAtualizar">🔄 Atualizar histórico</button>
+            <div id="inventarioHistorico" style="margin-top:12px"></div>
+          </div>
+        </div>
         <div id="painelComprasDeposito" style="display:none;margin:4px 0 14px">
           <div class="card" style="border:1px solid #cbd5e1">
             <h2>📦 Compras do depósito</h2>
@@ -12121,6 +12144,205 @@ function renderMore(el) {
       cancelar.disabled = false;
     }
   });
+
+
+  // =====================================
+  // INVENTÁRIO FÍSICO EM LOTE
+  // =====================================
+  const inventarioPainel = $('#painelInventarioDeposito');
+  const inventarioBusca = $('#inventarioBusca');
+  const inventarioResultados = $('#inventarioResultados');
+  const inventarioSelecionados = $('#inventarioSelecionados');
+  const inventarioMensagem = $('#inventarioMensagem');
+  const inventarioBotao = $('#inventarioConfirmar');
+  const inventarioItens = new Map();
+  let inventarioProdutos = [];
+  let inventarioSalvando = false;
+  let inventarioPendente = null;
+  const inventarioNumero = numero => Number(numero).toLocaleString('pt-BR', {maximumFractionDigits:3});
+
+  function inventarioUnidadePadrao(produto) {
+    return produto.estoque_unificado === true ? 'unidade' : String(produto.unidade || 'unidade').trim().toLowerCase();
+  }
+
+  function inventarioFator(produto, unidade) {
+    return produto.estoque_unificado === true && unidade === 'dúzia' ? 12 : 1;
+  }
+
+  function inventarioDesenharBusca() {
+    const termo = (inventarioBusca.value || '').trim().toLocaleLowerCase('pt-BR');
+    if (!termo) {
+      inventarioResultados.textContent = 'Pesquise um material para adicioná-lo à contagem.';
+      return;
+    }
+    const encontrados = inventarioProdutos.filter(p =>
+      p.nome.toLocaleLowerCase('pt-BR').includes(termo) && !inventarioItens.has(p.id)
+    ).slice(0, 20);
+    inventarioResultados.innerHTML = encontrados.length
+      ? encontrados.map(p => `<button type="button" class="secondary" data-inventario-adicionar="${p.id}" style="display:block;width:100%;text-align:left;margin:5px 0">＋ ${escapar(p.nome)} · Atual: ${inventarioNumero(p.estoque)} ${p.estoque_unificado ? 'peças' : escapar(p.unidade)}</button>`).join('')
+      : '<p class="muted">Nenhum material encontrado.</p>';
+  }
+
+  function inventarioDesenharItens() {
+    if (!inventarioItens.size) {
+      inventarioSelecionados.innerHTML = '<p class="muted">Nenhum material selecionado.</p>';
+      return;
+    }
+    inventarioSelecionados.innerHTML = [...inventarioItens.entries()].map(([id, item]) => {
+      const p = inventarioProdutos.find(p => p.id === id);
+      if (!p) return '';
+      const opcoes = p.estoque_unificado === true
+        ? `<select data-inv-unidade="${id}" style="max-width:140px"><option value="unidade" ${item.unidade === 'unidade' ? 'selected' : ''}>peças</option><option value="dúzia" ${item.unidade === 'dúzia' ? 'selected' : ''}>dúzias</option></select>`
+        : `<strong>${escapar(p.unidade)}</strong>`;
+      return `<div style="border:1px solid #dbe2ea;border-radius:10px;padding:12px;margin-bottom:8px">
+        <strong>${escapar(p.nome)}</strong>
+        <p class="muted">Estoque atual: ${inventarioNumero(p.estoque)} ${p.estoque_unificado ? 'peças' : escapar(p.unidade)}</p>
+        <div style="display:flex;align-items:end;gap:8px;flex-wrap:wrap">
+          <div><label for="invQuantidade${id}">Contagem física</label><input id="invQuantidade${id}" data-inv-qtd="${id}" type="number" min="0" step="any" value="${escapar(item.quantidade)}" style="width:130px;display:block"></div>
+          <div>${opcoes}</div>
+          <button type="button" class="secondary" data-inv-remover="${id}">Remover</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function inventarioRegistrarMudanca() {
+    inventarioPendente = null;
+    inventarioMensagem.textContent = '';
+  }
+
+  inventarioResultados.addEventListener('click', evento => {
+    const botao = evento.target.closest('button[data-inventario-adicionar]');
+    if (!botao || inventarioSalvando) return;
+    const id = Number(botao.dataset.inventarioAdicionar);
+    const p = inventarioProdutos.find(p => p.id === id);
+    if (!p || inventarioItens.has(id)) return;
+    inventarioItens.set(id, {quantidade: String(p.estoque), unidade: inventarioUnidadePadrao(p)});
+    inventarioRegistrarMudanca();
+    inventarioDesenharBusca();
+    inventarioDesenharItens();
+  });
+
+  inventarioSelecionados.addEventListener('click', evento => {
+    const botao = evento.target.closest('button[data-inv-remover]');
+    if (!botao || inventarioSalvando) return;
+    inventarioItens.delete(Number(botao.dataset.invRemover));
+    inventarioRegistrarMudanca();
+    inventarioDesenharItens();
+    inventarioDesenharBusca();
+  });
+
+  inventarioSelecionados.addEventListener('input', evento => {
+    const campo = evento.target.closest('[data-inv-qtd]');
+    if (!campo || inventarioSalvando) return;
+    const item = inventarioItens.get(Number(campo.dataset.invQtd));
+    if (item) { item.quantidade = campo.value; inventarioRegistrarMudanca(); }
+  });
+  inventarioSelecionados.addEventListener('change', evento => {
+    const campo = evento.target.closest('[data-inv-unidade]');
+    if (!campo || inventarioSalvando) return;
+    const item = inventarioItens.get(Number(campo.dataset.invUnidade));
+    if (item) { item.unidade = campo.value; inventarioRegistrarMudanca(); }
+  });
+  inventarioBusca.addEventListener('input', inventarioDesenharBusca);
+  $('#inventarioObservacao').addEventListener('input', inventarioRegistrarMudanca);
+
+  async function inventarioCarregarProdutos() {
+    inventarioResultados.textContent = 'Carregando produtos...';
+    const todos = [];
+    for (let pagina = 0; ; pagina++) {
+      const { data, error } = await supabaseClient.from('produtos')
+        .select('id,nome,unidade,estoque,estoque_unificado,controla_estoque,ativo')
+        .eq('ativo', true).eq('controla_estoque', true)
+        .order('nome', {ascending:true})
+        .range(pagina * 1000, pagina * 1000 + 999);
+      if (error) throw error;
+      todos.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    inventarioProdutos = todos.filter(p => Number.isFinite(Number(p.estoque)) && p.estoque !== null);
+    inventarioDesenharBusca();
+  }
+
+  async function inventarioHistoricoAtualizar() {
+    const destino = $('#inventarioHistorico');
+    destino.textContent = 'Consultando histórico...';
+    try {
+      const {data,error} = await supabaseClient.from('inventarios_estoque')
+        .select('id,created_at,observacao').order('id',{ascending:false}).limit(30);
+      if (error) throw error;
+      destino.innerHTML = data?.length ? data.map(inv =>
+        `<div style="border-top:1px solid #e2e8f0;padding:9px 0"><strong>Inventário #${inv.id}</strong> · ${escapar(new Date(inv.created_at).toLocaleString('pt-BR'))}<div class="muted">${escapar(inv.observacao || 'Sem observação')}</div></div>`
+      ).join('') : '<p class="muted">Nenhum inventário registrado.</p>';
+    } catch (erro) {
+      destino.textContent = 'Não foi possível consultar o histórico: ' + (erro.message || 'Tente novamente.');
+    }
+  }
+
+  $('#abrirInventarioDeposito').addEventListener('click', async () => {
+    const abrir = inventarioPainel.style.display === 'none';
+    inventarioPainel.style.display = abrir ? 'block' : 'none';
+    if (!abrir) return;
+    try {
+      if (!inventarioProdutos.length) await inventarioCarregarProdutos();
+      await inventarioHistoricoAtualizar();
+    } catch (erro) {
+      inventarioMensagem.textContent = 'Erro ao carregar materiais: ' + (erro.message || 'Verifique a conexão.');
+    }
+  });
+  $('#inventarioAtualizar').addEventListener('click', inventarioHistoricoAtualizar);
+
+  inventarioBotao.addEventListener('click', async () => {
+    if (inventarioSalvando) return;
+    if (!inventarioItens.size) { alert('Selecione ao menos um material.'); return; }
+    if (!globalThis.crypto?.randomUUID) { alert('Identificador seguro indisponível neste navegador.'); return; }
+    const dados = [];
+    for (const [id,item] of inventarioItens) {
+      const p = inventarioProdutos.find(p => p.id === id);
+      const q = Number(item.quantidade);
+      const fisica = q * inventarioFator(p,item.unidade);
+      if (!p || item.quantidade === '' || !Number.isFinite(q) || q < 0 || !Number.isFinite(fisica) || (!['m³','kg'].includes(item.unidade) && !Number.isInteger(fisica))) {
+        alert('Quantidade física inválida para ' + (p?.nome || 'o produto') + '.');
+        return;
+      }
+      dados.push({produto_id:id,quantidade:q,unidade:item.unidade});
+    }
+    dados.sort((a,b) => a.produto_id - b.produto_id);
+    const observacao = $('#inventarioObservacao').value.trim() || null;
+    const assinatura = JSON.stringify({dados,observacao});
+    if (!inventarioPendente || inventarioPendente.assinatura !== assinatura) {
+      inventarioPendente = {assinatura,chave:crypto.randomUUID()};
+    }
+    const resumo = dados.map(item => {
+      const p = inventarioProdutos.find(p => p.id === item.produto_id);
+      return `${p.nome}: ${inventarioNumero(item.quantidade)} ${item.unidade}`;
+    }).join('\n');
+    if (!window.confirm('ATENÇÃO: INVENTÁRIO SUBSTITUI OS ESTOQUES FÍSICOS, NÃO SOMA.\n\n' + resumo + '\n\nConfirmar ajuste no banco de testes?')) return;
+    inventarioSalvando = true;
+    inventarioBotao.disabled = true;
+    inventarioMensagem.textContent = 'Registrando inventário...';
+    try {
+      const {data,error} = await supabaseClient.rpc('registrar_inventario_estoque', {
+        p_itens:dados,p_observacao:observacao,p_chave_confirmacao:inventarioPendente.chave
+      });
+      if (error) throw error;
+      inventarioMensagem.textContent = '✅ Inventário #' + data + ' registrado com sucesso.';
+      inventarioItens.clear();
+      inventarioPendente = null;
+      $('#inventarioObservacao').value = '';
+      await inventarioCarregarProdutos();
+      inventarioDesenharItens();
+      await inventarioHistoricoAtualizar();
+    } catch (erro) {
+      console.error('Erro ao registrar inventário:',erro);
+      inventarioMensagem.textContent = '❌ Não foi possível confirmar o inventário: ' + (erro.message || 'Verifique a conexão.');
+      // Mantém a mesma chave para uma tentativa idêntica.
+    } finally {
+      inventarioSalvando = false;
+      inventarioBotao.disabled = false;
+    }
+  });
+
 }
 async function renderReceivables(el) {
 
