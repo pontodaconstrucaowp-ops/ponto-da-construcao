@@ -11751,6 +11751,9 @@ function renderMore(el) {
   let salvando = false;
   let chavePendente = null;
   let assinaturaPendente = null;
+  let compraAbertaId = null;
+  let detalhesCompras = {};
+  const chavesRecebimentos = new Map();
 
   const marcarMudanca = () => {
     // Não reaproveitar chave de uma compra se o conteúdo foi alterado.
@@ -11787,6 +11790,8 @@ function renderMore(el) {
           <div class="muted" style="margin-top:5px">${escapar(quando)}</div>
           <div style="margin-top:6px"><strong>${escapar(moeda(compra.valor_total))}</strong></div>
           ${compra.observacao ? `<div class="muted" style="margin-top:5px">${escapar(compra.observacao)}</div>` : ''}
+          <button type="button" class="secondary" data-abrir-compra="${escapar(compra.id)}" style="margin-top:10px">📦 Ver materiais e recebimentos</button>
+          <div id="detalhesCompraDeposito${escapar(compra.id)}" style="margin-top:12px"></div>
         </div>`;
       }).join('');
     } catch (erro) {
@@ -11797,6 +11802,145 @@ function renderMore(el) {
       if (atualizar.isConnected) atualizar.disabled = false;
     }
   }
+
+  // =====================================
+  // DETALHAMENTO E RECEBIMENTOS DA COMPRA
+  // =====================================
+  async function abrirDetalhesCompra(compraId) {
+    const destino = el.querySelector('#detalhesCompraDeposito' + compraId);
+    if (!destino) return;
+    if (compraAbertaId === compraId && destino.innerHTML.trim()) {
+      destino.innerHTML = '';
+      compraAbertaId = null;
+      return;
+    }
+    compraAbertaId = compraId;
+    destino.textContent = 'Consultando materiais e recebimentos...';
+    try {
+      const { data: itensCompra, error: erroItens } = await supabaseClient
+        .from('itens_compra')
+        .select('id,produto_id,quantidade,unidade_compra,produtos(nome)')
+        .eq('compra_id', compraId)
+        .order('id', { ascending: true });
+      if (erroItens) throw erroItens;
+      const ids = (itensCompra || []).map(item => item.id);
+      let recebimentos = [];
+      if (ids.length) {
+        const { data, error } = await supabaseClient
+          .from('recebimentos_compras')
+          .select('id,item_compra_id,quantidade')
+          .in('item_compra_id', ids);
+        if (error) throw error;
+        recebimentos = data || [];
+      }
+      if (!destino.isConnected || compraAbertaId !== compraId) return;
+      detalhesCompras[compraId] = { itens: itensCompra || [], recebimentos };
+      desenharDetalhesCompra(compraId);
+    } catch (erro) {
+      console.error('Erro ao consultar recebimentos da compra:', erro);
+      if (destino.isConnected) destino.textContent = 'Erro ao consultar os itens: ' + (erro.message || 'Tente novamente.');
+    }
+  }
+
+  function desenharDetalhesCompra(compraId) {
+    const destino = el.querySelector('#detalhesCompraDeposito' + compraId);
+    const detalhes = detalhesCompras[compraId];
+    if (!destino || !detalhes) return;
+    if (!detalhes.itens.length) {
+      destino.textContent = 'Nenhum material encontrado nesta compra.';
+      return;
+    }
+    destino.innerHTML = detalhes.itens.map(item => {
+      const comprado = Number(item.quantidade);
+      const recebido = detalhes.recebimentos
+        .filter(r => Number(r.item_compra_id) === Number(item.id))
+        .reduce((s, r) => s + Number(r.quantidade), 0);
+      const pendente = Math.max(0, Math.round((comprado - recebido) * 1000000) / 1000000);
+      const unidade = item.unidade_compra || 'unidade';
+      const nome = item.produtos?.nome || ('Produto #' + item.produto_id);
+      return `<div style="border:1px solid #dbe2ea;border-radius:10px;padding:12px;margin:9px 0">
+        <strong>${escapar(nome)}</strong>
+        <div class="muted">Comprado: ${escapar(comprado)} ${escapar(unidade)} · Recebido: ${escapar(recebido)} · Pendente: <strong>${escapar(pendente)} ${escapar(unidade)}</strong></div>
+        ${pendente > 0 ? `<div style="display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin-top:10px">
+          <div><label for="qtdReceber${item.id}">Quantidade recebida (${escapar(unidade)})</label>
+          <input id="qtdReceber${item.id}" type="number" min="0.001" step="any" max="${escapar(pendente)}" value="${escapar(pendente)}" style="width:150px;display:block"></div>
+          <button type="button" class="primary" data-confirmar-recebimento="${item.id}" data-compra="${compraId}">✅ Confirmar recebimento</button>
+        </div>
+        <small class="muted">A confirmação adicionará a quantidade recebida ao estoque físico.</small>` : '<p style="color:#166534;font-weight:700">✅ Recebido integralmente</p>'}
+        <div id="mensagemRecebimento${item.id}" role="status" aria-live="polite"></div>
+      </div>`;
+    }).join('');
+  }
+
+  async function confirmarRecebimentoPelaTela(compraId, itemId, botao) {
+    const detalhes = detalhesCompras[compraId];
+    const item = detalhes?.itens.find(i => Number(i.id) === itemId);
+    if (!item || botao.disabled) return;
+    const campo = el.querySelector('#qtdReceber' + itemId);
+    const mensagemRecebimento = el.querySelector('#mensagemRecebimento' + itemId);
+    const quantidade = Number(campo?.value);
+    const recebido = detalhes.recebimentos
+      .filter(r => Number(r.item_compra_id) === itemId)
+      .reduce((s, r) => s + Number(r.quantidade), 0);
+    const saldo = Number(item.quantidade) - recebido;
+    const fisica = item.unidade_compra === 'dúzia' ? quantidade * 12 : quantidade;
+    const exigeInteiro = item.unidade_compra === 'dúzia' || !['m³','kg'].includes(item.unidade_compra);
+    if (!Number.isFinite(quantidade) || quantidade <= 0 || quantidade > saldo + 0.00000001 || (exigeInteiro && !Number.isInteger(fisica))) {
+      alert('Quantidade inválida. Confira o saldo pendente e a unidade da compra.');
+      return;
+    }
+    if (!window.confirm(`Confirmar recebimento de ${quantidade} ${item.unidade_compra || 'unidade'}? O estoque físico será aumentado.`)) return;
+    const assinatura = JSON.stringify({ itemId, quantidade });
+    let pendente = chavesRecebimentos.get(itemId);
+    if (!pendente || pendente.assinatura !== assinatura) {
+      if (!globalThis.crypto?.randomUUID) {
+        alert('O navegador não oferece identificadores seguros.');
+        return;
+      }
+      pendente = { assinatura, chave: crypto.randomUUID() };
+      chavesRecebimentos.set(itemId, pendente);
+    }
+    botao.disabled = true;
+    campo.disabled = true;
+    mensagemRecebimento.textContent = 'Confirmando recebimento...';
+    try {
+      const { data, error } = await supabaseClient.rpc('confirmar_recebimento_compra', {
+        p_item_compra_id: itemId,
+        p_quantidade: quantidade,
+        p_observacao: 'Recebimento confirmado pelo aplicativo (ambiente de testes)',
+        p_chave_confirmacao: pendente.chave
+      });
+      if (error) throw error;
+      chavesRecebimentos.delete(itemId);
+      mensagemRecebimento.textContent = '✅ Recebimento #' + data + ' confirmado.';
+      // Recarregar dados do banco em vez de presumir saldos.
+      compraAbertaId = null;
+      await abrirDetalhesCompra(compraId);
+    } catch (erro) {
+      console.error('Erro ao confirmar recebimento:', erro);
+      mensagemRecebimento.textContent = '❌ Não foi possível confirmar: ' + (erro.message || 'Tente novamente.');
+      // Preservar a mesma chave para retentativas da mesma operação.
+    } finally {
+      if (botao.isConnected) botao.disabled = false;
+      if (campo.isConnected) campo.disabled = false;
+    }
+  }
+
+  lista.addEventListener('click', evento => {
+    const abrir = evento.target.closest('button[data-abrir-compra]');
+    if (abrir) {
+      abrirDetalhesCompra(Number(abrir.dataset.abrirCompra));
+      return;
+    }
+    const confirmar = evento.target.closest('button[data-confirmar-recebimento]');
+    if (confirmar) {
+      confirmarRecebimentoPelaTela(
+        Number(confirmar.dataset.compra),
+        Number(confirmar.dataset.confirmarRecebimento),
+        confirmar
+      );
+    }
+  });
 
   function unidadePadrao(produto) {
     const normalizar = valor => String(valor || '').trim().toLowerCase().replace('duzia', 'dúzia');
