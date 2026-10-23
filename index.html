@@ -10,19 +10,47 @@
   <!-- Manifesto temporariamente desativado para evitar o erro de carregamento -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- Ocultar login enquanto a sessão é verificada -->
   <style>
     html.verificando-sessao #loginScreen {
       display: none !important;
     }
 
-    /* Logo oficial na tela de login */
-    #loginScreen .login-logo {
+    /* Logo na tela de login */
+    .login-logo {
       display: block;
-      width: min(210px, 66vw);
+      width: min(200px, 65vw);
       height: auto;
       margin: 0 auto 16px;
       object-fit: contain;
+    }
+
+    /* Pequena logo ao lado do titulo, apenas na pagina Inicio */
+    .topbar-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .home-header-logo {
+      display: none;
+      width: 52px;
+      height: 52px;
+      flex: 0 0 52px;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+
+    body:has(.bottom-nav button[data-page="home"].active) .home-header-logo {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      .home-header-logo {
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
+      }
     }
   </style>
 
@@ -30,14 +58,8 @@
     document.documentElement.classList.add('verificando-sessao');
   </script>
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >
-
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  ></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
 <body>
@@ -74,9 +96,16 @@
 
   <div id="app" class="app hidden">
     <header class="topbar">
-      <div>
-        <div class="eyebrow">PONTO DA CONSTRUÇÃO</div>
-        <h1 id="pageTitle">Início</h1>
+      <div class="topbar-title-group">
+        <img
+          src="logo-ponto-construcao.png"
+          class="home-header-logo"
+          alt="Logo Ponto da Construção"
+        >
+        <div>
+          <div class="eyebrow">PONTO DA CONSTRUÇÃO</div>
+          <h1 id="pageTitle">Início</h1>
+        </div>
       </div>
 
       <button
