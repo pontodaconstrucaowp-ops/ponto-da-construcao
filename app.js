@@ -12936,6 +12936,29 @@ async function renderReceivables(el) {
         'button[type="submit"]'
       );
 
+      // Uma mesma tentativa mantém a mesma chave após falhas de rede.
+      // Se valor, forma ou conta mudarem, será uma nova tentativa.
+      const dadosPagamento = JSON.stringify({
+        contaId,
+        valorCentavos,
+        forma
+      });
+
+      if (formulario.dataset.dadosPagamento !== dadosPagamento) {
+        if (typeof window.crypto?.randomUUID !== 'function') {
+          alert('Seu navegador não oferece geração segura de identificadores. Atualize-o para registrar pagamentos.');
+          return;
+        }
+        formulario.dataset.chaveConfirmacao = window.crypto.randomUUID();
+        formulario.dataset.dadosPagamento = dadosPagamento;
+      }
+
+      const chaveConfirmacao = formulario.dataset.chaveConfirmacao;
+      if (!chaveConfirmacao) {
+        alert('Não foi possível gerar a chave de confirmação do pagamento.');
+        return;
+      }
+
       formulario.dataset.salvando = 'true';
 
       botao.disabled = true;
@@ -12948,7 +12971,8 @@ async function renderReceivables(el) {
           {
             p_conta_receber_id: contaId,
             p_valor: valorCentavos / 100,
-            p_forma_pagamento: forma
+            p_forma_pagamento: forma,
+            p_chave_confirmacao: chaveConfirmacao
           }
         );
 
@@ -13015,6 +13039,7 @@ async function renderReceivables(el) {
     `;
   }
 }
+
 
 
 function abrirMapaCliente(origem = 'cadastro') {
