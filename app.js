@@ -5187,6 +5187,10 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
       </div>
 
       <div class="dados-empresa">
+        CNPJ: <strong>57.687.151/0001-87</strong>
+      </div>
+
+      <div class="dados-empresa">
         Telefone / WhatsApp:
         <strong>${telefoneEmpresa}</strong>
       </div>
