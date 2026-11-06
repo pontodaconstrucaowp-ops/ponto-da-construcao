@@ -7925,6 +7925,12 @@ async function renderDeliveries(el) {
       return;
     }
 
+    // Mostrar entregas em andamento primeiro e as concluídas no final.
+    // A ordem de prioridade/posição da fila é preservada dentro de cada grupo.
+    entregas.sort((a, b) =>
+      Number(a.status === 'entregue') - Number(b.status === 'entregue')
+    );
+
     // =====================================
     // 2. CONSULTAR MATERIAIS DAS VENDAS
     // =====================================
