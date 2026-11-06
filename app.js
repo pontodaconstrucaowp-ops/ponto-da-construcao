@@ -8121,12 +8121,20 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
       });
     };
 
-    // sort estável: mantém posição na fila e ID dentro de cada grupo,
-    // pois esses critérios já vieram ordenados do Supabase.
-    entregas.sort((a, b) =>
-      Number(entregaConcluidaParaExibicao(a)) -
-      Number(entregaConcluidaParaExibicao(b))
+    // Dois grupos explícitos: nenhuma entrega concluída fica misturada
+    // com as que ainda exigem atendimento. A ordem original da fila
+    // (posicao_fila e id) é mantida dentro de cada grupo.
+    const entregasEmAndamento = entregas.filter(
+      entrega => !entregaConcluidaParaExibicao(entrega)
     );
+    const entregasConcluidas = entregas.filter(
+      entrega => entregaConcluidaParaExibicao(entrega)
+    );
+    const todasAsEntregasOrganizadas = [
+      ...entregasEmAndamento,
+      ...entregasConcluidas
+    ];
+    entregas.splice(0, entregas.length, ...todasAsEntregasOrganizadas);
 
     // =====================================
     // 6. FUNÇÃO DE REGISTRO PELA INTERFACE
@@ -8167,9 +8175,7 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
     // 7. MONTAR TELA
     // =====================================
 
-    const pendentes = entregas.filter(
-      e => e.status !== 'entregue'
-    ).length;
+    const pendentes = entregasEmAndamento.length;
 
     el.innerHTML = `
 
@@ -8184,8 +8190,8 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
         </p>
 
         <p style="margin-top:8px">
-          <strong>${pendentes}</strong>
-          entrega(s) ainda não finalizada(s).
+          <strong>${pendentes}</strong> em andamento ·
+          <strong>${entregasConcluidas.length}</strong> concluída(s).
         </p>
 
       </div>
@@ -8193,6 +8199,18 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
       <div class="list" style="margin-top:12px">
 
         ${entregas.map((entrega, indice) => {
+
+          const cabecalhoGrupo = indice === 0 && entregasEmAndamento.length > 0
+            ? `<div class="card" style="border-left:5px solid #d97706;margin-bottom:10px">
+                 <strong>⏳ EM ANDAMENTO (${entregasEmAndamento.length})</strong>
+                 <p class="muted">Entregas que ainda precisam de atendimento.</p>
+               </div>`
+            : indice === entregasEmAndamento.length
+              ? `<div class="card" style="border-left:5px solid #15803d;margin:22px 0 10px">
+                   <strong>✅ CONCLUÍDAS (${entregasConcluidas.length})</strong>
+                   <p class="muted">Entregas finalizadas ou com todos os materiais recebidos.</p>
+                 </div>`
+              : '';
 
           const venda = entrega.vendas;
           const cliente = venda?.clientes;
@@ -8759,6 +8777,8 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
           // =================================
 
           return `
+
+            ${cabecalhoGrupo}
 
             <div class="card" data-pc-entrega-id="${Number(entrega.id)}">
 
