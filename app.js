@@ -8094,32 +8094,13 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
     }
 
     // =====================================
-    // ORDENAR A FILA PELA SITUAÇÃO REAL DOS MATERIAIS
+    // ORDENAR POR STATUS REAL DA ENTREGA
     // =====================================
-    // A entrega pode ter todos os itens recebidos e continuar com
-    // status administrativo "pendente". Nesse caso, exibimos ao final.
-    // Não modifica status, banco de dados ou reservas de estoque.
-    const entregaConcluidaParaExibicao = entrega => {
-      if (entrega.status === 'entregue') return true;
-
-      const materiaisDaEntrega =
-        itensPorVenda.get(entrega.venda_id) || [];
-
-      // Sem itens conhecidos, manter o status como referência.
-      if (!materiaisDaEntrega.length) return false;
-
-      // Não presumir conclusão de uma venda com dados legados.
-      if (!materiaisDaEntrega.every(
-        item => item.controle_entrega_estoque_ativo === true
-      )) return false;
-
-      return materiaisDaEntrega.every(item => {
-        const vendido = Number(item.quantidade);
-        const entregue = Number(totalRecebidoPorItem.get(item.id) || 0);
-        return Number.isFinite(vendido) && vendido > 0 &&
-          Number.isFinite(entregue) && entregue >= vendido - 0.000000001;
-      });
-    };
+    // Somente 'entregue' fica no bloco de concluidas.
+    // 'pendente' e 'em_rota' ficam no bloco superior.
+    // Nao altera status, itens, reservas ou estoque.
+    const entregaConcluidaParaExibicao = entrega =>
+      String(entrega.status ?? '').trim().toLowerCase() === 'entregue';
 
     // Dois grupos explícitos: nenhuma entrega concluída fica misturada
     // com as que ainda exigem atendimento. A ordem original da fila
@@ -8177,40 +8158,12 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
 
     const pendentes = entregasEmAndamento.length;
 
-    el.innerHTML = `
+    // Cada grupo e renderizado separadamente; nao ha um unico map
+    // misturando entregas concluidas com as pendentes.
+    const renderizarCartaoEntrega = (entrega, indice) => {
 
-      <div class="card">
 
-        <h2 style="margin-bottom:8px">
-          🚚 Fila de entregas
-        </h2>
 
-        <p class="muted">
-          ${entregas.length} entrega(s) cadastrada(s).
-        </p>
-
-        <p style="margin-top:8px">
-          <strong>${pendentes}</strong> em andamento ·
-          <strong>${entregasConcluidas.length}</strong> concluída(s).
-        </p>
-
-      </div>
-
-      <div class="list" style="margin-top:12px">
-
-        ${entregas.map((entrega, indice) => {
-
-          const cabecalhoGrupo = indice === 0 && entregasEmAndamento.length > 0
-            ? `<div class="card" style="border-left:5px solid #d97706;margin-bottom:10px">
-                 <strong>⏳ EM ANDAMENTO (${entregasEmAndamento.length})</strong>
-                 <p class="muted">Entregas que ainda precisam de atendimento.</p>
-               </div>`
-            : indice === entregasEmAndamento.length
-              ? `<div class="card" style="border-left:5px solid #15803d;margin:22px 0 10px">
-                   <strong>✅ CONCLUÍDAS (${entregasConcluidas.length})</strong>
-                   <p class="muted">Entregas finalizadas ou com todos os materiais recebidos.</p>
-                 </div>`
-              : '';
 
           const venda = entrega.vendas;
           const cliente = venda?.clientes;
@@ -8778,8 +8731,6 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
 
           return `
 
-            ${cabecalhoGrupo}
-
             <div class="card" data-pc-entrega-id="${Number(entrega.id)}">
 
               <div class="row">
@@ -8917,7 +8868,48 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
 
           `;
 
-        }).join('')}
+    };
+
+    el.innerHTML = `
+
+      <div class="card">
+
+        <h2 style="margin-bottom:8px">
+          🚚 Fila de entregas
+        </h2>
+
+        <p class="muted">
+          ${entregas.length} entrega(s) cadastrada(s).
+        </p>
+
+        <p style="margin-top:8px">
+          <strong>${pendentes}</strong> em andamento ·
+          <strong>${entregasConcluidas.length}</strong> concluída(s).
+        </p>
+
+      </div>
+
+      <div class="list" style="margin-top:12px">
+
+        <section data-grupo-entregas="em-andamento" aria-label="Entregas em andamento">
+          <div class="card" style="border-left:5px solid #d97706;margin-bottom:10px">
+            <strong>⏳ EM ANDAMENTO (${entregasEmAndamento.length})</strong>
+            <p class="muted">Pendentes e em rota.</p>
+          </div>
+          ${entregasEmAndamento.map((entrega, indice) =>
+            renderizarCartaoEntrega(entrega, indice)
+          ).join('')}
+        </section>
+
+        <section data-grupo-entregas="concluidas" aria-label="Entregas concluídas" style="margin-top:24px">
+          <div class="card" style="border-left:5px solid #15803d;margin-bottom:10px">
+            <strong>✅ CONCLUÍDAS (${entregasConcluidas.length})</strong>
+            <p class="muted">Entregas com status entregue.</p>
+          </div>
+          ${entregasConcluidas.map((entrega, indice) =>
+            renderizarCartaoEntrega(entrega, indice + entregasEmAndamento.length)
+          ).join('')}
+        </section>
 
       </div>
     `;
