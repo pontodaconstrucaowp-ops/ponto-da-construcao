@@ -7841,9 +7841,21 @@ async function saveProductEdit(id) {
 
 
 
-async function renderDeliveries(el) {
+async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = null) {
 
   if (!el) return;
+
+  // Numa atualização de material, conservar a lista visível durante
+  // as consultas e devolver o usuário ao mesmo cartão da entrega.
+  const rolagemAnterior = window.scrollY || document.documentElement.scrollTop || 0;
+  const rolagemInternaAnterior = el.scrollTop || 0;
+  const seletorEntregaFoco = entregaFocoId != null
+    ? `[data-pc-entrega-id="${Number(entregaFocoId)}"]`
+    : null;
+  const cartaoAntes = seletorEntregaFoco
+    ? el.querySelector(seletorEntregaFoco)
+    : null;
+  const posicaoCartaoAntes = cartaoAntes?.getBoundingClientRect().top ?? null;
 
   const escapar = valor =>
     String(valor ?? '').replace(/[&<>"']/g, c => ({
@@ -7863,12 +7875,16 @@ async function renderDeliveries(el) {
     state.user?.tipo === 'admin' ||
     state.user?.tipo === 'administrador';
 
-  el.innerHTML = `
-    <div class="card">
-      <strong>🚚 Fila de entregas</strong>
-      <p class="muted">Carregando entregas e materiais...</p>
-    </div>
-  `;
+  // Não esvaziar toda a página a cada recebimento: isso reduz a altura
+  // do documento e faz o navegador voltar automaticamente para o topo.
+  if (!preservarRolagem || !el.querySelector('[data-pc-entrega-id]')) {
+    el.innerHTML = `
+      <div class="card">
+        <strong>🚚 Fila de entregas</strong>
+        <p class="muted">Carregando entregas e materiais...</p>
+      </div>
+    `;
+  }
 
   try {
 
@@ -8138,8 +8154,12 @@ async function renderDeliveries(el) {
         observacao
       );
 
-      if (sucesso) {
-        navigate('deliveries');
+      if (sucesso && state.page === 'deliveries') {
+        const itemAtual = itens.find(item => item.id === itemVendaId);
+        const entregaAtual = entregas.find(
+          entrega => entrega.venda_id === itemAtual?.vendas_id
+        );
+        await renderDeliveries(el, true, entregaAtual?.id ?? null);
       }
     };
 
@@ -8740,7 +8760,7 @@ async function renderDeliveries(el) {
 
           return `
 
-            <div class="card">
+            <div class="card" data-pc-entrega-id="${Number(entrega.id)}">
 
               <div class="row">
 
@@ -8881,6 +8901,29 @@ async function renderDeliveries(el) {
 
       </div>
     `;
+
+    if (preservarRolagem && el.isConnected && state.page === 'deliveries') {
+      // Ajusta a posição em relação à mesma entrega, sem saltar para o topo.
+      // Caso o cartão tenha sido movido para o grupo de concluídas, conserva
+      // a altura anterior para facilitar o acesso à próxima entrega pendente.
+      const cartaoDepois = seletorEntregaFoco
+        ? el.querySelector(seletorEntregaFoco)
+        : null;
+      const aindaEmAtendimento = entregaFocoId != null && entregas.some(
+        entrega => Number(entrega.id) === Number(entregaFocoId) &&
+          !entregaConcluidaParaExibicao(entrega)
+      );
+
+      let novaRolagem = rolagemAnterior;
+      if (cartaoDepois && posicaoCartaoAntes !== null && aindaEmAtendimento) {
+        novaRolagem += cartaoDepois.getBoundingClientRect().top - posicaoCartaoAntes;
+      }
+
+      window.scrollTo({ top: Math.max(0, novaRolagem), behavior: 'auto' });
+      if (el.scrollTop !== rolagemInternaAnterior) {
+        el.scrollTop = rolagemInternaAnterior;
+      }
+    }
 
   } catch (erro) {
 
@@ -9274,7 +9317,9 @@ if (!ehAdministrador) {
 
     if (state.page === 'deliveries') {
       await renderDeliveries(
-        document.getElementById('content')
+        document.getElementById('content'),
+        true,
+        entregaId
       );
     }
 
@@ -9366,7 +9411,9 @@ async function nextDelivery(id) {
 
       if (state.page === 'deliveries') {
         await renderDeliveries(
-          document.getElementById('content')
+          document.getElementById('content'),
+          true,
+          entregaId
         );
       }
 
@@ -9513,7 +9560,9 @@ async function nextDelivery(id) {
 
     if (state.page === 'deliveries') {
       await renderDeliveries(
-        document.getElementById('content')
+        document.getElementById('content'),
+        true,
+        entregaId
       );
     }
 
