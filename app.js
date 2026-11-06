@@ -8889,9 +8889,10 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
 
       </div>
 
-      <div class="list" style="margin-top:12px">
+      <!-- Grupos em fluxo vertical; NAO usar a classe .list, que pode exibir colunas -->
+      <div data-pc-fila-vertical="true" style="display:block;width:100%;margin-top:12px">
 
-        <section data-grupo-entregas="em-andamento" aria-label="Entregas em andamento">
+        <section data-grupo-entregas="em-andamento" aria-label="Entregas em andamento" style="display:block;width:100%;clear:both">
           <div class="card" style="border-left:5px solid #d97706;margin-bottom:10px">
             <strong>⏳ EM ANDAMENTO (${entregasEmAndamento.length})</strong>
             <p class="muted">Pendentes e em rota.</p>
@@ -8901,7 +8902,7 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
           ).join('')}
         </section>
 
-        <section data-grupo-entregas="concluidas" aria-label="Entregas concluídas" style="margin-top:24px">
+        <section data-grupo-entregas="concluidas" aria-label="Entregas concluídas" style="display:block;width:100%;clear:both;margin-top:24px">
           <div class="card" style="border-left:5px solid #15803d;margin-bottom:10px">
             <strong>✅ CONCLUÍDAS (${entregasConcluidas.length})</strong>
             <p class="muted">Entregas com status entregue.</p>
