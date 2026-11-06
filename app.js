@@ -8111,11 +8111,13 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
     const entregasConcluidas = entregas.filter(
       entrega => entregaConcluidaParaExibicao(entrega)
     );
+    // REGRA PERMANENTE DA FILA: a classificação prevalece sobre
+    // qualquer posição/prioridade. Concluídas SEMPRE ficam no final.
+    // Os cartões serão montados em UMA sequência DOM, não em colunas.
     const todasAsEntregasOrganizadas = [
       ...entregasEmAndamento,
       ...entregasConcluidas
     ];
-    entregas.splice(0, entregas.length, ...todasAsEntregasOrganizadas);
 
     // =====================================
     // 6. FUNÇÃO DE REGISTRO PELA INTERFACE
@@ -8889,29 +8891,14 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
 
       </div>
 
-      <!-- Grupos em fluxo vertical; NAO usar a classe .list, que pode exibir colunas -->
-      <div data-pc-fila-vertical="true" style="display:block;width:100%;margin-top:12px">
-
-        <section data-grupo-entregas="em-andamento" aria-label="Entregas em andamento" style="display:block;width:100%;clear:both">
-          <div class="card" style="border-left:5px solid #d97706;margin-bottom:10px">
-            <strong>⏳ EM ANDAMENTO (${entregasEmAndamento.length})</strong>
-            <p class="muted">Pendentes e em rota.</p>
+      <!-- FILA ÚNICA, EM ORDEM DEFINITIVA: em andamento, depois concluídas -->
+      <div data-pc-fila-ordenada="pendentes-primeiro-v2"
+           style="display:block !important; width:100%; margin-top:12px">
+        ${todasAsEntregasOrganizadas.map((entrega, indice) => `
+          <div style="display:block !important; width:100%; margin:0 0 12px 0; clear:both">
+            ${renderizarCartaoEntrega(entrega, indice)}
           </div>
-          ${entregasEmAndamento.map((entrega, indice) =>
-            renderizarCartaoEntrega(entrega, indice)
-          ).join('')}
-        </section>
-
-        <section data-grupo-entregas="concluidas" aria-label="Entregas concluídas" style="display:block;width:100%;clear:both;margin-top:24px">
-          <div class="card" style="border-left:5px solid #15803d;margin-bottom:10px">
-            <strong>✅ CONCLUÍDAS (${entregasConcluidas.length})</strong>
-            <p class="muted">Entregas com status entregue.</p>
-          </div>
-          ${entregasConcluidas.map((entrega, indice) =>
-            renderizarCartaoEntrega(entrega, indice + entregasEmAndamento.length)
-          ).join('')}
-        </section>
-
+        `).join('')}
       </div>
     `;
 
