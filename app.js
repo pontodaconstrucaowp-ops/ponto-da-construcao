@@ -8872,35 +8872,73 @@ async function renderDeliveries(el, preservarRolagem = false, entregaFocoId = nu
 
     };
 
+    // A fila é montada em duas seções de bloco independentes.
+    // Um cartão concluído nunca compartilha o contêiner das pendentes.
+    // O status do próprio registro define a seção, não a posição_fila.
     el.innerHTML = `
-
       <div class="card">
-
-        <h2 style="margin-bottom:8px">
-          🚚 Fila de entregas
-        </h2>
-
-        <p class="muted">
-          ${entregas.length} entrega(s) cadastrada(s).
-        </p>
-
+        <h2 style="margin-bottom:8px">🚚 Fila de entregas</h2>
+        <p class="muted">${entregas.length} entrega(s) cadastrada(s).</p>
         <p style="margin-top:8px">
-          <strong>${pendentes}</strong> em andamento ·
+          <strong>${entregasEmAndamento.length}</strong> em andamento ·
           <strong>${entregasConcluidas.length}</strong> concluída(s).
         </p>
-
       </div>
-
-      <!-- FILA ÚNICA, EM ORDEM DEFINITIVA: em andamento, depois concluídas -->
-      <div data-pc-fila-ordenada="pendentes-primeiro-v2"
-           style="display:block !important; width:100%; margin-top:12px">
-        ${todasAsEntregasOrganizadas.map((entrega, indice) => `
-          <div style="display:block !important; width:100%; margin:0 0 12px 0; clear:both">
-            ${renderizarCartaoEntrega(entrega, indice)}
+      <div data-pc-fila-fixa="v3" style="display:block !important;width:100%;">
+        <div data-pc-grupo="andamento"
+             style="display:block !important;width:100%;clear:both;">
+          <div class="card" style="border-left:5px solid #d97706;margin:12px 0">
+            <strong>⏳ EM ANDAMENTO (${entregasEmAndamento.length})</strong>
+            <p class="muted">Pendentes e em rota.</p>
           </div>
-        `).join('')}
+          ${entregasEmAndamento.map((entrega, indice) => `
+            <div data-pc-item-status="andamento"
+                 data-pc-item-entrega="${Number(entrega.id)}"
+                 style="display:block !important;clear:both;width:100%;margin-bottom:12px">
+              ${renderizarCartaoEntrega(entrega, indice)}
+            </div>
+          `).join('')}
+        </div>
+        <div data-pc-grupo="concluidas"
+             style="display:block !important;width:100%;clear:both;margin-top:28px;">
+          <div class="card" style="border-left:5px solid #15803d;margin:12px 0">
+            <strong>✅ CONCLUÍDAS (${entregasConcluidas.length})</strong>
+            <p class="muted">Todas as entregas finalizadas ficam abaixo das em andamento.</p>
+          </div>
+          ${entregasConcluidas.map((entrega, indice) => `
+            <div data-pc-item-status="concluida"
+                 data-pc-item-entrega="${Number(entrega.id)}"
+                 style="display:block !important;clear:both;width:100%;margin-bottom:12px">
+              ${renderizarCartaoEntrega(entrega, indice + entregasEmAndamento.length)}
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
+
+    // Verificação final do DOM: mover os cartões para o grupo certo
+    // caso outra rotina ou estilo tenha interferido na sequência.
+    const grupoAndamento = el.querySelector('[data-pc-grupo="andamento"]');
+    const grupoConcluidas = el.querySelector('[data-pc-grupo="concluidas"]');
+    if (grupoAndamento && grupoConcluidas) {
+      const mapaStatus = new Map(entregas.map(entrega => [
+        Number(entrega.id),
+        entregaConcluidaParaExibicao(entrega)
+      ]));
+      const cartoes = Array.from(el.querySelectorAll('[data-pc-item-entrega]'));
+      for (const cartao of cartoes) {
+        const id = Number(cartao.dataset.pcItemEntrega);
+        const concluida = mapaStatus.get(id) === true;
+        const destino = concluida ? grupoConcluidas : grupoAndamento;
+        if (cartao.parentElement !== destino) destino.appendChild(cartao);
+      }
+      // Checagem visível apenas no console do navegador.
+      console.info('[ENTREGAS FILA v3]', {
+        emAndamento: grupoAndamento.querySelectorAll('[data-pc-item-entrega]').length,
+        concluidas: grupoConcluidas.querySelectorAll('[data-pc-item-entrega]').length,
+        total: entregas.length
+      });
+    }
 
     if (preservarRolagem && el.isConnected && state.page === 'deliveries') {
       // Ajusta a posição em relação à mesma entrega, sem saltar para o topo.
