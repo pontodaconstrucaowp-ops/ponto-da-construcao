@@ -7925,12 +7925,6 @@ async function renderDeliveries(el) {
       return;
     }
 
-    // Mostrar entregas em andamento primeiro e as concluídas no final.
-    // A ordem de prioridade/posição da fila é preservada dentro de cada grupo.
-    entregas.sort((a, b) =>
-      Number(a.status === 'entregue') - Number(b.status === 'entregue')
-    );
-
     // =====================================
     // 2. CONSULTAR MATERIAIS DAS VENDAS
     // =====================================
@@ -8082,6 +8076,41 @@ async function renderDeliveries(el) {
 
       itensPorVenda.get(item.vendas_id).push(item);
     }
+
+    // =====================================
+    // ORDENAR A FILA PELA SITUAÇÃO REAL DOS MATERIAIS
+    // =====================================
+    // A entrega pode ter todos os itens recebidos e continuar com
+    // status administrativo "pendente". Nesse caso, exibimos ao final.
+    // Não modifica status, banco de dados ou reservas de estoque.
+    const entregaConcluidaParaExibicao = entrega => {
+      if (entrega.status === 'entregue') return true;
+
+      const materiaisDaEntrega =
+        itensPorVenda.get(entrega.venda_id) || [];
+
+      // Sem itens conhecidos, manter o status como referência.
+      if (!materiaisDaEntrega.length) return false;
+
+      // Não presumir conclusão de uma venda com dados legados.
+      if (!materiaisDaEntrega.every(
+        item => item.controle_entrega_estoque_ativo === true
+      )) return false;
+
+      return materiaisDaEntrega.every(item => {
+        const vendido = Number(item.quantidade);
+        const entregue = Number(totalRecebidoPorItem.get(item.id) || 0);
+        return Number.isFinite(vendido) && vendido > 0 &&
+          Number.isFinite(entregue) && entregue >= vendido - 0.000000001;
+      });
+    };
+
+    // sort estável: mantém posição na fila e ID dentro de cada grupo,
+    // pois esses critérios já vieram ordenados do Supabase.
+    entregas.sort((a, b) =>
+      Number(entregaConcluidaParaExibicao(a)) -
+      Number(entregaConcluidaParaExibicao(b))
+    );
 
     // =====================================
     // 6. FUNÇÃO DE REGISTRO PELA INTERFACE
