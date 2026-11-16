@@ -9365,6 +9365,14 @@ if (!ehAdministrador) {
 
   try {
 
+    console.log('DIAGNÓSTICO RECEBIMENTO:', {
+  entregaId,
+  itemVendaId,
+  quantidadeRecebida: entregue,
+  quantidadeEstoqueProprio: propria,
+  observacao: textoObservacao,
+  chave: tentativa.chave
+});
     const { data, error } = await supabaseClient.rpc(
       'confirmar_entrega_parcial',
       {
