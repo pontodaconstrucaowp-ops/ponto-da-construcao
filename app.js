@@ -5593,6 +5593,7 @@ async function abrirImpressaoVenda(vendaId, tipo = 'pago') {
 
 
 
+
 async function renderProducts(el) {
 
   if (!el) return;
@@ -5600,6 +5601,8 @@ async function renderProducts(el) {
   const ehAdministrador =
     state.user?.tipo === 'admin' ||
     state.user?.tipo === 'administrador';
+
+  const toleranciaCompra = 0.001;
 
   const escapar = valor =>
     String(valor ?? '').replace(/[&<>"']/g, c => ({
@@ -5769,6 +5772,12 @@ async function renderProducts(el) {
                 item.quantidade_pendente
               );
 
+            const limite =
+              Number(item.quantidade_pendente);
+
+            const maximoPermitido =
+              limite + toleranciaCompra;
+
             const id = escapar(item.id);
 
             return `
@@ -5830,7 +5839,7 @@ async function renderProducts(el) {
                       type="number"
                       min="0.001"
                       step="any"
-                      max="${Number(item.quantidade_pendente)}"
+                      max="${maximoPermitido}"
                       required
                     >
                   </div>
@@ -6079,7 +6088,7 @@ async function renderProducts(el) {
         return;
       }
 
-      const quantidade = Number(
+      const quantidadeDigitada = Number(
         formatoNumero(
           form.elements.namedItem('quantidade')?.value
         )
@@ -6109,25 +6118,45 @@ async function renderProducts(el) {
         item.quantidade_pendente
       );
 
+      // =====================================
+      // VALIDAR COM TOLERÂNCIA DE ARREDONDAMENTO
+      // =====================================
+
       if (
-        !Number.isFinite(quantidade) ||
-        quantidade <= 0 ||
-        quantidade > limite
+        !Number.isFinite(quantidadeDigitada) ||
+        quantidadeDigitada <= 0 ||
+        quantidadeDigitada > limite + toleranciaCompra
       ) {
         alert('Quantidade de compra inválida.');
         return;
       }
 
+      // Registrar somente o saldo real.
+      // Nunca enviar quantidade acima da pendência.
+
+      const quantidade = Math.min(
+        quantidadeDigitada,
+        limite
+      );
+
       const unidade = String(
         item.unidade_venda || ''
       ).toLowerCase().trim();
 
+      // Permitir fração somente quando ela
+      // representar o fechamento do saldo restante.
+
       if (
         ['unidade', 'saco', 'dúzia', 'duzia',
          'milheiro', 'balde', 'lata'].includes(unidade) &&
-        !Number.isInteger(quantidade)
+        !Number.isInteger(quantidadeDigitada) &&
+        Math.abs(quantidadeDigitada - limite) > toleranciaCompra
       ) {
-        alert('Informe uma quantidade inteira.');
+        alert(
+          'Informe uma quantidade inteira, ' +
+          'exceto quando estiver completando ' +
+          'o saldo pendente.'
+        );
         return;
       }
 
@@ -6151,7 +6180,7 @@ async function renderProducts(el) {
       const confirmou = window.confirm(
         `Confirmar compra para a venda #${item.vendas_id}?\n\n` +
         `Material: ${item.produtos?.nome || 'Material'}\n` +
-        `Quantidade: ${quantidade} ${unidade}\n` +
+        `Quantidade: ${formatarQuantidade(quantidade)} ${unidade}\n` +
         `Fornecedor: ${fornecedor}\n` +
         `Total: ${money(total)}\n\n` +
         'A compra NÃO confirma a entrega ao cliente.'
@@ -6176,7 +6205,12 @@ async function renderProducts(el) {
             'registrar_compra_pendente',
             {
               p_item_venda_id: item.id,
+
+              // Envia a quantidade real,
+              // nunca a quantidade arredondada.
+
               p_quantidade: quantidade,
+
               p_fornecedor_nome: fornecedor,
               p_custo_unitario: custo,
               p_custo_transporte: transporte,
@@ -6310,6 +6344,7 @@ async function renderProducts(el) {
   }
 
 }
+
 
 
 
