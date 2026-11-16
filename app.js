@@ -9277,6 +9277,7 @@ async function registrarCompraRevenda(
 }
 
 
+
 async function confirmarRecebimentoParcial(
   entregaId,
   itemVendaId,
@@ -9284,15 +9285,15 @@ async function confirmarRecebimentoParcial(
   quantidadePropria,
   observacao = ''
 ) {
+  const ehAdministrador =
+    state.user?.tipo === 'admin' ||
+    state.user?.tipo === 'administrador';
 
-const ehAdministrador =
-  state.user?.tipo === 'admin' ||
-  state.user?.tipo === 'administrador';
+  if (!ehAdministrador) {
+    alert('Somente administradores podem confirmar recebimentos.');
+    return false;
+  }
 
-if (!ehAdministrador) {
-  alert('Somente administradores podem confirmar recebimentos.');
-  return false;
-}
   const entregue = Number(quantidade);
   const propria = Number(quantidadePropria);
   const textoObservacao = String(observacao || '').trim();
@@ -9321,9 +9322,6 @@ if (!ehAdministrador) {
   }
 
   const identificador = `${entregaId}:${itemVendaId}`;
-
-  // Guarda a chave e os valores até termos confirmação
-  // do resultado. Uma repetição usa a mesma chave.
 
   const tentativaAnterior =
     chavesRecebimentoPendente.get(identificador);
@@ -9363,33 +9361,42 @@ if (!ehAdministrador) {
     tentativa
   );
 
-  try {
+  const parametros = {
+    p_entrega_id: Number(entregaId),
+    p_item_venda_id: itemVendaId,
+    p_quantidade_entregue: entregue,
+    p_quantidade_estoque_proprio: propria,
+    p_observacao: textoObservacao,
+    p_chave_confirmacao: tentativa.chave
+  };
 
-    console.log('DIAGNÓSTICO RECEBIMENTO:', {
-  entregaId,
-  itemVendaId,
-  quantidadeRecebida: entregue,
-  quantidadeEstoqueProprio: propria,
-  observacao: textoObservacao,
-  chave: tentativa.chave
-});
+  try {
+    console.log(
+      'DIAGNÓSTICO RECEBIMENTO - DADOS ENVIADOS:',
+      parametros
+    );
+
     const { data, error } = await supabaseClient.rpc(
       'confirmar_entrega_parcial',
-      {
-        p_entrega_id: Number(entregaId),
-        p_item_venda_id: itemVendaId,
-        p_quantidade_entregue: entregue,
-        p_quantidade_estoque_proprio: propria,
-        p_observacao: textoObservacao,
-        p_chave_confirmacao: tentativa.chave
-      }
+      parametros
     );
 
     if (error) {
+      console.error(
+        'DIAGNÓSTICO RECEBIMENTO - ERRO DO BANCO:',
+        {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          status: error.status,
+          parametrosEnviados: parametros
+        }
+      );
+
       throw error;
     }
 
-    // O banco confirmou a operação.
     chavesRecebimentoPendente.delete(identificador);
 
     console.log('Recebimento confirmado:', data);
@@ -9407,8 +9414,7 @@ if (!ehAdministrador) {
     return true;
 
   } catch (erro) {
-
-    console.error('Erro no recebimento:', erro);
+    console.error('ERRO COMPLETO NO RECEBIMENTO:', erro);
 
     alert(
       'Não foi possível confirmar o resultado.\n\n' +
@@ -9416,16 +9422,13 @@ if (!ehAdministrador) {
       '\n\nConfira o histórico antes de tentar novamente.'
     );
 
-    // Mantemos a chave para permitir uma repetição segura.
     return false;
 
   } finally {
-
     tentativa.executando = false;
-
   }
-
 }
+
 
 async function nextDelivery(id) {
 
